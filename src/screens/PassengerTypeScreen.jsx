@@ -25,7 +25,6 @@ export default function PassengerTypeScreen({ navigation }) {
 
     // student/senior → go to discount verification info screen
     navigation.navigate("DiscountInfo", { passenger_type: type });
-    navigation.navigate("UploadVerification", { passenger_type: type });
   };
 
   const Card = ({ value, label }) => (

@@ -91,11 +91,19 @@ export default function UploadVerificationScreen({ navigation, route }) {
 
       const json = await apiRes.json();
       if (!apiRes.ok) {
-        return Alert.alert("Submit failed", json.error || "Unknown error");
+        // Show detailed error message
+        const errorMsg = json.error || json.message || "Unknown error";
+        console.error("Verification submit error:", errorMsg);
+        return Alert.alert(
+          "Submit failed", 
+          errorMsg.includes("ON CONFLICT") 
+            ? "Database error: Please contact support. The verification system needs to be configured."
+            : errorMsg
+        );
       }
 
       Alert.alert("Submitted ✅", "Your verification is now pending admin approval.");
-      navigation.navigate("DiscountInfo", { passenger_type: type });
+      navigation.navigate("VerificationSubmitted");
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {

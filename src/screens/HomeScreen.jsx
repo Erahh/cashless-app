@@ -176,7 +176,7 @@ export default function HomeScreen({ navigation }) {
             icon="🧾"
             title="History"
             subtitle="Transactions"
-            onPress={() => navigation.navigate("Balance")} // swap later to Transactions screen
+            onPress={() => navigation.navigate("Transactions")}
           />
           <ActionCard
             icon="🛡️"
@@ -219,7 +219,7 @@ export default function HomeScreen({ navigation }) {
         {/* Recent Transactions */}
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Balance")}>
+          <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
             <Text style={styles.link}>See all</Text>
           </TouchableOpacity>
         </View>

@@ -1,0 +1,206 @@
+# Progress Log
+
+## Fixed Expo Configuration Error
+
+**Date**: Current session
+
+**Issue**: ConfigError - package.json was missing at the root level. The project had an unusual structure with package.json in the `src/` directory instead of the root.
+
+**Changes Made**:
+1. Created `package.json` at the root level with proper Expo configuration
+2. Updated `index.js` to import App from `./src/App` instead of `./App`
+3. Updated `app.json` to fix all asset paths from `./assets/` to `./src/assets/`:
+   - Icon path
+   - Splash screen image
+   - Android adaptive icon
+   - Web favicon
+4. Installed all npm dependencies successfully (695 packages)
+
+**Result**: Project is now properly configured for Expo. The user can now run `npm start` or `npx expo start` to launch the development server and test on iPhone 8 using Expo Go app.
+
+## Set Up LoginScreen with OTP Testing
+
+**Date**: Current session
+
+**Issue**: User wanted to test OTP functionality in LoginScreen, but App.js was showing default Expo message.
+
+**Changes Made**:
+1. Updated `src/App.js` to display LoginScreen instead of default message
+2. Installed `@supabase/supabase-js` package for OTP functionality
+3. Enhanced `src/screens/LoginScreen.jsx` with:
+   - Test mode functionality (works without Supabase configuration)
+   - Better UI with styled components and proper layout
+   - Loading states for better UX
+   - Test OTP code: `123456` (displayed in test banner)
+   - Error handling and validation
+   - Option to change phone number after sending OTP
+4. Added test banner that shows when in test mode
+5. Improved styling with StyleSheet for better appearance
+
+**Result**: LoginScreen is now functional and ready for testing. User can test OTP flow immediately using test mode (OTP: 123456) without needing to configure Supabase. When ready for production, they can set `TEST_MODE = false` and configure Supabase credentials in `src/api/supabase.js`.
+
+## Configured Real Supabase OTP
+
+**Date**: Current session
+
+**Issue**: User wanted to use their actual Supabase OTP instead of test mode.
+
+**Changes Made**:
+1. Updated `src/screens/LoginScreen.jsx`:
+   - Set `TEST_MODE = false` to enable real Supabase OTP
+   - Improved error handling for Supabase API calls
+   - Added proper phone number and OTP trimming
+   - Enhanced success messages to show user information
+   - Removed test mode condition checks for cleaner code
+2. Updated `src/api/supabase.js`:
+   - Added comments about using anon key (not secret key)
+   - Organized constants for better maintainability
+   - Added security warning about secret keys
+
+**Security Note**: User should replace the secret key with their Supabase anon/public key. Secret keys should never be exposed in client-side code.
+
+**Result**: LoginScreen now uses real Supabase OTP authentication. Users can send and verify OTP codes through Supabase's SMS service.
+
+## Fixed OTP Provider Error & Improved Error Handling
+
+**Date**: Current session
+
+**Issue**: User encountered "error sending confirmation OTP to provider" - typically caused by missing SMS provider configuration in Supabase.
+
+**Changes Made**:
+1. Enhanced `src/screens/LoginScreen.jsx`:
+   - Added comprehensive phone number validation function
+   - Improved error messages with specific guidance for SMS provider issues
+   - Added console logging for debugging
+   - Better phone number format validation (must start with +, 10-15 digits)
+   - Added helpful placeholder text and format hint
+   - Enhanced error alerts with step-by-step troubleshooting instructions
+2. Error handling improvements:
+   - Detects SMS provider configuration errors
+   - Provides clear instructions on how to fix in Supabase dashboard
+   - Validates phone number format before sending
+   - Shows detailed error messages for debugging
+
+**Troubleshooting Steps for "error sending confirmation OTP to provider"**:
+1. Go to Supabase Dashboard > Authentication > Providers
+2. Enable "Phone" provider
+3. Configure SMS provider (Twilio, MessageBird, or Vonage):
+   - Go to Settings > Auth > SMS Provider
+   - Add provider credentials (Account SID, Auth Token, etc.)
+   - Save configuration
+4. Ensure phone number format is correct: +[country code][number] (e.g., +639123456789)
+5. Check Supabase logs for detailed error messages
+
+**Result**: Better error handling and validation. Users now get clear guidance when SMS provider is not configured, making it easier to troubleshoot and fix the issue.
+
+## Updated Expo Package Version
+
+**Date**: Current session
+
+**Issue**: Expo package version mismatch - installed version (54.0.30) didn't match expected version (~54.0.31) for best compatibility.
+
+**Changes Made**:
+1. Updated `package.json`:
+   - Changed expo version from `~54.0.25` to `~54.0.31`
+   - Ran `npm install expo@~54.0.31` to update package and dependencies
+2. Verified package compatibility:
+   - All 8 related packages updated successfully
+   - No vulnerabilities found
+   - Package now matches expected version for Expo SDK 54
+
+**Result**: Expo package is now at the correct version (~54.0.31) for optimal compatibility with the installed Expo SDK. The version mismatch warning should no longer appear.
+
+## Expo Version Validation Warning (Non-Critical)
+
+**Date**: Current session
+
+**Issue**: Warning message "Unable to reach well-known versions endpoint. Using local dependency map" - this occurs when Expo can't connect to the online version validation service.
+
+**Status**: Non-critical warning. Project verified with `expo-doctor` - all 17 checks passed with no issues detected.
+
+**Explanation**: 
+- This is a network/connectivity warning, not an error
+- Expo falls back to local dependency validation which works fine
+- The app will function normally despite this warning
+- Can occur due to temporary network issues or Expo service unavailability
+
+**Result**: No action needed. The warning doesn't affect app functionality. All dependencies are correctly configured and validated locally.
+
+## Fixed React Navigation Installation Error
+
+**Date**: Current session
+
+**Issue**: App was failing to bundle with error "Unable to resolve @react-navigation/native" - React Navigation packages were not installed.
+
+**Changes Made**:
+1. Installed React Navigation packages:
+   - `@react-navigation/native` - Core navigation library
+   - `@react-navigation/native-stack` - Stack navigator for native apps
+   - `react-native-screens` - Native screen components (required dependency)
+   - `react-native-safe-area-context` - Safe area handling (required dependency)
+2. Fixed `src/navigation/AppNavigator.jsx`:
+   - Added import for `createNativeStackNavigator` from `@react-navigation/native-stack`
+   - Created Stack navigator instance
+   - Added imports for all screen components (MPINUnlockScreen, LoginScreen, MPINSetupScreen, HomeScreen)
+3. Fixed `src/screens/LoginScreen.jsx`:
+   - Added `navigation` prop to function parameters
+   - Fixed indentation and formatting of `handleVerifyOtp` function
+4. Created `src/screens/HomeScreen.jsx`:
+   - Created basic HomeScreen component (was empty file)
+   - Added simple welcome UI with styling
+
+**Result**: React Navigation is now properly installed and configured. All screen components are imported correctly. The app should now bundle successfully without the "Unable to resolve" error.
+
+## Fixed Import Path Error in App.js
+
+**Date**: Current session
+
+**Issue**: App was failing to bundle with error "Unable to resolve ./src/navigation/AppNavigator" - incorrect import paths in App.js.
+
+**Changes Made**:
+1. Fixed import paths in `src/App.js`:
+   - Changed `./src/navigation/AppNavigator` to `./navigation/AppNavigator`
+   - Changed `./src/context/AppLockContext` to `./context/AppLockContext`
+   - Changed `./src/api/mpinLocal` to `./api/mpinLocal`
+
+**Explanation**: Since `App.js` is already located in the `src/` directory, it should use relative paths without the `src/` prefix when importing from other files in the same directory.
+
+**Result**: Import paths are now correct. The app should bundle successfully without the "Unable to resolve" error.
+
+## Fixed Incorrect Backend Code Import in index.js
+
+**Date**: Current session
+
+**Issue**: App was failing to bundle with error "Unable to resolve ./routes/mpin.routes.js" - index.js was trying to import an Express.js router file which is server-side code, not meant for React Native.
+
+**Changes Made**:
+1. Fixed `index.js`:
+   - Removed incorrect import of `mpinRouter` from `./routes/mpin.routes.js`
+   - Removed `app.use("/mpin", mpinRouter)` line (Express.js server code)
+   - Cleaned up the file to only contain React Native app registration
+
+**Explanation**: 
+- `mpin.routes.js` is an Express.js router file for backend/server use
+- React Native apps don't use Express.js routers
+- The `index.js` file should only register the React Native app component
+- Backend routes should be in a separate server project, not in the mobile app
+
+**Result**: `index.js` now correctly only registers the React Native app. The bundling error is fixed.
+
+## Fixed Missing Config File Error
+
+**Date**: Current session
+
+**Issue**: App was failing to bundle with error "Unable to resolve ../config/api" - BasicInfoScreen and MPINSetupScreen were importing from a non-existent config file.
+
+**Changes Made**:
+1. Created `src/config/api.js`:
+   - Added `API_BASE_URL` constant pointing to Render backend: `https://cashless-backend.onrender.com`
+2. Updated `src/screens/BasicInfoScreen.jsx`:
+   - Replaced manual fetch with `submitBasicInfo` helper function from `apiHelper.js`
+   - Simplified code by using the helper that handles auth tokens automatically
+3. Updated `src/screens/MPINSetupScreen.jsx`:
+   - Replaced manual fetch with `setMpinOnRender` helper function from `apiHelper.js`
+   - Simplified code by using the helper that handles auth tokens automatically
+
+**Result**: Both screens now use the centralized API helper functions, making the code cleaner and easier to maintain. The missing config file error is resolved.

@@ -8,14 +8,14 @@ async function getToken() {
   return token;
 }
 
-export async function fetchTransactions(limit = 20) {
+export async function fetchNotifications(limit = 30) {
   const token = await getToken();
 
-  const res = await fetch(`${API_BASE_URL}/transactions?limit=${limit}`, {
+  const res = await fetch(`${API_BASE_URL}/notifications?limit=${limit}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
   const json = await res.json();
-  if (!res.ok) throw new Error(json.error || "Failed to load transactions");
+  if (!res.ok) throw new Error(json.error || "Failed to load notifications");
   return json.items || [];
 }

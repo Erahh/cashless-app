@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { fetchNotifications } from "../api/notificationsApi";
+import BottomNav from "../components/BottomNav";
 
 function normalizePayload(payload) {
   const p = payload && typeof payload === "object" ? payload : {};
@@ -140,8 +141,10 @@ export default function NotificationsScreen({ navigation }) {
           </View>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 90 }} />
       </ScrollView>
+
+      <BottomNav navigation={navigation} active="Alerts" />
     </SafeAreaView>
   );
 }

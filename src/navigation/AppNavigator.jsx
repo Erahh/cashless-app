@@ -26,7 +26,6 @@ import GuardianLinkScreen from "../screens/GuardianLinkScreen";
 import AdminVerificationScreen from "../screens/AdminVerificationScreen";
 import AdminVerificationDetailScreen from "../screens/AdminVerificationDetailScreen";
 import TransactionsScreen from "../screens/TransactionsScreen";
-import TopUpScreen from "../screens/TopUpScreen";
 
 
 
@@ -55,7 +54,6 @@ export default function AppNavigator() {
           <Stack.Screen name="AdminVerification" component={AdminVerificationScreen} />
           <Stack.Screen name="AdminVerificationDetail" component={AdminVerificationDetailScreen} />
           <Stack.Screen name="Transactions" component={TransactionsScreen} />
-          <Stack.Screen name="TopUp" component={TopUpScreen} />
 
           {/* Main */}
           <Stack.Screen name="Home" component={HomeScreen} />

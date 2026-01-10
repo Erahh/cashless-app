@@ -16,6 +16,7 @@ import {
   rejectGuardianRequest,
   requestGuardianLink,
 } from "../api/guardianApi";
+import BottomNav from "../components/BottomNav";
 
 export default function GuardianLinkScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -237,8 +238,10 @@ export default function GuardianLinkScreen({ navigation }) {
           })}
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 90 }} />
       </ScrollView>
+
+      <BottomNav navigation={navigation} active="Guardian" />
     </SafeAreaView>
   );
 }

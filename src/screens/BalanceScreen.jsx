@@ -11,6 +11,7 @@ import {
   Alert,
 } from "react-native";
 import { fetchWallet, demoTopUp } from "../api/walletApi";
+import BottomNav from "../components/BottomNav";
 
 const PRESETS = [50, 100, 200, 500];
 
@@ -166,10 +167,12 @@ export default function BalanceScreen({ navigation }) {
               ))}
             </View>
 
-            <View style={{ height: 40 }} />
+            <View style={{ height: 90 }} />
           </>
         )}
       </ScrollView>
+
+      <BottomNav navigation={navigation} active="Wallet" />
     </SafeAreaView>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useState } from "react";
+import { fetchNotifications } from "../api/notificationsApi";
 import {
   View,
   Text,
@@ -11,6 +12,8 @@ import {
 } from "react-native";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
+import BottomNav from "../components/BottomNav";
+
 
 // Keep mock recent transactions UI-first (later bind to /transactions)
 const MOCK_RECENT = [
@@ -266,29 +269,7 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Bottom Nav (wired) */}
-      <View style={styles.bottomNav}>
-        <NavItem
-          label="Home"
-          active
-          onPress={() => navigation.navigate("Home")}
-        />
-        <NavItem
-          label="Wallet"
-          onPress={() => navigation.navigate("Balance")}
-        />
-        <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("OperatorScan")}>
-          <Text style={styles.fabText}>SCAN</Text>
-        </TouchableOpacity>
-        <NavItem
-          label="QR"
-          onPress={() => navigation.navigate("OperatorScan")}
-        />
-        <NavItem
-          label="Settings"
-          onPress={() => navigation.navigate("PassengerType")} // replace later with Profile/Settings screen
-        />
-      </View>
+      <BottomNav navigation={navigation} active="Home" />
     </SafeAreaView>
   );
 }
@@ -305,13 +286,6 @@ function ActionCard({ icon, title, subtitle, onPress }) {
   );
 }
 
-function NavItem({ label, active, onPress }) {
-  return (
-    <TouchableOpacity style={styles.navItem} onPress={onPress}>
-      <Text style={[styles.navText, active && styles.navTextActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0B0E14" },
@@ -480,34 +454,4 @@ const styles = StyleSheet.create({
   txAmount: { fontWeight: "900", fontSize: 14 },
   txNeg: { color: "#FF8A8A" },
   txPos: { color: "#7CFF9B" },
-
-  bottomNav: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 78,
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-    paddingTop: 10,
-    backgroundColor: "rgba(11,14,20,0.95)",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  navItem: { width: 60, alignItems: "center" },
-  navText: { color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: "700" },
-  navTextActive: { color: "#FFD36A" },
-
-  fab: {
-    width: 76,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: "#FFD36A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fabText: { fontWeight: "900", color: "#0B0E14" },
 });

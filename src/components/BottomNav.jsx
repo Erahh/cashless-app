@@ -22,6 +22,11 @@ export default function BottomNav({ navigation, active = "Home" }) {
       </TouchableOpacity>
 
       <NavItem
+        label="QR"
+        active={active === "QR"}
+        onPress={() => go("MyQR")}
+      />
+      <NavItem
         label="Alerts"
         active={active === "Alerts"}
         onPress={() => go("Notifications")}

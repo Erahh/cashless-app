@@ -9,6 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { sendScanToBackend } from "../api/scanApi";
 
 // UI helper: parse QR payload (support JSON or plain text)
 function parsePayload(raw) {
@@ -76,11 +77,65 @@ export default function OperatorScanScreen({ navigation }) {
     setRawValue("");
   };
 
-  // Later: connect to backend scan endpoint
   const confirmScan = async () => {
-    // MVP: just show parsed content for now
-    // When you’re ready, we’ll call your backend scan endpoint here.
-    Alert.alert("QR Captured ✅", parsed.raw.slice(0, 200));
+    try {
+      // QR payload can be:
+      // JSON: {"credential_value":"QR123","vehicle_id":"...","route_name":"ROUTE A"}
+      // or plain text: "QR123" (we'll require vehicle_id from a default for MVP)
+      let credential_value = null;
+      let vehicle_id = null;
+      let route_name = null;
+
+      if (parsed.type === "json") {
+        credential_value = parsed.data?.credential_value || parsed.data?.value || null;
+        vehicle_id = parsed.data?.vehicle_id || null;
+        route_name = parsed.data?.route_name || null;
+      } else if (parsed.type === "kv") {
+        credential_value = parsed.data?.credential_value || parsed.data?.cred || parsed.data?.value || null;
+        vehicle_id = parsed.data?.vehicle_id || parsed.data?.vehicle || null;
+        route_name = parsed.data?.route_name || parsed.data?.route || null;
+      } else {
+        credential_value = parsed.raw;
+      }
+
+      // MVP fallback if your QR is only credential_value
+      // ✅ put your real vehicle UUID here for testing
+      const DEFAULT_VEHICLE_ID = "7801c5c4-a9f0-49a4-992d-308f06610b91";
+
+      if (!vehicle_id) vehicle_id = DEFAULT_VEHICLE_ID;
+
+      if (!credential_value) throw new Error("QR payload missing credential_value");
+      if (!vehicle_id || vehicle_id.includes("PUT-YOUR-VEHICLE")) {
+        throw new Error("Missing vehicle_id. Put a real DEFAULT_VEHICLE_ID for testing, or encode vehicle_id inside QR.");
+      }
+
+      const payload = {
+        credential_value,
+        vehicle_id,
+        route_name,
+        device_id: `expo-${Date.now()}`,
+        scanned_at: new Date().toISOString(),
+      };
+
+      const result = await sendScanToBackend(payload);
+
+      // Result is your rpc jsonb (approved/declined)
+      if (result?.status === "approved") {
+        Alert.alert(
+          "Approved ✅",
+          `Fare: ₱${Number(result.fare_amount).toFixed(2)}\nBalance: ₱${Number(result.balance).toFixed(2)}`
+        );
+        reset();
+        return;
+      }
+
+      Alert.alert(
+        "Declined ❌",
+        `Reason: ${result?.reason || "unknown"}\nBalance: ₱${Number(result?.balance ?? 0).toFixed(2)}`
+      );
+    } catch (e) {
+      Alert.alert("Scan Error", e.message);
+    }
   };
 
   if (!permission) {

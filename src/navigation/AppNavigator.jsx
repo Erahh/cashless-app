@@ -22,6 +22,7 @@ import BalanceScreen from "../screens/BalanceScreen";
 import OperatorScanScreen from "../screens/OperatorScanScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import GuardianLinkScreen from "../screens/GuardianLinkScreen";
+import MyQRScreen from "../screens/MyQRScreen";
 
 import AdminVerificationScreen from "../screens/AdminVerificationScreen";
 import AdminVerificationDetailScreen from "../screens/AdminVerificationDetailScreen";
@@ -54,7 +55,6 @@ export default function AppNavigator() {
           <Stack.Screen name="AdminVerification" component={AdminVerificationScreen} />
           <Stack.Screen name="AdminVerificationDetail" component={AdminVerificationDetailScreen} />
           <Stack.Screen name="Transactions" component={TransactionsScreen} />
-
           {/* Main */}
           <Stack.Screen name="Home" component={HomeScreen} />
 
@@ -79,6 +79,9 @@ export default function AppNavigator() {
 
           {/* Guardian */}
           <Stack.Screen name="GuardianLink" component={GuardianLinkScreen} />
+          
+          {/* QR */}
+          <Stack.Screen name="MyQR" component={MyQRScreen} />
         </>
       )}
     </Stack.Navigator>

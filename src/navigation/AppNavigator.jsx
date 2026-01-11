@@ -20,6 +20,7 @@ import VerificationSubmittedScreen from "../screens/VerificationSubmittedScreen"
 import SendLoadScreen from "../screens/SendLoadScreen";
 import BalanceScreen from "../screens/BalanceScreen";
 import OperatorScanScreen from "../screens/OperatorScanScreen";
+import OperatorSetupScreen from "../screens/OperatorSetupScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import GuardianLinkScreen from "../screens/GuardianLinkScreen";
 import MyQRScreen from "../screens/MyQRScreen";
@@ -73,6 +74,7 @@ export default function AppNavigator() {
 
           {/* Operator */}
           <Stack.Screen name="OperatorScan" component={OperatorScanScreen} />
+          <Stack.Screen name="OperatorSetup" component={OperatorSetupScreen} />
 
           {/* Notifications */}
           <Stack.Screen name="Notifications" component={NotificationsScreen} />

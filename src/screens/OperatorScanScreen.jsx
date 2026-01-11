@@ -9,7 +9,10 @@ import {
   Alert,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sendScanToBackend } from "../api/scanApi";
+
+const KEY = "operator_selected_vehicle";
 
 // UI helper: parse QR payload (support JSON or plain text)
 function parsePayload(raw) {
@@ -42,12 +45,19 @@ export default function OperatorScanScreen({ navigation }) {
   const [torch, setTorch] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [rawValue, setRawValue] = useState("");
+  const [vehicle, setVehicle] = useState(null);
 
   useEffect(() => {
-    // Reset scan state when screen focuses
-    const unsub = navigation?.addListener?.("focus", () => {
+    // Load vehicle and reset scan state when screen focuses
+    const unsub = navigation?.addListener?.("focus", async () => {
+      const saved = await AsyncStorage.getItem(KEY);
+      const v = saved ? JSON.parse(saved) : null;
+      setVehicle(v);
+
       setScanned(false);
       setRawValue("");
+
+      if (!v?.id) navigation.navigate("OperatorSetup");
     });
     return unsub;
   }, [navigation]);
@@ -98,16 +108,11 @@ export default function OperatorScanScreen({ navigation }) {
         credential_value = parsed.raw;
       }
 
-      // MVP fallback if your QR is only credential_value
-      // ✅ put your real vehicle UUID here for testing
-      const DEFAULT_VEHICLE_ID = "7801c5c4-a9f0-49a4-992d-308f06610b91";
-
-      if (!vehicle_id) vehicle_id = DEFAULT_VEHICLE_ID;
+      if (!vehicle?.id) throw new Error("No vehicle selected. Go to Operator Setup.");
+      vehicle_id = vehicle.id;
+      if (!route_name) route_name = vehicle.route_name || null;
 
       if (!credential_value) throw new Error("QR payload missing credential_value");
-      if (!vehicle_id || vehicle_id.includes("PUT-YOUR-VEHICLE")) {
-        throw new Error("Missing vehicle_id. Put a real DEFAULT_VEHICLE_ID for testing, or encode vehicle_id inside QR.");
-      }
 
       const payload = {
         credential_value,

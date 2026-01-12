@@ -182,6 +182,12 @@ export default function HomeScreen({ navigation }) {
             onPress={() => navigation.navigate("Transactions")}
           />
           <ActionCard
+            icon="💰"
+            title="Earnings"
+            subtitle="Operator"
+            onPress={() => navigation.navigate("OperatorEarnings")}
+          />
+          <ActionCard
             icon="🛡️"
             title="Guardian"
             subtitle="Link & Alerts"

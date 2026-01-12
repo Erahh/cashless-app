@@ -28,6 +28,8 @@ import MyQRScreen from "../screens/MyQRScreen";
 import AdminVerificationScreen from "../screens/AdminVerificationScreen";
 import AdminVerificationDetailScreen from "../screens/AdminVerificationDetailScreen";
 import TransactionsScreen from "../screens/TransactionsScreen";
+import OperatorEarningsScreen from "../screens/OperatorEarningsScreen";
+
 
 
 
@@ -75,6 +77,7 @@ export default function AppNavigator() {
           {/* Operator */}
           <Stack.Screen name="OperatorScan" component={OperatorScanScreen} />
           <Stack.Screen name="OperatorSetup" component={OperatorSetupScreen} />
+          <Stack.Screen name="OperatorEarnings" component={OperatorEarningsScreen} />
 
           {/* Notifications */}
           <Stack.Screen name="Notifications" component={NotificationsScreen} />

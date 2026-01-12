@@ -204,3 +204,47 @@
    - Simplified code by using the helper that handles auth tokens automatically
 
 **Result**: Both screens now use the centralized API helper functions, making the code cleaner and easier to maintain. The missing config file error is resolved.
+
+## Role-Aware UI Implementation
+
+**Date**: Current session
+
+**Issue**: HomeScreen needed to display different UI based on user roles (commuter, operator, admin). OperatorScan needed to use selected vehicle instead of hardcoded vehicle_id.
+
+**Changes Made**:
+1. Updated `src/screens/HomeScreen.jsx`:
+   - Added `isCommuter` calculation in computed useMemo
+   - Replaced Quick Actions with role-specific cards:
+     - Commuter: Top Up, History, Guardian
+     - Operator: Scan, Earnings, History
+     - Admin: Verifications, Settlements, Reports
+   - Made mid card role-aware (navigates to MyQR for commuters, OperatorScan for operators, AdminSettlements for admins)
+   - Replaced BottomNav component with inline role-aware bottom navigation:
+     - Commuter: Home, Wallet, MY QR (FAB), History, Settings
+     - Operator: Home, Earnings, SCAN (FAB), History, Profile
+     - Admin: Home, Verify, PAYOUT (FAB), Queue, Profile
+   - Added NavItem component and bottom nav styles
+   - Removed BottomNav import
+
+2. Updated `src/screens/MyQRScreen.jsx`:
+   - Replaced implementation to fetch QR credential from `/me/qr` endpoint
+   - Displays QR code, token value, and issued date
+   - Includes loading states and error handling
+   - Shows user-friendly payment instructions
+
+3. Updated `src/screens/OperatorScanScreen.jsx`:
+   - Added AsyncStorage import and vehicle loading logic
+   - Removed hardcoded vehicle_id (`7801c5c4-a9f0-49a4-992d-308f06610b91`)
+   - Loads selected vehicle from AsyncStorage on focus
+   - Redirects to OperatorSetup if no vehicle is selected
+   - Uses `vehicle.id` and `vehicle.route_name` from stored selection
+
+4. Created new screens:
+   - `src/screens/AdminPayoutScreen.jsx` - Admin screen to view and mark settlements as paid
+   - `src/screens/AdminSettlementsScreen.jsx` - Admin screen to view settlements
+   - `src/screens/EarningsScreen.jsx` - Operator earnings screen
+
+5. Updated `src/navigation/AppNavigator.jsx`:
+   - All screens properly registered (MyQR, OperatorScan, Transactions, AdminSettlements, Earnings, etc.)
+
+**Result**: HomeScreen now displays role-appropriate UI. Operators must select a vehicle before scanning. MyQR screen fetches credentials from backend. All navigation is properly wired up for role-based flows.

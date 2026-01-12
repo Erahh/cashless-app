@@ -1,25 +1,40 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
-  ScrollView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { fetchTransactions } from "../api/transactionApi";
+import { supabase } from "../api/supabase";
+import { API_BASE_URL } from "../config/api";
 
 export default function TransactionsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState([]);
+  const [raw, setRaw] = useState([]);
+  const [filter, setFilter] = useState("all"); // all | approved | declined
 
   const load = async () => {
     try {
       setLoading(true);
-      const data = await fetchTransactions(50);
-      setItems(data);
+
+      const { data: sessionData, error } = await supabase.auth.getSession();
+      if (error) throw error;
+
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("No session. Please login again.");
+
+      const res = await fetch(`${API_BASE_URL}/transactions/history?limit=60`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load transactions");
+
+      setRaw(json.items || []);
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
@@ -34,111 +49,142 @@ export default function TransactionsScreen({ navigation }) {
   }, []);
 
   const computed = useMemo(() => {
-    const approved = items.filter((x) => x.status === "approved");
-    const totalSpent = approved.reduce((sum, x) => sum + Number(x.fare_amount || 0), 0);
+    const items = Array.isArray(raw) ? raw : [];
+
+    const filtered =
+      filter === "all"
+        ? items
+        : items.filter((t) => String(t.status || "").toLowerCase() === filter);
+
+    const totalSpent = filtered.reduce((sum, t) => {
+      const amt = Number(t.fare_amount || 0);
+      return String(t.status || "").toLowerCase() === "approved" ? sum + amt : sum;
+    }, 0);
+
+    const fmtMoney = (n) =>
+      n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return {
-      totalSpentText: totalSpent.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }),
+      filtered,
+      totalSpent,
+      totalSpentText: fmtMoney(totalSpent),
     };
-  }, [items]);
+  }, [raw, filter]);
+
+  const Pill = ({ value, label }) => {
+    const active = filter === value;
+    return (
+      <TouchableOpacity
+        onPress={() => setFilter(value)}
+        style={[styles.pill, active && styles.pillActive]}
+      >
+        <Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <ActivityIndicator />
+          <Text style={styles.dim}>Loading transactions...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <Text style={styles.back}>‹ Back</Text>
-          </TouchableOpacity>
+        {/* Header */}
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.title}>Transactions</Text>
+            <Text style={styles.subtitle}>Your ride history</Text>
+          </View>
 
-          <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
-            <Text style={styles.refreshText}>Refresh</Text>
+          <TouchableOpacity style={styles.smallBtn} onPress={load}>
+            <Text style={styles.smallBtnText}>Refresh</Text>
           </TouchableOpacity>
         </View>
-
-        <Text style={styles.title}>Transactions</Text>
-        <Text style={styles.sub}>Your ride history and payment logs</Text>
 
         {/* Summary card */}
         <View style={styles.bigCard}>
-          <Text style={styles.cardLabel}>Total Spent (Approved)</Text>
-          <Text style={styles.cardValue}>₱ {computed.totalSpentText}</Text>
-          <Text style={styles.cardHint}>Only approved ride fares are included.</Text>
+          <Text style={styles.cardLabel}>Total Spent (filtered)</Text>
+          <Text style={styles.bigValue}>₱{computed.totalSpentText}</Text>
+
+          <View style={styles.pillsRow}>
+            <Pill value="all" label="All" />
+            <Pill value="approved" label="Approved" />
+            <Pill value="declined" label="Declined" />
+          </View>
+
+          <Text style={styles.cardHint}>
+            Tip: Declined scans don’t deduct your wallet.
+          </Text>
         </View>
 
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Recent</Text>
-        </View>
+        {/* List */}
+        <Text style={styles.sectionTitle}>Recent</Text>
 
-        {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator />
-            <Text style={styles.dim}>Loading transactions...</Text>
-          </View>
-        ) : items.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No transactions yet</Text>
-            <Text style={styles.dim}>
-              Once you scan/tap to ride, your history will appear here.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.list}>
-            {items.map((tx) => {
-              const isApproved = tx.status === "approved";
-              const amount = Number(tx.fare_amount || 0);
+        <View style={{ marginTop: 12, gap: 10 }}>
+          {computed.filtered.map((t) => {
+            const status = String(t.status || "").toLowerCase();
+            const amt = Number(t.fare_amount || 0);
 
-              const route = tx.route_name || "ROUTE";
-              const when = tx.scanned_at ? new Date(tx.scanned_at).toLocaleString() : "-";
+            const when = t.scanned_at
+              ? new Date(t.scanned_at).toLocaleString()
+              : t.created_at
+              ? new Date(t.created_at).toLocaleString()
+              : "";
 
-              const badge =
-                isApproved ? "APPROVED" : tx.status?.toUpperCase() || "UNKNOWN";
+            const title = status === "approved" ? "Ride Fare" : "Declined";
+            const route = t.route_name || "Route";
+            const meta =
+              status === "declined"
+                ? `Reason: ${t.decline_reason || "unknown"}`
+                : `Passenger: ${t.passenger_type || "casual"} • ${t.verification_status || "unverified"}`;
 
-              return (
-                <View key={tx.id} style={styles.txRow}>
-                  <View style={styles.txLeft}>
-                    <View style={styles.txIcon}>
-                      <Text style={styles.txIconText}>🚌</Text>
-                    </View>
-                    <View style={{ flexShrink: 1 }}>
-                      <Text style={styles.txTitle}>
-                        Ride Fare • {route}
-                      </Text>
-                      <Text style={styles.txMeta}>
-                        {when}
-                        {tx.offline ? " • Offline" : ""}
-                      </Text>
-                      {!isApproved && tx.decline_reason ? (
-                        <Text style={styles.txMetaBad}>
-                          Reason: {tx.decline_reason}
-                        </Text>
-                      ) : null}
-                    </View>
+            return (
+              <TouchableOpacity
+                key={t.id}
+                style={styles.row}
+                activeOpacity={0.9}
+                onPress={() =>
+                  Alert.alert(
+                    "Transaction Details",
+                    `Status: ${status}\nAmount: ₱${amt.toFixed(2)}\nRoute: ${route}\nTime: ${when}\n\n${meta}`
+                  )
+                }
+              >
+                <View style={styles.rowLeft}>
+                  <View style={styles.iconBox}>
+                    <Text style={styles.iconText}>{status === "approved" ? "🚌" : "⛔"}</Text>
                   </View>
 
-                  <View style={{ alignItems: "flex-end", gap: 6 }}>
-                    <View
-                      style={[
-                        styles.smallPill,
-                        isApproved ? styles.pillGood : styles.pillBad,
-                      ]}
-                    >
-                      <Text style={styles.smallPillText}>{badge}</Text>
-                    </View>
-
-                    <Text style={[styles.txAmount, isApproved ? styles.txNeg : styles.txMuted]}>
-                      -₱{amount.toFixed(2)}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rowTitle}>
+                      {title} • {route}
                     </Text>
+                    <Text style={styles.rowMeta}>{when}</Text>
+                    <Text style={styles.rowMeta2}>{meta}</Text>
                   </View>
                 </View>
-              );
-            })}
-          </View>
-        )}
 
-        <View style={{ height: 40 }} />
+                <Text style={[styles.amount, status === "approved" ? styles.neg : styles.dimAmount]}>
+                  {status === "approved" ? "-" : ""}₱{amt.toFixed(2)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+
+          {computed.filtered.length === 0 ? (
+            <Text style={styles.dim}>No transactions found.</Text>
+          ) : null}
+        </View>
+
+        <View style={{ height: 30 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -146,23 +192,24 @@ export default function TransactionsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0B0E14" },
-  content: { padding: 18, paddingTop: 18 },
+  content: { padding: 18 },
 
-  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  back: { color: "rgba(255,255,255,0.75)", fontWeight: "800" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  dim: { color: "rgba(255,255,255,0.65)", marginTop: 10 },
 
-  refreshBtn: {
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  title: { color: "#fff", fontSize: 24, fontWeight: "900" },
+  subtitle: { color: "rgba(255,255,255,0.6)", marginTop: 4 },
+
+  smallBtn: {
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.07)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
-  refreshText: { color: "#fff", fontWeight: "800" },
-
-  title: { color: "#fff", fontSize: 26, fontWeight: "900", marginTop: 14 },
-  sub: { marginTop: 8, color: "rgba(255,255,255,0.65)" },
+  smallBtnText: { color: "rgba(255,255,255,0.85)", fontWeight: "800" },
 
   bigCard: {
     marginTop: 16,
@@ -173,59 +220,54 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.10)",
   },
   cardLabel: { color: "rgba(255,255,255,0.65)", fontSize: 12 },
-  cardValue: { color: "#fff", fontSize: 22, fontWeight: "900", marginTop: 6 },
-  cardHint: { color: "rgba(255,255,255,0.55)", marginTop: 10, fontSize: 12 },
+  bigValue: { color: "#fff", fontSize: 34, fontWeight: "900", marginTop: 8 },
 
-  sectionRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 18 },
-  sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "900" },
-
-  center: { marginTop: 20, alignItems: "center" },
-  dim: { marginTop: 10, color: "rgba(255,255,255,0.6)" },
-
-  empty: {
-    marginTop: 14,
-    padding: 18,
-    borderRadius: 18,
+  pillsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
+  pill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
   },
-  emptyTitle: { color: "#fff", fontWeight: "900", fontSize: 16 },
+  pillActive: { backgroundColor: "#FFD36A", borderColor: "rgba(255,211,106,0.7)" },
+  pillText: { color: "rgba(255,255,255,0.8)", fontWeight: "900", fontSize: 12 },
+  pillTextActive: { color: "#0B0E14" },
 
-  list: { marginTop: 12, gap: 10 },
-  txRow: {
+  cardHint: { color: "rgba(255,255,255,0.55)", marginTop: 12, fontSize: 12, lineHeight: 18 },
+
+  sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "900", marginTop: 18 },
+
+  row: {
     padding: 14,
     borderRadius: 16,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    gap: 12,
+    justifyContent: "space-between",
+    gap: 10,
   },
-  txLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  rowLeft: { flexDirection: "row", alignItems: "flex-start", gap: 12, flex: 1 },
 
-  txIcon: {
+  iconBox: {
     width: 38,
     height: 38,
     borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.10)",
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 2,
   },
-  txIconText: { fontSize: 16 },
+  iconText: { fontSize: 16 },
 
-  txTitle: { color: "#fff", fontWeight: "900" },
-  txMeta: { color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 12 },
-  txMetaBad: { color: "rgba(255, 138, 138, 0.9)", marginTop: 4, fontSize: 12 },
+  rowTitle: { color: "#fff", fontWeight: "900" },
+  rowMeta: { color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 12 },
+  rowMeta2: { color: "rgba(255,255,255,0.45)", marginTop: 4, fontSize: 11 },
 
-  txAmount: { fontWeight: "900", fontSize: 14 },
-  txNeg: { color: "#FF8A8A" },
-  txMuted: { color: "rgba(255,255,255,0.55)" },
-
-  smallPill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
-  pillGood: { backgroundColor: "#7CFF9B" },
-  pillBad: { backgroundColor: "rgba(255, 122, 122, 0.25)", borderWidth: 1, borderColor: "rgba(255, 122, 122, 0.35)" },
-  smallPillText: { fontWeight: "900", color: "#0B0E14", fontSize: 12 },
+  amount: { fontWeight: "900", fontSize: 14 },
+  neg: { color: "#FF8A8A" },
+  dimAmount: { color: "rgba(255,255,255,0.45)" },
 });

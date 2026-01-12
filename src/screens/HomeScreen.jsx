@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
-import BottomNav from "../components/BottomNav";
 
 
 // Keep mock recent transactions UI-first (later bind to /transactions)
@@ -57,6 +56,14 @@ export default function HomeScreen({ navigation }) {
     return unsub;
   }, []);
 
+  // TEMPORARY: Log admin access token
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      console.log("ADMIN ACCESS TOKEN:", data?.session?.access_token);
+    })();
+  }, []);
+
   const computed = useMemo(() => {
     const balanceNum = Number(status?.account?.balance ?? 0);
 
@@ -93,6 +100,10 @@ export default function HomeScreen({ navigation }) {
     const showCallout =
       passengerTypeLabel !== "Casual" && verificationStatus !== "Verified";
 
+    const isOperator = !!status?.roles?.is_operator;
+    const isAdmin = !!status?.roles?.is_admin;
+    const isCommuter = !isOperator && !isAdmin;
+
     return {
       balanceText,
       passengerType: passengerTypeLabel,
@@ -100,6 +111,9 @@ export default function HomeScreen({ navigation }) {
       badge,
       showCallout,
       route: "ROUTE A", // UI-only
+      isOperator,
+      isAdmin,
+      isCommuter,
     };
   }, [status]);
 
@@ -169,42 +183,107 @@ export default function HomeScreen({ navigation }) {
         {/* Quick Actions */}
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsRow}>
-          <ActionCard
-            icon="➕"
-            title="Top Up"
-            subtitle="Add funds"
-            onPress={() => navigation.navigate("Balance")}
-          />
-          <ActionCard
-            icon="🧾"
-            title="History"
-            subtitle="Transactions"
-            onPress={() => navigation.navigate("Transactions")}
-          />
-          <ActionCard
-            icon="💰"
-            title="Earnings"
-            subtitle="Operator"
-            onPress={() => navigation.navigate("OperatorEarnings")}
-          />
-          <ActionCard
-            icon="🛡️"
-            title="Guardian"
-            subtitle="Link & Alerts"
-            onPress={() => navigation.navigate("GuardianLink")}
-          />
+          {/* COMMUTER */}
+          {computed.isCommuter ? (
+            <>
+              <ActionCard
+                icon="➕"
+                title="Top Up"
+                subtitle="Add funds"
+                onPress={() => navigation.navigate("Balance")}
+              />
+              <ActionCard
+                icon="🧾"
+                title="History"
+                subtitle="Transactions"
+                onPress={() => navigation.navigate("Transactions")}
+              />
+              <ActionCard
+                icon="🛡️"
+                title="Guardian"
+                subtitle="Link & Alerts"
+                onPress={() => navigation.navigate("GuardianLink")}
+              />
+            </>
+          ) : null}
+
+          {/* OPERATOR */}
+          {computed.isOperator ? (
+            <>
+              <ActionCard
+                icon="📷"
+                title="Scan"
+                subtitle="Collect fare"
+                onPress={() => navigation.navigate("OperatorScan")}
+              />
+              <ActionCard
+                icon="💰"
+                title="Earnings"
+                subtitle="Payout summary"
+                onPress={() => navigation.navigate("Earnings")}
+              />
+              <ActionCard
+                icon="🧾"
+                title="History"
+                subtitle="My scans"
+                onPress={() => navigation.navigate("Transactions")}
+              />
+            </>
+          ) : null}
+
+          {/* ADMIN */}
+          {computed.isAdmin ? (
+            <>
+              <ActionCard
+                icon="✅"
+                title="Verifications"
+                subtitle="Approve users"
+                onPress={() => navigation.navigate("AdminVerification")}
+              />
+              <ActionCard
+                icon="💸"
+                title="Settlements"
+                subtitle="Mark paid"
+                onPress={() => navigation.navigate("AdminSettlements")}
+              />
+              <ActionCard
+                icon="🧾"
+                title="Reports"
+                subtitle="Activity"
+                onPress={() => navigation.navigate("Transactions")}
+              />
+            </>
+          ) : null}
         </View>
 
-        {/* Commute Card */}
+        {/* Role-aware Mid Card */}
         <TouchableOpacity
           style={styles.midCard}
           activeOpacity={0.9}
-          onPress={() => navigation.navigate("OperatorScan")}
+          onPress={() => {
+            if (computed.isOperator) return navigation.navigate("OperatorScan");
+            if (computed.isAdmin) return navigation.navigate("AdminSettlements");
+            return navigation.navigate("MyQR"); // commuter
+          }}
         >
           <View>
-            <Text style={styles.cardLabel}>Scan & Ride</Text>
-            <Text style={styles.cardValue}>Operator Scan</Text>
-            <Text style={styles.cardHint}>Tap to open QR scanner</Text>
+            <Text style={styles.cardLabel}>
+              {computed.isOperator ? "Operator" : computed.isAdmin ? "Admin" : "Commuter"}
+            </Text>
+            <Text style={styles.cardValue}>
+              {computed.isOperator
+                ? "Scan Passenger QR"
+                : computed.isAdmin
+                ? "Payout Queue"
+                : "My QR / NFC"}
+            </Text>
+            <Text style={styles.cardHint}>
+              {computed.isOperator
+                ? "Tap to open scanner"
+                : computed.isAdmin
+                ? "Tap to manage settlements"
+                : "Tap to show your payment code"}
+            </Text>
           </View>
           <Text style={styles.arrow}>›</Text>
         </TouchableOpacity>
@@ -275,7 +354,43 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </ScrollView>
 
-      <BottomNav navigation={navigation} active="Home" />
+      {/* Role-aware Bottom Nav */}
+      <View style={styles.bottomNav}>
+        <NavItem label="Home" active onPress={() => navigation.navigate("Home")} />
+
+        {computed.isCommuter ? (
+          <>
+            <NavItem label="Wallet" onPress={() => navigation.navigate("Balance")} />
+            <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("MyQR")}>
+              <Text style={styles.fabText}>MY QR</Text>
+            </TouchableOpacity>
+            <NavItem label="History" onPress={() => navigation.navigate("Transactions")} />
+            <NavItem label="Settings" onPress={() => navigation.navigate("PassengerType")} />
+          </>
+        ) : null}
+
+        {computed.isOperator ? (
+          <>
+            <NavItem label="Earnings" onPress={() => navigation.navigate("Earnings")} />
+            <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("OperatorScan")}>
+              <Text style={styles.fabText}>SCAN</Text>
+            </TouchableOpacity>
+            <NavItem label="History" onPress={() => navigation.navigate("Transactions")} />
+            <NavItem label="Profile" onPress={() => navigation.navigate("PassengerType")} />
+          </>
+        ) : null}
+
+        {computed.isAdmin ? (
+          <>
+            <NavItem label="Verify" onPress={() => navigation.navigate("AdminVerification")} />
+            <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("AdminSettlements")}>
+              <Text style={styles.fabText}>PAYOUT</Text>
+            </TouchableOpacity>
+            <NavItem label="Queue" onPress={() => navigation.navigate("AdminSettlements")} />
+            <NavItem label="Profile" onPress={() => navigation.navigate("PassengerType")} />
+          </>
+        ) : null}
+      </View>
     </SafeAreaView>
   );
 }
@@ -288,6 +403,14 @@ function ActionCard({ icon, title, subtitle, onPress }) {
       </View>
       <Text style={styles.actionTitle}>{title}</Text>
       <Text style={styles.actionSub}>{subtitle}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function NavItem({ label, active, onPress }) {
+  return (
+    <TouchableOpacity style={styles.navItem} onPress={onPress} activeOpacity={0.9}>
+      <Text style={[styles.navText, active && styles.navTextActive]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -460,4 +583,34 @@ const styles = StyleSheet.create({
   txAmount: { fontWeight: "900", fontSize: 14 },
   txNeg: { color: "#FF8A8A" },
   txPos: { color: "#7CFF9B" },
+
+  bottomNav: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 78,
+    paddingHorizontal: 18,
+    paddingBottom: 12,
+    paddingTop: 10,
+    backgroundColor: "rgba(11,14,20,0.95)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  navItem: { width: 70, alignItems: "center" },
+  navText: { color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: "800" },
+  navTextActive: { color: "#FFD36A" },
+
+  fab: {
+    width: 76,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: "#FFD36A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fabText: { fontWeight: "900", color: "#0B0E14", fontSize: 11 },
 });

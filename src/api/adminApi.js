@@ -65,3 +65,28 @@ export async function rejectVerification(requestId, reason) {
   if (!res.ok) throw new Error(json.error || "Reject failed");
   return json;
 }
+
+export async function adminGetUnpaidSettlements() {
+  const token = await getToken();
+  const res = await fetch(`${API_BASE_URL}/admin/settlements/unpaid`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Failed to load settlements");
+  return json; // { ok, total, items }
+}
+
+export async function adminMarkSettlementPaid(settlementId, notes = "") {
+  const token = await getToken();
+  const res = await fetch(`${API_BASE_URL}/admin/settlements/${settlementId}/mark-paid`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ notes }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Failed to mark paid");
+  return json;
+}

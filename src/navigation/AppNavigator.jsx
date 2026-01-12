@@ -29,6 +29,8 @@ import AdminVerificationScreen from "../screens/AdminVerificationScreen";
 import AdminVerificationDetailScreen from "../screens/AdminVerificationDetailScreen";
 import TransactionsScreen from "../screens/TransactionsScreen";
 import OperatorEarningsScreen from "../screens/OperatorEarningsScreen";
+import EarningsScreen from "../screens/EarningsScreen";
+import AdminSettlementsScreen from "../screens/AdminSettlementsScreen";
 
 
 
@@ -60,6 +62,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Transactions" component={TransactionsScreen} />
           {/* Main */}
           <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="AdminSettlements" component={AdminSettlementsScreen} />
 
           {/* Verification Flow */}
           <Stack.Screen name="PassengerType" component={PassengerTypeScreen} />
@@ -73,6 +76,7 @@ export default function AppNavigator() {
           {/* Wallet / Load */}
           <Stack.Screen name="SendLoad" component={SendLoadScreen} />
           <Stack.Screen name="Balance" component={BalanceScreen} />
+          <Stack.Screen name="Earnings" component={EarningsScreen} />
 
           {/* Operator */}
           <Stack.Screen name="OperatorScan" component={OperatorScanScreen} />

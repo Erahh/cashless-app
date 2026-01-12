@@ -25,15 +25,9 @@ export default function LoginScreen({ navigation }) {
       const mpinExists = await hasMpin();
 
       if (!mpinExists) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "MPINSetup" }],
-        });
+        navigation.replace("MPINSetup");
       } else {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Home" }],
-        });
+        navigation.replace("Home");
       }
     } catch (err) {
       Alert.alert("Error", err.message);

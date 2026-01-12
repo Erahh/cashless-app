@@ -12,9 +12,7 @@ export default function ActivatedScreen({ navigation }) {
       <View style={{ marginTop: 24 }}>
         <Button
           title="Continue to Home"
-          onPress={() =>
-            navigation.reset({ index: 0, routes: [{ name: "Home" }] })
-          }
+          onPress={() => navigation.replace("Home")}
         />
       </View>
     </View>

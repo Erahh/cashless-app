@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
+import QuickActions from "../components/QuickActions";
+import BottomNav from "../components/BottomNav";
 
 
 // Keep mock recent transactions UI-first (later bind to /transactions)
@@ -181,80 +183,16 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* Quick Actions */}
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.actionsRow}>
-          {/* COMMUTER */}
-          {computed.isCommuter ? (
-            <>
-              <ActionCard
-                icon="➕"
-                title="Top Up"
-                subtitle="Add funds"
-                onPress={() => navigation.navigate("Balance")}
-              />
-              <ActionCard
-                icon="🧾"
-                title="History"
-                subtitle="Transactions"
-                onPress={() => navigation.navigate("Transactions")}
-              />
-              <ActionCard
-                icon="🛡️"
-                title="Guardian"
-                subtitle="Link & Alerts"
-                onPress={() => navigation.navigate("GuardianLink")}
-              />
-            </>
-          ) : null}
-
-          {/* OPERATOR */}
-          {computed.isOperator ? (
-            <>
-              <ActionCard
-                icon="📷"
-                title="Scan"
-                subtitle="Collect fare"
-                onPress={() => navigation.navigate("OperatorScan")}
-              />
-              <ActionCard
-                icon="💰"
-                title="Earnings"
-                subtitle="Payout summary"
-                onPress={() => navigation.navigate("Earnings")}
-              />
-              <ActionCard
-                icon="🧾"
-                title="History"
-                subtitle="My scans"
-                onPress={() => navigation.navigate("Transactions")}
-              />
-            </>
-          ) : null}
-
-          {/* ADMIN */}
-          {computed.isAdmin ? (
-            <>
-              <ActionCard
-                icon="✅"
-                title="Verifications"
-                subtitle="Approve users"
-                onPress={() => navigation.navigate("AdminVerification")}
-              />
-              <ActionCard
-                icon="💸"
-                title="Settlements"
-                subtitle="Mark paid"
-                onPress={() => navigation.navigate("AdminSettlements")}
-              />
-              <ActionCard
-                icon="🧾"
-                title="Reports"
-                subtitle="Activity"
-                onPress={() => navigation.navigate("Transactions")}
-              />
-            </>
-          ) : null}
-        </View>
+        <QuickActions
+          items={[
+            { key: "scan", icon: "📷", title: "Scan", sub: "Collect fare", onPress: () => navigation.navigate("OperatorScan") },
+            { key: "earn", icon: "💰", title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("Earnings") },
+            { key: "hist", icon: "🧾", title: "History", sub: "My scans", onPress: () => navigation.navigate("Transactions") },
+            { key: "ver",  icon: "✅", title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminVerification") },
+            { key: "set",  icon: "💸", title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminSettlements") },
+            { key: "rep",  icon: "📄", title: "Reports", sub: "Activity", onPress: () => navigation.navigate("Transactions") },
+          ]}
+        />
 
         {/* Role-aware Mid Card */}
         <TouchableOpacity
@@ -334,7 +272,7 @@ export default function HomeScreen({ navigation }) {
           ))}
         </View>
 
-        <View style={{ height: 90 }} />
+        <View style={{ height: 110 }} />
 
         {/* Refresh button (optional) */}
         <TouchableOpacity
@@ -354,43 +292,7 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Role-aware Bottom Nav */}
-      <View style={styles.bottomNav}>
-        <NavItem label="Home" active onPress={() => navigation.navigate("Home")} />
-
-        {computed.isCommuter ? (
-          <>
-            <NavItem label="Wallet" onPress={() => navigation.navigate("Balance")} />
-            <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("MyQR")}>
-              <Text style={styles.fabText}>MY QR</Text>
-            </TouchableOpacity>
-            <NavItem label="History" onPress={() => navigation.navigate("Transactions")} />
-            <NavItem label="Settings" onPress={() => navigation.navigate("PassengerType")} />
-          </>
-        ) : null}
-
-        {computed.isOperator ? (
-          <>
-            <NavItem label="Earnings" onPress={() => navigation.navigate("Earnings")} />
-            <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("OperatorScan")}>
-              <Text style={styles.fabText}>SCAN</Text>
-            </TouchableOpacity>
-            <NavItem label="History" onPress={() => navigation.navigate("Transactions")} />
-            <NavItem label="Profile" onPress={() => navigation.navigate("PassengerType")} />
-          </>
-        ) : null}
-
-        {computed.isAdmin ? (
-          <>
-            <NavItem label="Verify" onPress={() => navigation.navigate("AdminVerification")} />
-            <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("AdminSettlements")}>
-              <Text style={styles.fabText}>PAYOUT</Text>
-            </TouchableOpacity>
-            <NavItem label="Queue" onPress={() => navigation.navigate("AdminSettlements")} />
-            <NavItem label="Profile" onPress={() => navigation.navigate("PassengerType")} />
-          </>
-        ) : null}
-      </View>
+      <BottomNav navigation={navigation} active="Home" />
     </SafeAreaView>
   );
 }
@@ -407,13 +309,6 @@ function ActionCard({ icon, title, subtitle, onPress }) {
   );
 }
 
-function NavItem({ label, active, onPress }) {
-  return (
-    <TouchableOpacity style={styles.navItem} onPress={onPress} activeOpacity={0.9}>
-      <Text style={[styles.navText, active && styles.navTextActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
 
 
 const styles = StyleSheet.create({
@@ -583,34 +478,4 @@ const styles = StyleSheet.create({
   txAmount: { fontWeight: "900", fontSize: 14 },
   txNeg: { color: "#FF8A8A" },
   txPos: { color: "#7CFF9B" },
-
-  bottomNav: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 78,
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-    paddingTop: 10,
-    backgroundColor: "rgba(11,14,20,0.95)",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  navItem: { width: 70, alignItems: "center" },
-  navText: { color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: "800" },
-  navTextActive: { color: "#FFD36A" },
-
-  fab: {
-    width: 76,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: "#FFD36A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fabText: { fontWeight: "900", color: "#0B0E14", fontSize: 11 },
 });

@@ -10,7 +10,11 @@ export default function AuthGateScreen({ navigation }) {
   useEffect(() => {
     // If app is locked, redirect to unlock screen
     if (locked) {
-      return navigation.reset({ index: 0, routes: [{ name: "MPINUnlock" }] });
+      // Use setTimeout to ensure navigator is ready
+      const timer = setTimeout(() => {
+        navigation.replace("MPINUnlock");
+      }, 100);
+      return () => clearTimeout(timer);
     }
 
     const boot = async () => {
@@ -18,15 +22,23 @@ export default function AuthGateScreen({ navigation }) {
       const session = data?.session;
 
       if (!session) {
-        return navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
+        setTimeout(() => {
+          navigation.replace("PhoneScreen");
+        }, 100);
+        return;
       }
 
       const mpinSet = await hasMpin();
       if (!mpinSet) {
-        return navigation.reset({ index: 0, routes: [{ name: "MPINSetup" }] });
+        setTimeout(() => {
+          navigation.replace("MPINSetup");
+        }, 100);
+        return;
       }
 
-      return navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+      setTimeout(() => {
+        navigation.replace("Home");
+      }, 100);
     };
 
     boot();

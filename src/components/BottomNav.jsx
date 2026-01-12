@@ -1,81 +1,112 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-export default function BottomNav({ navigation, active = "Home" }) {
-  const go = (screen) => navigation.navigate(screen);
+const YELLOW = "#FFD36A";
+
+export default function BottomNav({ navigation, active = "Home", centerRoute = "OperatorScan" }) {
+  const go = (route) => {
+    if (!navigation) return;
+    navigation.navigate(route);
+  };
+
+  const tabs = [
+    { key: "Home", label: "Home", icon: "home-outline", route: "Home" },
+    { key: "Wallet", label: "Wallet", icon: "wallet-outline", route: "Balance" },
+    { key: "History", label: "History", icon: "receipt-outline", route: "Transactions" },
+    { key: "Profile", label: "Profile", icon: "person-outline", route: "Profile" },
+  ];
 
   return (
-    <View style={styles.bottomNav}>
-      <NavItem
-        label="Home"
-        active={active === "Home"}
-        onPress={() => go("Home")}
-      />
-      <NavItem
-        label="Wallet"
-        active={active === "Wallet"}
-        onPress={() => go("Balance")}
-      />
+    <View style={styles.wrap}>
+      <View style={styles.bar}>
+        {/* Left */}
+        <TabItem item={tabs[0]} active={active} onPress={() => go(tabs[0].route)} />
+        <TabItem item={tabs[1]} active={active} onPress={() => go(tabs[1].route)} />
 
-      <TouchableOpacity style={styles.fab} onPress={() => go("OperatorScan")}>
-        <Text style={styles.fabText}>SCAN</Text>
-      </TouchableOpacity>
+        {/* Center FAB */}
+        <TouchableOpacity activeOpacity={0.9} onPress={() => go(centerRoute)} style={styles.fab}>
+          <Ionicons name="add" size={28} color="#0B0E14" />
+        </TouchableOpacity>
 
-      <NavItem
-        label="QR"
-        active={active === "QR"}
-        onPress={() => go("MyQR")}
-      />
-      <NavItem
-        label="Alerts"
-        active={active === "Alerts"}
-        onPress={() => go("Notifications")}
-      />
-      <NavItem
-        label="Guardian"
-        active={active === "Guardian"}
-        onPress={() => go("GuardianLink")}
-      />
+        {/* Right */}
+        <TabItem item={tabs[2]} active={active} onPress={() => go(tabs[2].route)} />
+        <TabItem item={tabs[3]} active={active} onPress={() => go(tabs[3].route)} />
+      </View>
     </View>
   );
 }
 
-function NavItem({ label, active, onPress }) {
+function TabItem({ item, active, onPress }) {
+  const isActive = active === item.key;
+  const color = isActive ? YELLOW : "rgba(255,255,255,0.70)";
+
   return (
-    <TouchableOpacity style={styles.navItem} onPress={onPress} activeOpacity={0.9}>
-      <Text style={[styles.navText, active && styles.navTextActive]}>{label}</Text>
+    <TouchableOpacity style={styles.tab} onPress={onPress} activeOpacity={0.85}>
+      <View style={[styles.iconBox, isActive && styles.iconBoxActive]}>
+        <Ionicons name={item.icon} size={18} color={color} />
+      </View>
+      <Text style={[styles.tabText, isActive && styles.tabTextActive]} numberOfLines={1}>
+        {item.label}
+      </Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  bottomNav: {
+  wrap: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    height: 78,
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-    paddingTop: 10,
-    backgroundColor: "rgba(11,14,20,0.95)",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === "ios" ? 18 : 12,
+  },
+  bar: {
+    height: 74,
+    borderRadius: 24,
+    backgroundColor: "rgba(11,14,20,0.96)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 14,
   },
-  navItem: { width: 70, alignItems: "center" },
-  navText: { color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: "800" },
-  navTextActive: { color: "#FFD36A" },
-
-  fab: {
-    width: 76,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: "#FFD36A",
+  tab: {
+    width: 62,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.07)",
     alignItems: "center",
     justifyContent: "center",
   },
-  fabText: { fontWeight: "900", color: "#0B0E14" },
+  iconBoxActive: {
+    backgroundColor: "rgba(255, 211, 106, 0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 211, 106, 0.35)",
+  },
+  tabText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 10.5,
+    fontWeight: "800",
+  },
+  tabTextActive: { color: YELLOW },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 22,
+    backgroundColor: YELLOW,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: -26,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.18)",
+  },
 });

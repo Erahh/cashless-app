@@ -53,10 +53,8 @@ export default function MPINUnlockScreen({ navigation }) {
       setMpin("");
       setLocked(false);
 
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Home" }],
-      });
+      // Use replace since we're unlocking and going to Home
+      navigation.replace("Home");
     } catch (err) {
       Alert.alert("Error", err.message || "Unlock failed");
     }

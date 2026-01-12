@@ -248,3 +248,27 @@
    - All screens properly registered (MyQR, OperatorScan, Transactions, AdminSettlements, Earnings, etc.)
 
 **Result**: HomeScreen now displays role-appropriate UI. Operators must select a vehicle before scanning. MyQR screen fetches credentials from backend. All navigation is properly wired up for role-based flows.
+
+## Expo Tunnel Mode Setup
+
+**Date**: Current session
+
+**Issue**: User wanted to test the app on devices connected to different WiFi networks. Standard Expo development server only works on the same local network.
+
+**Changes Made**:
+1. Updated `package.json` scripts:
+   - Added `start:tunnel` command for tunnel mode (works across different WiFi networks)
+   - Added `start:lan` command for LAN mode (same network, faster)
+   - Kept standard `start` command for default behavior
+
+2. Created `EXPO_TUNNEL_GUIDE.md`:
+   - Quick reference guide for using tunnel mode
+   - Explains when to use each mode
+   - Troubleshooting tips
+
+**Usage**:
+- Same WiFi network: `npm start` (faster, local)
+- Different WiFi networks: `npm run start:tunnel` (public URL, works anywhere)
+- Tunnel mode creates a public URL like `exp://u.expo.dev/...` that works from any network
+
+**Result**: Users can now easily test the app on devices connected to different WiFi networks by using the tunnel mode command.

@@ -22,12 +22,13 @@ import BalanceScreen from "../screens/BalanceScreen";
 import OperatorScanScreen from "../screens/OperatorScanScreen";
 import OperatorSetupScreen from "../screens/OperatorSetupScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
+import TransactionsScreen from "../screens/TransactionsScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 import GuardianLinkScreen from "../screens/GuardianLinkScreen";
 import MyQRScreen from "../screens/MyQRScreen";
 
 import AdminVerificationScreen from "../screens/AdminVerificationScreen";
 import AdminVerificationDetailScreen from "../screens/AdminVerificationDetailScreen";
-import TransactionsScreen from "../screens/TransactionsScreen";
 import OperatorEarningsScreen from "../screens/OperatorEarningsScreen";
 import EarningsScreen from "../screens/EarningsScreen";
 import AdminSettlementsScreen from "../screens/AdminSettlementsScreen";
@@ -77,6 +78,9 @@ export default function AppNavigator() {
           <Stack.Screen name="SendLoad" component={SendLoadScreen} />
           <Stack.Screen name="Balance" component={BalanceScreen} />
           <Stack.Screen name="Earnings" component={EarningsScreen} />
+          
+          {/* Profile & Settings */}
+          <Stack.Screen name="Profile" component={ProfileScreen} />
 
           {/* Operator */}
           <Stack.Screen name="OperatorScan" component={OperatorScanScreen} />

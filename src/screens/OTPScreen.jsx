@@ -48,15 +48,9 @@ export default function OTPScreen({ navigation, route }) {
       const mpinSet = await hasMpin();
 
       if (!mpinSet) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "BasicInfo" }],
-        });
+        navigation.replace("BasicInfo");
       } else {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Home" }],
-        });
+        navigation.replace("Home");
       }
     } catch (err) {
       Alert.alert("Verify Error", err.message);

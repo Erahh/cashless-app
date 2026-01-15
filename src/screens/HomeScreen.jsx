@@ -58,13 +58,6 @@ export default function HomeScreen({ navigation }) {
     return unsub;
   }, []);
 
-  // TEMPORARY: Log admin access token
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      console.log("ADMIN ACCESS TOKEN:", data?.session?.access_token);
-    })();
-  }, []);
 
   const computed = useMemo(() => {
     const balanceNum = Number(status?.account?.balance ?? 0);
@@ -134,7 +127,11 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
@@ -272,8 +269,6 @@ export default function HomeScreen({ navigation }) {
           ))}
         </View>
 
-        <View style={{ height: 110 }} />
-
         {/* Refresh button (optional) */}
         <TouchableOpacity
           style={{
@@ -314,7 +309,7 @@ function ActionCard({ icon, title, subtitle, onPress }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0B0E14" },
   scroll: { flex: 1 },
-  content: { padding: 18 },
+  content: { padding: 18, paddingBottom: 160 },
 
   headerRow: {
     flexDirection: "row",
@@ -397,7 +392,7 @@ const styles = StyleSheet.create({
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
   link: { color: "rgba(255,255,255,0.75)", textDecorationLine: "underline" },
 
-  actionsRow: { flexDirection: "row", gap: 10, marginTop: 12 },
+  actionsRow: { flexDirection: "row", marginTop: 12 },
   actionCard: {
     flex: 1,
     padding: 14,
@@ -451,7 +446,7 @@ const styles = StyleSheet.create({
   },
   calloutBtnText: { color: "#0B0E14", fontWeight: "900" },
 
-  list: { marginTop: 12, gap: 10 },
+  list: { marginTop: 12 },
   txRow: {
     padding: 14,
     borderRadius: 16,
@@ -461,8 +456,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 10,
   },
-  txLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  txLeft: { flexDirection: "row", alignItems: "center" },
   txIcon: {
     width: 38,
     height: 38,
@@ -470,6 +466,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.10)",
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 12,
   },
   txIconText: { fontSize: 16 },
   txTitle: { color: "#fff", fontWeight: "800" },

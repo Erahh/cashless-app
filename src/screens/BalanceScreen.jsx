@@ -167,7 +167,7 @@ export default function BalanceScreen({ navigation }) {
               ))}
             </View>
 
-            <View style={{ height: 90 }} />
+            <View style={{ height: 120 }} />
           </>
         )}
       </ScrollView>

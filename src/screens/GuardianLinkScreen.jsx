@@ -238,7 +238,7 @@ export default function GuardianLinkScreen({ navigation }) {
           })}
         </View>
 
-        <View style={{ height: 90 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
       <BottomNav navigation={navigation} active="Guardian" />

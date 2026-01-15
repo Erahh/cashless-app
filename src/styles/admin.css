@@ -1,0 +1,107 @@
+/* --- Settlements UI helpers (works without Tailwind) --- */
+.panel-grid {
+  display: grid;
+  gap: 16px;
+}
+@media (min-width: 1024px) {
+  .panel-grid {
+    grid-template-columns: 1fr 2fr;
+  }
+}
+
+.card {
+  background: rgba(18, 18, 18, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.muted {
+  color: rgba(255,255,255,0.6);
+}
+
+.field {
+  width: 100%;
+  background: rgba(10, 10, 10, 0.75);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  outline: none;
+}
+.field::placeholder { color: rgba(255,255,255,0.35); }
+
+.btn {
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(20, 20, 20, 0.8);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.btn:hover { background: rgba(30, 30, 30, 0.9); }
+
+.btn-primary {
+  background: #f6c34a;
+  border-color: rgba(246,195,74,0.6);
+  color: #111;
+  font-weight: 700;
+}
+.btn-primary:hover { filter: brightness(1.03); }
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.85);
+  background: rgba(0,0,0,0.25);
+}
+.badge.good { border-color: rgba(16,185,129,0.35); background: rgba(16,185,129,0.12); color: #a7f3d0; }
+.badge.warn { border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.12); color: #fde68a; }
+.badge.bad  { border-color: rgba(244,63,94,0.35); background: rgba(244,63,94,0.12); color: #fecdd3; }
+
+.table {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.table-head, .table-row {
+  display: grid;
+  grid-template-columns: 4fr 3fr 1fr 2fr 2fr;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.table-head {
+  font-size: 12px;
+  color: rgba(255,255,255,0.55);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.table-row {
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.table-row:last-child { border-bottom: 0; }
+
+.small { font-size: 12px; }
+.strong { font-weight: 700; color: #fff; }

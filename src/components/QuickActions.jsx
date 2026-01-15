@@ -11,31 +11,23 @@ export default function QuickActions({ items = [] }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.row}
       >
-        {items.map((it) => (
+        {items.map((it, idx) => (
           <TouchableOpacity
-            key={it.key}
+            key={it.key ?? String(idx)}
             activeOpacity={0.9}
             onPress={it.onPress}
-            style={styles.card}
+            style={[styles.card, idx === 0 && styles.firstCard]}
           >
             <View style={styles.iconBox}>
               <Text style={styles.icon}>{it.icon}</Text>
             </View>
 
-            <Text
-              style={styles.label}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
+            <Text style={styles.label} numberOfLines={2}>
               {it.title}
             </Text>
 
             {!!it.sub && (
-              <Text
-                style={styles.sub}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
+              <Text style={styles.sub} numberOfLines={1}>
                 {it.sub}
               </Text>
             )}
@@ -48,51 +40,55 @@ export default function QuickActions({ items = [] }) {
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 18 },
-  title: { color: "#fff", fontSize: 16, fontWeight: "800", marginBottom: 12 },
+  title: { color: "#fff", fontSize: 16, fontWeight: "900", marginBottom: 12 },
 
+  // ✅ no gap (android safe)
   row: {
-    gap: 12,
+    paddingLeft: 2,
     paddingRight: 10,
   },
 
-  // ✅ fixed size to stop text breaking vertically
+  // ✅ slightly wider + consistent height
   card: {
-    width: 92,
-    height: 118,
+    width: 108,
+    height: 124,
     borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingHorizontal: 10,
+    marginRight: 12, // ✅ spacing instead of gap
     alignItems: "center",
-    justifyContent: "flex-start",
   },
+  firstCard: { marginLeft: 0 },
 
   iconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 18,
     backgroundColor: "rgba(255,255,255,0.10)",
     alignItems: "center",
     justifyContent: "center",
   },
   icon: { fontSize: 18 },
 
-  // ✅ small + 1 line = reference look
+  // ✅ 2 lines = looks like reference + prevents ugly wrap
   label: {
     marginTop: 10,
     color: "#fff",
-    fontSize: 11,
-    fontWeight: "800",
+    fontSize: 12,
+    fontWeight: "900",
     textAlign: "center",
-    paddingHorizontal: 10,
+    lineHeight: 14,
+    height: 28, // ✅ reserve 2 lines space
   },
+
   sub: {
     marginTop: 4,
     color: "rgba(255,255,255,0.55)",
-    fontSize: 10,
-    fontWeight: "700",
+    fontSize: 10.5,
+    fontWeight: "800",
     textAlign: "center",
-    paddingHorizontal: 10,
   },
 });

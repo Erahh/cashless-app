@@ -3,10 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native
 import { Ionicons } from "@expo/vector-icons";
 
 const YELLOW = "#FFD36A";
+const BG = "#0B0E14";
 
-export default function BottomNav({ navigation, active = "Home", centerRoute = "OperatorScan" }) {
+export default function BottomNav({
+  navigation,
+  active = "Home",
+  centerRoute = "MyQR",
+}) {
   const go = (route) => {
-    if (!navigation) return;
+    if (!navigation || !route) return;
     navigation.navigate(route);
   };
 
@@ -18,20 +23,31 @@ export default function BottomNav({ navigation, active = "Home", centerRoute = "
   ];
 
   return (
-    <View style={styles.wrap}>
+    <View style={styles.wrap} pointerEvents="box-none">
       <View style={styles.bar}>
-        {/* Left */}
-        <TabItem item={tabs[0]} active={active} onPress={() => go(tabs[0].route)} />
-        <TabItem item={tabs[1]} active={active} onPress={() => go(tabs[1].route)} />
+        {/* Left 2 */}
+        <View style={[styles.side, { left: 10 }]}>
+          <TabItem item={tabs[0]} active={active} onPress={() => go(tabs[0].route)} />
+          <TabItem item={tabs[1]} active={active} onPress={() => go(tabs[1].route)} />
+        </View>
 
-        {/* Center FAB */}
-        <TouchableOpacity activeOpacity={0.9} onPress={() => go(centerRoute)} style={styles.fab}>
-          <Ionicons name="add" size={28} color="#0B0E14" />
+        {/* Center Spacer (reserve space for FAB so tabs don't squeeze) */}
+        <View style={styles.centerSpace} />
+
+        {/* Right 2 */}
+        <View style={[styles.side, { right: 10 }]}>
+          <TabItem item={tabs[2]} active={active} onPress={() => go(tabs[2].route)} />
+          <TabItem item={tabs[3]} active={active} onPress={() => go(tabs[3].route)} />
+        </View>
+
+        {/* Floating FAB */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => go(centerRoute)}
+          style={styles.fab}
+        >
+          <Ionicons name="qr-code-outline" size={24} color={BG} />
         </TouchableOpacity>
-
-        {/* Right */}
-        <TabItem item={tabs[2]} active={active} onPress={() => go(tabs[2].route)} />
-        <TabItem item={tabs[3]} active={active} onPress={() => go(tabs[3].route)} />
       </View>
     </View>
   );
@@ -46,7 +62,13 @@ function TabItem({ item, active, onPress }) {
       <View style={[styles.iconBox, isActive && styles.iconBoxActive]}>
         <Ionicons name={item.icon} size={18} color={color} />
       </View>
-      <Text style={[styles.tabText, isActive && styles.tabTextActive]} numberOfLines={1}>
+
+      <Text
+        style={[styles.tabText, isActive && styles.tabTextActive]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         {item.label}
       </Text>
     </TouchableOpacity>
@@ -61,24 +83,42 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === "ios" ? 18 : 12,
+    zIndex: 50,
+    elevation: 50,
   },
+
   bar: {
     height: 74,
     borderRadius: 24,
     backgroundColor: "rgba(11,14,20,0.96)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-  },
-  tab: {
-    width: 62,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    paddingHorizontal: 14,
+    position: "relative",
   },
+
+  side: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  centerSpace: {
+    width: 110, // more space between Wallet and History (around FAB)
+    height: 1,
+  },
+
+  tab: {
+    width: 68, // slightly narrower to fit better
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: -4, // very tight spacing between Home/Wallet and History/Profile
+  },
+
   iconBox: {
     width: 36,
     height: 36,
@@ -86,27 +126,34 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.07)",
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 6,
   },
+
   iconBoxActive: {
     backgroundColor: "rgba(255, 211, 106, 0.18)",
     borderWidth: 1,
     borderColor: "rgba(255, 211, 106, 0.35)",
   },
+
   tabText: {
     color: "rgba(255,255,255,0.55)",
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: "800",
   },
   tabTextActive: { color: YELLOW },
+
   fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 22,
+    position: "absolute",
+    alignSelf: "center",
+    top: -8,
+    width: 52,
+    height: 52,
+    borderRadius: 20,
     backgroundColor: YELLOW,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -26,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.18)",
+    zIndex: 10,
   },
 });

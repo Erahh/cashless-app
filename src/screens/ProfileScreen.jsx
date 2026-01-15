@@ -35,7 +35,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.buttonText}>Edit Passenger Type</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 110 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
       <BottomNav navigation={navigation} active="Profile" />

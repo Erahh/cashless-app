@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
+import BottomNav from "../components/BottomNav";
 
 export default function TransactionsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -96,7 +97,7 @@ export default function TransactionsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 160 }]} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
@@ -186,6 +187,8 @@ export default function TransactionsScreen({ navigation }) {
 
         <View style={{ height: 30 }} />
       </ScrollView>
+
+      <BottomNav navigation={navigation} active="History" />
     </SafeAreaView>
   );
 }

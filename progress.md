@@ -272,3 +272,88 @@
 - Tunnel mode creates a public URL like `exp://u.expo.dev/...` that works from any network
 
 **Result**: Users can now easily test the app on devices connected to different WiFi networks by using the tunnel mode command.
+
+## Fixed BottomNav Overlap Issue in HomeScreen
+
+**Date**: Current session
+
+**Issue**: BottomNav (position: absolute) was overlapping the last card in HomeScreen's ScrollView, covering the "Operator / Scan Passenger QR" card. This happened because the ScrollView didn't reserve enough space at the bottom for the floating navigation bar and FAB button.
+
+**Changes Made**:
+1. Updated `src/screens/HomeScreen.jsx`:
+   - Increased ScrollView `paddingBottom` from `90` to `140` pixels
+   - This ensures the last card is fully visible above the BottomNav and FAB
+
+**Design Decision**: 
+- OperatorScanScreen correctly does NOT have BottomNav (scanner screens should be immersive)
+- BottomNav is only shown on screens where it makes sense (Home, Balance, Notifications, etc.)
+- The 140px padding accounts for the nav bar height (74px) + FAB overlap + safe spacing
+
+**Result**: HomeScreen content no longer gets covered by the BottomNav. All cards and content are now fully visible and accessible.
+
+## Fixed BottomNav Overlap - Final Solution
+
+**Date**: Current session
+
+**Issue**: The BottomNav FAB (with `top: -8` positioning) was still overlapping the Wallet and History tabs, and the ScrollView padding wasn't sufficient to prevent content from being covered.
+
+**Root Cause**: 
+- BottomNav has `position: "absolute"` with FAB sticking up (`top: -8`)
+- Nav bar height is ~74px + bottom padding ~18px + FAB overlap ~26px = ~118px minimum
+- Previous `paddingBottom: 140` wasn't enough
+- `midCard` had extra `marginBottom: 40` that was fighting the layout
+
+**Changes Made**:
+1. Updated `src/screens/HomeScreen.jsx`:
+   - Increased ScrollView `paddingBottom` from `140` to `160` pixels
+   - Moved padding to `styles.content` instead of inline (cleaner code)
+   - Removed `marginBottom: 40` from `midCard` style
+   - Added `showsVerticalScrollIndicator={false}` to ScrollView
+   - Changed ScrollView to use `contentContainerStyle={styles.content}` (no inline styles)
+
+2. Updated `src/components/BottomNav.jsx`:
+   - Increased `centerSpace` width from `80` to `90` pixels
+   - Adjusted left/right side positioning from `8px` to `10px`
+   - Reduced FAB size from `56x56` to `52x52` pixels
+   - Adjusted FAB `top` position from `-6` to `-8`
+   - Reduced tab width from `72` to `68` pixels
+   - Added `zIndex: 10` to FAB for proper layering
+
+**Why 160px?**:
+- Nav bar height: ~74px
+- Bottom padding (iOS): ~18px
+- FAB sticks up: ~26px
+- Safe spacing buffer: ~42px
+- Total: ~160px safe value
+
+**Result**: 
+- All tabs (Home, Wallet, History, Profile) are fully visible and clickable
+- QR FAB no longer overlaps Wallet/History tabs
+- HomeScreen content (including midCard) is fully visible above the nav
+- Clean, maintainable code with padding in styles instead of inline
+
+## Updated approveRejectVerification to Update Commuter Profile
+
+**Date**: Current session
+
+**Issue**: The `approveRejectVerification` function needed to update both the verification request and the commuter's profile when approving or rejecting verification requests.
+
+**Changes Made**:
+1. Created `src/lib/verificationsApi.js`:
+   - Added `approveRejectVerification` function that updates both `verification_requests` and `profiles` tables
+   - Maps UI status values (approved/rejected) to database enum values (verified/rejected)
+   - Updates verification request with status, remarks, reviewed_at, and reviewed_by
+   - Reads the request to get commuter_id and verification type
+   - Updates commuter profile when status is "verified":
+     - Sets `is_verified: true`
+     - Sets `verified_type` from request
+     - Sets `verified_at` timestamp
+     - Sets `verified_by` admin ID
+   - Updates commuter profile when status is "rejected":
+     - Sets `is_verified: false`
+     - Clears `verified_type`, `verified_at`, and `verified_by`
+   - Uses Supabase client directly for database operations
+
+**Result**: When admins approve or reject verification requests, the commuter's profile is now automatically updated to reflect their verification status. This ensures the profile table is the single source of truth for verification status.
+
+<!-- Note: Previously logged safety checks for admin verification approval and web VerificationDetail page were reverted per user request. -->

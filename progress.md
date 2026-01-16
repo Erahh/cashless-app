@@ -374,3 +374,54 @@
    - Set `backgroundColor` to "#0B0E14" to match app background
 
 **Result**: Status bar now displays correctly with white text/icons that are clearly visible on the dark app background. Works properly on both iOS and Android devices.
+
+## Added Personal Info, Review, and Set MPIN Screens
+
+**Date**: Current session
+
+**Issue**: Need to add PersonalInfoScreen, ReviewInfoScreen, and SetMPINScreen that write to profiles, user_pins, and commuter_accounts tables.
+
+**Changes Made**:
+1. Created `src/screens/PersonalInfoScreen.jsx`:
+   - Matches existing dark theme design (#0B0E14 background)
+   - Collects personal information (first name, middle name, last name, birthdate, email)
+   - Collects address information (province, city, barangay, zip code, address line)
+   - Auto-generates full_name from name components
+   - Validates required fields before submission
+   - Uses Supabase to upsert profile data to `profiles` table
+   - Navigates to ReviewInfoScreen after successful save
+   - Styled with dark theme: rgba inputs, yellow primary button (#FFD36A)
+
+2. Created `src/screens/ReviewInfoScreen.jsx`:
+   - Displays review of personal and address information
+   - Shows data in organized blocks (Personal, Address)
+   - Allows user to go back to edit if needed
+   - Navigates to SetMPINScreen on confirmation
+   - Matches dark theme design with card-based layout
+
+3. Created `src/screens/SetMPINScreen.jsx`:
+   - Collects 6-digit MPIN with confirmation
+   - Validates MPIN strength (rejects common patterns like 000000, 123456, etc.)
+   - Hashes MPIN using SHA-256 via expo-crypto
+   - Upserts pin_hash to `user_pins` table
+   - Updates `commuter_accounts` table: sets pin_set=true and account_active=true
+   - Includes Terms and Conditions checkbox
+   - Resets navigation to Home screen after successful setup
+   - Styled with dark theme matching existing design
+
+4. Updated `src/navigation/AppNavigator.jsx`:
+   - Added imports for PersonalInfoScreen, ReviewInfoScreen, SetMPINScreen
+   - Registered all three screens in the navigation stack
+
+5. Verified `expo-crypto` dependency:
+   - Already installed in package.json (version ~15.0.8)
+   - Used for SHA-256 hashing of MPIN
+
+**Design Consistency**:
+- All screens use SafeAreaView with #0B0E14 background
+- Inputs styled with rgba(255,255,255,0.05) background and rgba(255,255,255,0.10) borders
+- Primary buttons use #FFD36A (yellow) with #0B0E14 text
+- Text colors: #fff for titles, rgba(255,255,255,0.65) for body text
+- Consistent padding (18px), border radius (14-18px), and spacing
+
+**Result**: Three new screens added that integrate with Supabase tables (profiles, user_pins, commuter_accounts) and match the existing dark theme design. Users can now complete the full onboarding flow: Personal Info → Review → Set MPIN → Home.

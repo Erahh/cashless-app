@@ -8,6 +8,9 @@ import OTPScreen from "../screens/OTPScreen";
 import BasicInfoScreen from "../screens/BasicInfoScreen";
 import MPINSetupScreen from "../screens/MPINSetupScreen";
 import ActivatedScreen from "../screens/ActivatedScreen";
+import PersonalInfoScreen from "../screens/PersonalInfoScreen";
+import ReviewInfoScreen from "../screens/ReviewInfoScreen";
+import SetMPINScreen from "../screens/SetMPINScreen";
 import HomeScreen from "../screens/HomeScreen";
 import MPINUnlockScreen from "../screens/MPINUnlockScreen";
 
@@ -58,6 +61,9 @@ export default function AppNavigator() {
           <Stack.Screen name="BasicInfo" component={BasicInfoScreen} />
           <Stack.Screen name="MPINSetup" component={MPINSetupScreen} />
           <Stack.Screen name="Activated" component={ActivatedScreen} />
+          <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
+          <Stack.Screen name="ReviewInfo" component={ReviewInfoScreen} />
+          <Stack.Screen name="SetMPIN" component={SetMPINScreen} />
           <Stack.Screen name="AdminVerification" component={AdminVerificationScreen} />
           <Stack.Screen name="AdminVerificationDetail" component={AdminVerificationDetailScreen} />
           <Stack.Screen name="Transactions" component={TransactionsScreen} />

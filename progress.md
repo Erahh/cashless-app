@@ -357,3 +357,20 @@
 **Result**: When admins approve or reject verification requests, the commuter's profile is now automatically updated to reflect their verification status. This ensures the profile table is the single source of truth for verification status.
 
 <!-- Note: Previously logged safety checks for admin verification approval and web VerificationDetail page were reverted per user request. -->
+
+## Fixed Status Bar Configuration
+
+**Date**: Current session
+
+**Issue**: Status bar was set to "dark" style, making it hard to see on the app's dark background (#0B0E14). Status bar icons and text were not visible.
+
+**Changes Made**:
+1. Updated `src/App.js`:
+   - Changed StatusBar style from "dark" to "light"
+   - This makes the status bar show white text/icons that are visible on dark backgrounds
+2. Updated `app.json`:
+   - Added Android-specific status bar configuration
+   - Set `barStyle` to "light-content" for white text/icons
+   - Set `backgroundColor` to "#0B0E14" to match app background
+
+**Result**: Status bar now displays correctly with white text/icons that are clearly visible on the dark app background. Works properly on both iOS and Android devices.

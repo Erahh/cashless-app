@@ -7,6 +7,8 @@ import AppNavigator from "./navigation/AppNavigator";
 import { AppLockProvider, AppLockContext } from "./context/AppLockContext";
 import { supabase } from "./api/supabase";
 
+import { StatusBar } from "expo-status-bar";
+
 function AppWithLock() {
   const { setLocked } = useContext(AppLockContext);
 
@@ -22,7 +24,12 @@ function AppWithLock() {
     return () => sub.remove();
   }, [setLocked]);
 
-  return <AppNavigator />;
+  return (
+    <>
+      <StatusBar style="light" />
+      <AppNavigator />
+    </>
+  );
 }
 
 export default function App() {

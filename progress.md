@@ -425,3 +425,85 @@
 - Consistent padding (18px), border radius (14-18px), and spacing
 
 **Result**: Three new screens added that integrate with Supabase tables (profiles, user_pins, commuter_accounts) and match the existing dark theme design. Users can now complete the full onboarding flow: Personal Info → Review → Set MPIN → Home.
+
+## Enforce Account Activation and MPIN Setup in Auth Gate
+
+**Date**: Current session
+
+**Issue**: Need to enforce "account_active + pin_set" checks so no user can enter the app without finishing registration. Users must complete the full onboarding flow before accessing Home.
+
+**Changes Made**:
+1. Updated `src/screens/AuthGateScreen.jsx`:
+   - Removed dependency on local `hasMpin()` function
+   - Added database check for `commuter_accounts.account_active` and `commuter_accounts.pin_set`
+   - Logic flow:
+     - IF no session → go to PhoneScreen (login)
+     - IF session exists AND (`account_active = false` OR `pin_set = false`) → go to PersonalInfo (registration flow)
+     - IF session exists AND `account_active = true` AND `pin_set = true` → go to Home
+   - Added proper error handling with fallback to PhoneScreen
+   - Improved loading UI with ActivityIndicator matching dark theme
+
+2. Updated `src/screens/OTPScreen.jsx`:
+   - Removed dependency on local `hasMpin()` function
+   - Added database check for `commuter_accounts.account_active` and `commuter_accounts.pin_set` after OTP verification
+   - Navigation logic:
+     - If account not active or pin not set → navigate to PersonalInfo (registration flow)
+     - If both are true → navigate to Home
+   - Removed unused `hasMpin` import
+
+**Registration Flow (Official)**:
+1. OTP Login → PhoneScreen → OTPScreen
+2. Personal Info → PersonalInfoScreen (collects first/middle/last name, birthdate, email, address)
+3. Review Info → ReviewInfoScreen (review profile before proceeding)
+4. Set MPIN → SetMPINScreen (sets pin_hash, activates account)
+5. Account Active → HomeScreen (both `account_active=true` and `pin_set=true`)
+
+**Security Features**:
+- No user can skip MPIN setup
+- No user can access Home without completing profile
+- Account activation enforced at Auth Gate level
+- Database-driven checks (no local storage bypass)
+
+**Result**: Authentication gate now enforces complete registration flow. Users must complete Personal Info → Review → Set MPIN before accessing the app. All checks are done against database tables (`commuter_accounts`) ensuring data integrity and preventing incomplete registrations.
+
+## Enhanced AuthGateScreen with Profile Check and Navigation Reset
+
+**Date**: Current session
+
+**Issue**: Need to improve AuthGateScreen to use `navigation.reset` instead of `replace`, check for profile existence before deciding next step, and ensure proper routing after OTP verification.
+
+**Changes Made**:
+1. Updated `src/screens/AuthGateScreen.jsx`:
+   - Changed from `navigation.replace` to `navigation.reset` for proper navigation stack reset
+   - Improved logic flow:
+     - No session → `OTPScreen` (not PhoneScreen)
+     - Session exists → Check `commuter_accounts` for `account_active` and `pin_set`
+     - If account missing or not active/pin not set → Check if profile exists:
+       - If no profile → Navigate to `PersonalInfo` (start registration flow)
+       - If profile exists → Navigate to `SetMPIN` (complete setup)
+     - If both `account_active=true` and `pin_set=true` → Navigate to `Home`
+   - Added `mounted` flag to prevent state updates after unmount
+   - Improved error handling with fallback to `OTPScreen`
+   - Removed loading text, keeping only ActivityIndicator
+
+2. Updated `src/screens/OTPScreen.jsx`:
+   - Enhanced OTP success redirect logic:
+     - Check if profile exists in `profiles` table
+     - If profile incomplete → Navigate to `PersonalInfo`
+     - If profile exists but MPIN not set or account not active → Navigate to `SetMPIN`
+     - If both profile and MPIN are set → Navigate to `Home`
+   - Improved navigation flow to prevent direct Home access without completing registration
+
+**Navigation Flow**:
+- **No session**: `OTPScreen`
+- **Session but no profile**: `PersonalInfo` → `ReviewInfo` → `SetMPIN` → `Home`
+- **Session with profile but no MPIN**: `SetMPIN` → `Home`
+- **Session with profile and MPIN**: `Home`
+
+**Security Features**:
+- Uses `navigation.reset` to prevent back navigation to incomplete flows
+- Profile existence check ensures users complete personal info first
+- Database-driven checks prevent bypassing registration steps
+- Proper cleanup with mounted flag prevents memory leaks
+
+**Result**: AuthGateScreen now properly enforces the complete registration flow with improved navigation stack management. Users are guided through Personal Info → Review → Set MPIN → Home, and cannot access Home without completing all steps. Navigation uses `reset` instead of `replace` for better stack management.

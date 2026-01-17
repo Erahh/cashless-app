@@ -22,19 +22,31 @@ export default function SetMPINScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const { data: auth } = await supabase.auth.getUser();
+      const { data: auth, error: authErr } = await supabase.auth.getUser();
       const userId = auth?.user?.id;
-      if (!userId) throw new Error("Not logged in");
+      if (authErr || !userId) throw new Error("Not logged in");
 
-      const pin_hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, mpin);
+      // Ensure commuter_accounts exists (prevents update from silently doing nothing)
+      await supabase
+        .from("commuter_accounts")
+        .upsert(
+          { commuter_id: userId, pin_set: false, account_active: false },
+          { onConflict: "commuter_id" }
+        );
 
-      // upsert allows reset flows later
+      const pin_hash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        mpin
+      );
+
+      // Save MPIN hash
       const { error: pinErr } = await supabase
         .from("user_pins")
         .upsert({ user_id: userId, pin_hash }, { onConflict: "user_id" });
 
       if (pinErr) throw pinErr;
 
+      // Activate account
       const { error: accErr } = await supabase
         .from("commuter_accounts")
         .update({ pin_set: true, account_active: true })
@@ -42,7 +54,8 @@ export default function SetMPINScreen({ navigation }) {
 
       if (accErr) throw accErr;
 
-      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+      // Go to Activated screen (better UX than jumping to Home)
+      navigation.reset({ index: 0, routes: [{ name: "Activated" }] });
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to set MPIN");
     } finally {

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Button, Alert, TouchableOpacity } from "react-native";
 import { verifyOtp, sendOtp } from "../api/authApi";
-import { hasMpin } from "../api/mpinLocal";
 import { supabase } from "../api/supabase";
 
 export default function OTPScreen({ navigation, route }) {
@@ -11,17 +10,14 @@ export default function OTPScreen({ navigation, route }) {
   const handleVerify = async () => {
     try {
       if (!phone) return Alert.alert("Error", "Missing phone number.");
+      if (!/^\d{6}$/.test(otp)) return Alert.alert("Invalid OTP", "OTP must be 6 digits.");
 
-      if (!/^\d{6}$/.test(otp)) {
-        return Alert.alert("Invalid OTP", "OTP must be 6 digits.");
-      }
-
-      // 1️⃣ Verify OTP with Supabase
+      // 1) Verify OTP
       await verifyOtp(phone, otp);
 
-      // 2️⃣ GET ACCESS TOKEN (THIS IS WHAT YOU NEED FOR RENDER TESTING)
-      const { data } = await supabase.auth.getSession();
-      const accessToken = data?.session?.access_token;
+      // 2) Session + token (keep your Render testing logs)
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const accessToken = sessionRes?.session?.access_token;
 
       if (accessToken) {
         console.log("========================================");
@@ -29,11 +25,6 @@ export default function OTPScreen({ navigation, route }) {
         console.log("========================================");
         console.log(accessToken);
         console.log("========================================");
-        console.log("✅ Copy this token from your Metro terminal");
-        console.log("✅ Use it in Authorization header: Bearer <token>");
-        console.log("========================================");
-        
-        // Also show in alert for easy access
         Alert.alert(
           "✅ OTP Verified!",
           `Access token logged to console.\n\nCheck your Metro terminal to copy the token for Render API testing.`,
@@ -41,19 +32,66 @@ export default function OTPScreen({ navigation, route }) {
         );
       } else {
         console.warn("⚠️ No access token found in session");
-        Alert.alert("Warning", "No access token found. Check your Supabase configuration.");
       }
 
-      // 3️⃣ Continue your normal UI flow
-      const mpinSet = await hasMpin();
+      // 3) Get user
+      const { data: userRes, error: userErr } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id;
 
-      if (!mpinSet) {
-        navigation.replace("BasicInfo");
-      } else {
-        navigation.replace("Home");
+      if (userErr || !userId) {
+        // fail-safe: go back to OTP login
+        navigation.reset({ index: 0, routes: [{ name: "OTPScreen" }] });
+        return;
       }
+
+      // 4) Ensure commuter_accounts row exists (IMPORTANT)
+      // If you already create it elsewhere, this upsert is still safe.
+      await supabase
+        .from("commuter_accounts")
+        .upsert(
+          { commuter_id: userId, account_active: false, pin_set: false },
+          { onConflict: "commuter_id" }
+        );
+
+      // 5) Fetch account status
+      const { data: account } = await supabase
+        .from("commuter_accounts")
+        .select("account_active, pin_set")
+        .eq("commuter_id", userId)
+        .single();
+
+      // 6) Check profile COMPLETENESS (not just exists)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, birthdate, province, city, barangay, address_line")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const profileComplete =
+        !!profile?.first_name &&
+        !!profile?.last_name &&
+        !!profile?.birthdate &&
+        !!profile?.province &&
+        !!profile?.city &&
+        !!profile?.barangay &&
+        !!profile?.address_line;
+
+      // 7) Route decision (FINAL)
+      if (!profileComplete) {
+        navigation.reset({ index: 0, routes: [{ name: "PersonalInfo" }] });
+        return;
+      }
+
+      if (!account?.pin_set || !account?.account_active) {
+        // Use your real MPIN screen name:
+        // If your actual flow uses MPINSetup + Activated screen, send to MPINSetup.
+        navigation.reset({ index: 0, routes: [{ name: "SetMPIN" }] });
+        return;
+      }
+
+      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
     } catch (err) {
-      Alert.alert("Verify Error", err.message);
+      Alert.alert("Verify Error", err?.message || "Failed to verify OTP");
     }
   };
 

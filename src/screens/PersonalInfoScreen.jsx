@@ -50,8 +50,22 @@ export default function PersonalInfoScreen({ navigation }) {
       const userId = auth?.user?.id;
       if (!userId) throw new Error("Not logged in");
 
+      // Get phone number from auth user (Supabase stores it in user.phone)
+      let phone = auth?.user?.phone;
+      
+      // If not found in user object, try getting from session
+      if (!phone) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        phone = sessionData?.session?.user?.phone;
+      }
+
+      if (!phone) {
+        throw new Error("Phone number not found. Please login again.");
+      }
+
       const payload = {
         id: userId, // profiles.id = auth user id
+        phone: phone, // Required field in profiles table
         first_name: firstName.trim(),
         middle_name: middleName.trim() || null,
         last_name: lastName.trim(),

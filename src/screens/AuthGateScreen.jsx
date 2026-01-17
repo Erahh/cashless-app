@@ -22,9 +22,9 @@ export default function AuthGateScreen({ navigation }) {
         const { data: sessionRes } = await supabase.auth.getSession();
         const session = sessionRes?.session;
 
-        // 1) No session => OTP login
+        // 1) No session => Phone login (which then goes to OTP)
         if (!session?.user?.id) {
-          if (mounted) navigation.reset({ index: 0, routes: [{ name: "OTPScreen" }] });
+          if (mounted) navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
           return;
         }
 
@@ -79,8 +79,8 @@ export default function AuthGateScreen({ navigation }) {
         if (mounted) navigation.reset({ index: 0, routes: [{ name: "Home" }] });
       } catch (e) {
         console.error("AuthGate error:", e);
-        // fallback to OTP
-        if (mounted) navigation.reset({ index: 0, routes: [{ name: "OTPScreen" }] });
+        // fallback to Phone login
+        if (mounted) navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
       }
     }
 

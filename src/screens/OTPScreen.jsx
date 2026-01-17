@@ -13,7 +13,9 @@ export default function OTPScreen({ navigation, route }) {
       if (!/^\d{6}$/.test(otp)) return Alert.alert("Invalid OTP", "OTP must be 6 digits.");
 
       // 1) Verify OTP
+      console.log("🔐 Verifying OTP for phone:", phone);
       await verifyOtp(phone, otp);
+      console.log("✅ OTP verification successful");
 
       // 2) Session + token (keep your Render testing logs)
       const { data: sessionRes } = await supabase.auth.getSession();
@@ -39,17 +41,33 @@ export default function OTPScreen({ navigation, route }) {
       const userId = userRes?.user?.id;
 
       if (userErr || !userId) {
-        // fail-safe: go back to OTP login
-        navigation.reset({ index: 0, routes: [{ name: "OTPScreen" }] });
+        // fail-safe: go back to Phone login
+        navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
         return;
       }
+
+      // 3.5) Ensure profiles row exists with phone (IMPORTANT - prevents null phone error)
+      await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: userId,
+            phone: phone, // 🔴 THIS IS THE FIX - ensures phone is never null
+          },
+          { onConflict: "id" }
+        );
 
       // 4) Ensure commuter_accounts row exists (IMPORTANT)
       // If you already create it elsewhere, this upsert is still safe.
       await supabase
         .from("commuter_accounts")
         .upsert(
-          { commuter_id: userId, account_active: false, pin_set: false },
+          { 
+            commuter_id: userId, 
+            account_active: false, 
+            pin_set: false,
+            fare_type: "casual" // Default fare type to prevent trigger error
+          },
           { onConflict: "commuter_id" }
         );
 
@@ -91,7 +109,9 @@ export default function OTPScreen({ navigation, route }) {
 
       navigation.reset({ index: 0, routes: [{ name: "Home" }] });
     } catch (err) {
-      Alert.alert("Verify Error", err?.message || "Failed to verify OTP");
+      console.error("❌ OTP Verification Error:", err);
+      console.error("Error details:", JSON.stringify(err, null, 2));
+      Alert.alert("Verify Error", err?.message || "Failed to verify OTP. Please check the console for details.");
     }
   };
 

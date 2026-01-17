@@ -30,7 +30,12 @@ export default function SetMPINScreen({ navigation }) {
       await supabase
         .from("commuter_accounts")
         .upsert(
-          { commuter_id: userId, pin_set: false, account_active: false },
+          { 
+            commuter_id: userId, 
+            pin_set: false, 
+            account_active: false,
+            fare_type: "casual" // Default fare type to prevent trigger error
+          },
           { onConflict: "commuter_id" }
         );
 
@@ -46,10 +51,14 @@ export default function SetMPINScreen({ navigation }) {
 
       if (pinErr) throw pinErr;
 
-      // Activate account
+      // Activate account (preserve fare_type if it exists, or set default)
       const { error: accErr } = await supabase
         .from("commuter_accounts")
-        .update({ pin_set: true, account_active: true })
+        .update({ 
+          pin_set: true, 
+          account_active: true,
+          fare_type: "casual" // Ensure fare_type is set to prevent trigger error
+        })
         .eq("commuter_id", userId);
 
       if (accErr) throw accErr;

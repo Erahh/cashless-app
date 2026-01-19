@@ -29,6 +29,7 @@ import TransactionsScreen from "../screens/TransactionsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import GuardianLinkScreen from "../screens/GuardianLinkScreen";
 import MyQRScreen from "../screens/MyQRScreen";
+import TopUpCheckoutScreen from "../screens/TopUpCheckoutScreen";
 
 import AdminVerificationScreen from "../screens/AdminVerificationScreen";
 import AdminVerificationDetailScreen from "../screens/AdminVerificationDetailScreen";
@@ -84,7 +85,7 @@ export default function AppNavigator() {
           <Stack.Screen name="SendLoad" component={SendLoadScreen} />
           <Stack.Screen name="Balance" component={BalanceScreen} />
           <Stack.Screen name="Earnings" component={EarningsScreen} />
-          
+
           {/* Profile & Settings */}
           <Stack.Screen name="Profile" component={ProfileScreen} />
 
@@ -98,9 +99,12 @@ export default function AppNavigator() {
 
           {/* Guardian */}
           <Stack.Screen name="GuardianLink" component={GuardianLinkScreen} />
-          
+
           {/* QR */}
           <Stack.Screen name="MyQR" component={MyQRScreen} />
+
+          {/* Checkout */}
+          <Stack.Screen name="TopUpCheckout" component={TopUpCheckoutScreen} />
         </>
       )}
     </Stack.Navigator>

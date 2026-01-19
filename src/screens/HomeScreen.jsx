@@ -16,20 +16,30 @@ import QuickActions from "../components/QuickActions";
 import BottomNav from "../components/BottomNav";
 
 
-// Keep mock recent transactions UI-first (later bind to /transactions)
-const MOCK_RECENT = [
-  { id: "1", title: "Ride Fare", meta: "Jeepney • ROUTE A", amount: -15, time: "Today 9:12 AM" },
-  { id: "2", title: "Top Up", meta: "GCash", amount: 200, time: "Yesterday 6:41 PM" },
-  { id: "3", title: "Ride Fare", meta: "Bus • ROUTE B", amount: -20, time: "Dec 4 • 5:10 PM" },
-];
 
-export default function HomeScreen({ navigation }) {
+
+// ✅ Helper for timeout logic (increased to 35s for Render cold starts)
+async function fetchWithTimeout(url, options = {}, ms = 35000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+export default function HomeScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null);
+  const [netMsg, setNetMsg] = useState("");
+  const [recent, setRecent] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  const loadStatus = async () => {
+  const loadStatus = async ({ silent = false } = {}) => {
     try {
       setLoading(true);
+      if (!silent) setNetMsg("");
 
       const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
       if (sessionErr) throw sessionErr;
@@ -37,30 +47,76 @@ export default function HomeScreen({ navigation }) {
       const token = sessionData?.session?.access_token;
       if (!token) throw new Error("No session. Please login again.");
 
-      const res = await fetch(`${API_BASE_URL}/me/status`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/me/status`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to load status");
+      // ✅ SAFE PARSE (handles empty body)
+      const text = await res.text();
+      let json = null;
 
-      setStatus(json);
+      if (text) {
+        try {
+          json = JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Server returned non-JSON (HTTP ${res.status})`);
+        }
+      }
+
+      if (!res.ok) {
+        throw new Error(json?.error || `Request failed (HTTP ${res.status})`);
+      }
+
+      setStatus(json);          // ✅ only on success
+      setNetMsg("");            // ✅ clear banner
+
+      // ✅ Load recent transactions (top 5)
+      try {
+        const txRes = await fetchWithTimeout(`${API_BASE_URL}/wallet/transactions?limit=5`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const txText = await txRes.text();
+        let txJson = null;
+        if (txText) txJson = JSON.parse(txText);
+
+        if (txRes.ok) {
+          setRecent(txJson?.items || []);
+          setLastUpdated(new Date().toISOString());
+        }
+      } catch {
+        // ignore recent errors (dashboard can still load)
+      }
     } catch (e) {
-      Alert.alert("Error", e.message);
+      const msg =
+        e?.name === "AbortError"
+          ? "Server waking up (Render sleep). Tap Refresh in a few seconds."
+          : e.message;
+
+      setNetMsg(msg);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const unsub = navigation?.addListener?.("focus", loadStatus);
-    loadStatus();
+    const unsub = navigation?.addListener?.("focus", () => loadStatus({ silent: true }));
+    loadStatus({ silent: true });
     return unsub;
   }, []);
 
+  useEffect(() => {
+    if (route?.params?.refresh) {
+      loadStatus({ silent: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route?.params?.refresh]);
+
 
   const computed = useMemo(() => {
-    const balanceNum = Number(status?.account?.balance ?? 0);
+    // If status is null, we show placeholders instead of 0
+    const hasData = !!status;
+    const balanceNum = hasData ? Number(status.account?.balance ?? 0) : null;
 
     const passengerTypeRaw = String(status?.account?.passenger_type || "casual"); // casual/student/senior
     const passengerTypeLabel =
@@ -87,10 +143,12 @@ export default function HomeScreen({ navigation }) {
       badge = { text: `${passengerTypeLabel.toUpperCase()} • UNVERIFIED`, tone: "bad" };
     }
 
-    const balanceText = balanceNum.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    const balanceText = balanceNum !== null
+      ? balanceNum.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+      : "--.--";
 
     const showCallout =
       passengerTypeLabel !== "Casual" && verificationStatus !== "Verified";
@@ -137,6 +195,11 @@ export default function HomeScreen({ navigation }) {
           <View>
             <Text style={styles.smallLabel}>Available Balance</Text>
             <Text style={styles.balance}>₱{computed.balanceText}</Text>
+            {lastUpdated ? (
+              <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.45)", fontSize: 12 }}>
+                Last updated: {new Date(lastUpdated).toLocaleTimeString()}
+              </Text>
+            ) : null}
 
             <View style={[styles.badge, styles[`badge_${computed.badge.tone}`]]}>
               <Text style={styles.badgeText}>{computed.badge.text}</Text>
@@ -155,6 +218,24 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {netMsg ? (
+          <View
+            style={{
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 14,
+              backgroundColor: "rgba(255, 211, 106, 0.10)",
+              borderWidth: 1,
+              borderColor: "rgba(255, 211, 106, 0.25)",
+            }}
+          >
+            <Text style={{ color: "#FFD36A", fontWeight: "900" }}>Connection</Text>
+            <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.75)", lineHeight: 18 }}>
+              {netMsg}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Spend / Stats Card */}
         <TouchableOpacity
           style={styles.bigCard}
@@ -163,8 +244,8 @@ export default function HomeScreen({ navigation }) {
         >
           <View style={styles.bigCardTopRow}>
             <View>
-              <Text style={styles.cardLabel}>Monthly Spent</Text>
-              <Text style={styles.cardValue}>₱ 634.00</Text>
+              <Text style={styles.cardLabel}>Wallet Status</Text>
+              <Text style={styles.cardValue}>₱{computed.balanceText}</Text>
             </View>
 
             <View style={styles.pill}>
@@ -182,12 +263,13 @@ export default function HomeScreen({ navigation }) {
         {/* Quick Actions */}
         <QuickActions
           items={[
+            { key: "topup", icon: "💳", title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("SendLoad") },
             { key: "scan", icon: "📷", title: "Scan", sub: "Collect fare", onPress: () => navigation.navigate("OperatorScan") },
             { key: "earn", icon: "💰", title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("Earnings") },
             { key: "hist", icon: "🧾", title: "History", sub: "My scans", onPress: () => navigation.navigate("Transactions") },
-            { key: "ver",  icon: "✅", title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminVerification") },
-            { key: "set",  icon: "💸", title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminSettlements") },
-            { key: "rep",  icon: "📄", title: "Reports", sub: "Activity", onPress: () => navigation.navigate("Transactions") },
+            { key: "ver", icon: "✅", title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminVerification") },
+            { key: "set", icon: "💸", title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminSettlements") },
+            { key: "rep", icon: "📄", title: "Reports", sub: "Activity", onPress: () => navigation.navigate("Transactions") },
           ]}
         />
 
@@ -209,15 +291,15 @@ export default function HomeScreen({ navigation }) {
               {computed.isOperator
                 ? "Scan Passenger QR"
                 : computed.isAdmin
-                ? "Payout Queue"
-                : "My QR / NFC"}
+                  ? "Payout Queue"
+                  : "My QR / NFC"}
             </Text>
             <Text style={styles.cardHint}>
               {computed.isOperator
                 ? "Tap to open scanner"
                 : computed.isAdmin
-                ? "Tap to manage settlements"
-                : "Tap to show your payment code"}
+                  ? "Tap to manage settlements"
+                  : "Tap to show your payment code"}
             </Text>
           </View>
           <Text style={styles.arrow}>›</Text>
@@ -248,25 +330,52 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         <View style={styles.list}>
-          {MOCK_RECENT.map((tx) => (
-            <View key={tx.id} style={styles.txRow}>
-              <View style={styles.txLeft}>
-                <View style={styles.txIcon}>
-                  <Text style={styles.txIconText}>{tx.amount < 0 ? "🚌" : "💳"}</Text>
-                </View>
-                <View>
-                  <Text style={styles.txTitle}>{tx.title}</Text>
-                  <Text style={styles.txMeta}>
-                    {tx.meta} • {tx.time}
-                  </Text>
-                </View>
-              </View>
+          {recent.map((tx) => {
+            const isDebit =
+              tx.source === "ledger" &&
+              (String(tx.kind || "").includes("fare") || String(tx.kind || "").includes("debit"));
 
-              <Text style={[styles.txAmount, tx.amount < 0 ? styles.txNeg : styles.txPos]}>
-                {tx.amount < 0 ? "-" : "+"}₱{Math.abs(tx.amount).toFixed(2)}
-              </Text>
-            </View>
-          ))}
+            const amount = Number(tx.amount || 0);
+            const sign = isDebit ? "-" : "+";
+
+            const title =
+              tx.source === "topup"
+                ? "Top Up"
+                : String(tx.kind || "").includes("fare")
+                  ? "Ride Fare"
+                  : "Wallet";
+
+            const meta =
+              tx.source === "topup"
+                ? `GCash • ${String(tx.status || "").toUpperCase()}`
+                : tx.meta || String(tx.kind || "ledger");
+
+            return (
+              <View key={tx.id} style={styles.txRow}>
+                <View style={styles.txLeft}>
+                  <View style={styles.txIcon}>
+                    <Text style={styles.txIconText}>{tx.source === "topup" ? "💳" : "🚌"}</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.txTitle}>{title}</Text>
+                    <Text style={styles.txMeta}>
+                      {meta} • {new Date(tx.created_at).toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.txAmount, isDebit ? styles.txNeg : styles.txPos]}>
+                  {sign}₱{Math.abs(amount).toFixed(2)}
+                </Text>
+              </View>
+            );
+          })}
+
+          {!loading && recent.length === 0 ? (
+            <Text style={{ color: "rgba(255,255,255,0.55)", marginTop: 10 }}>
+              No transactions yet.
+            </Text>
+          ) : null}
         </View>
 
         {/* Refresh button (optional) */}
@@ -279,7 +388,10 @@ export default function HomeScreen({ navigation }) {
             borderColor: "rgba(255,255,255,0.12)",
             alignItems: "center",
           }}
-          onPress={loadStatus}
+          onPress={async () => {
+            await loadStatus({ silent: false });
+            if (netMsg) Alert.alert("Network", netMsg);
+          }}
         >
           <Text style={{ color: "rgba(255,255,255,0.85)", fontWeight: "800" }}>
             Refresh

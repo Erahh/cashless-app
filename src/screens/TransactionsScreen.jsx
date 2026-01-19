@@ -1,45 +1,61 @@
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, ScrollView, RefreshControl, Alert } from "react-native";
+import { Screen, Card, Pill } from "../components/ui";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
-import BottomNav from "../components/BottomNav";
+
+function formatPHP(n) {
+  const num = Number(n || 0);
+  return `₱${num.toFixed(2)}`;
+}
+
+function titleFor(item) {
+  if (item.source === "topup") return "Top Up";
+  // ledger kinds
+  if (String(item.kind).includes("fare")) return "Ride Fare";
+  if (String(item.kind).includes("debit")) return "Debit";
+  if (String(item.kind).includes("credit")) return "Credit";
+  return item.kind || "Transaction";
+}
+
+function badgeFor(item) {
+  if (item.source === "topup") {
+    const s = String(item.status || "").toUpperCase();
+    if (s === "PAID") return "PAID";
+    if (s === "PENDING") return "PENDING";
+    return s || "TOPUP";
+  }
+  return "POSTED";
+}
 
 export default function TransactionsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
-  const [raw, setRaw] = useState([]);
-  const [filter, setFilter] = useState("all"); // all | approved | declined
+  const [refreshing, setRefreshing] = useState(false);
+  const [items, setItems] = useState([]);
 
   const load = async () => {
     try {
       setLoading(true);
 
-      const { data: sessionData, error } = await supabase.auth.getSession();
-      if (error) throw error;
-
-      const token = sessionData?.session?.access_token;
+      const { data: s } = await supabase.auth.getSession();
+      const token = s?.session?.access_token;
       if (!token) throw new Error("No session. Please login again.");
 
-      const res = await fetch(`${API_BASE_URL}/transactions/history?limit=60`, {
+      const res = await fetch(`${API_BASE_URL}/wallet/transactions?limit=60`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to load transactions");
+      const text = await res.text();
+      const json = text ? JSON.parse(text) : null;
 
-      setRaw(json.items || []);
+      if (!res.ok) throw new Error(json?.error || `Failed (HTTP ${res.status})`);
+
+      setItems(json?.items || []);
     } catch (e) {
-      Alert.alert("Error", e.message);
+      Alert.alert("Transactions", e.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -47,230 +63,81 @@ export default function TransactionsScreen({ navigation }) {
     const unsub = navigation?.addListener?.("focus", load);
     load();
     return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const computed = useMemo(() => {
-    const items = Array.isArray(raw) ? raw : [];
-
-    const filtered =
-      filter === "all"
-        ? items
-        : items.filter((t) => String(t.status || "").toLowerCase() === filter);
-
-    const totalSpent = filtered.reduce((sum, t) => {
-      const amt = Number(t.fare_amount || 0);
-      return String(t.status || "").toLowerCase() === "approved" ? sum + amt : sum;
-    }, 0);
-
-    const fmtMoney = (n) =>
-      n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    return {
-      filtered,
-      totalSpent,
-      totalSpentText: fmtMoney(totalSpent),
-    };
-  }, [raw, filter]);
-
-  const Pill = ({ value, label }) => {
-    const active = filter === value;
-    return (
-      <TouchableOpacity
-        onPress={() => setFilter(value)}
-        style={[styles.pill, active && styles.pillActive]}
-      >
-        <Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text>
-      </TouchableOpacity>
-    );
+  const onRefresh = () => {
+    setRefreshing(true);
+    load();
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.center}>
-          <ActivityIndicator />
-          <Text style={styles.dim}>Loading transactions...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 160 }]} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>Transactions</Text>
-            <Text style={styles.subtitle}>Your ride history</Text>
-          </View>
+    <Screen title="Transactions" subtitle="Your wallet activity history.">
+      <Card>
+        <Pill text={loading ? "Loading..." : `${items.length} records`} />
 
-          <TouchableOpacity style={styles.smallBtn} onPress={load}>
-            <Text style={styles.smallBtnText}>Refresh</Text>
-          </TouchableOpacity>
-        </View>
+        <ScrollView
+          style={{ marginTop: 14 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          showsVerticalScrollIndicator={false}
+        >
+          {items.map((it) => {
+            const isDebit =
+              it.source === "ledger" &&
+              (String(it.kind).includes("debit") || String(it.kind).includes("fare"));
 
-        {/* Summary card */}
-        <View style={styles.bigCard}>
-          <Text style={styles.cardLabel}>Total Spent (filtered)</Text>
-          <Text style={styles.bigValue}>₱{computed.totalSpentText}</Text>
-
-          <View style={styles.pillsRow}>
-            <Pill value="all" label="All" />
-            <Pill value="approved" label="Approved" />
-            <Pill value="declined" label="Declined" />
-          </View>
-
-          <Text style={styles.cardHint}>
-            Tip: Declined scans don’t deduct your wallet.
-          </Text>
-        </View>
-
-        {/* List */}
-        <Text style={styles.sectionTitle}>Recent</Text>
-
-        <View style={{ marginTop: 12, gap: 10 }}>
-          {computed.filtered.map((t) => {
-            const status = String(t.status || "").toLowerCase();
-            const amt = Number(t.fare_amount || 0);
-
-            const when = t.scanned_at
-              ? new Date(t.scanned_at).toLocaleString()
-              : t.created_at
-              ? new Date(t.created_at).toLocaleString()
-              : "";
-
-            const title = status === "approved" ? "Ride Fare" : "Declined";
-            const route = t.route_name || "Route";
-            const meta =
-              status === "declined"
-                ? `Reason: ${t.decline_reason || "unknown"}`
-                : `Passenger: ${t.passenger_type || "casual"} • ${t.verification_status || "unverified"}`;
+            const amountText = (isDebit ? "-" : "+") + formatPHP(it.amount);
 
             return (
-              <TouchableOpacity
-                key={t.id}
-                style={styles.row}
-                activeOpacity={0.9}
-                onPress={() =>
-                  Alert.alert(
-                    "Transaction Details",
-                    `Status: ${status}\nAmount: ₱${amt.toFixed(2)}\nRoute: ${route}\nTime: ${when}\n\n${meta}`
-                  )
-                }
+              <View
+                key={it.id}
+                style={{
+                  padding: 14,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.10)",
+                  backgroundColor: "rgba(0,0,0,0.18)",
+                  marginBottom: 10,
+                }}
               >
-                <View style={styles.rowLeft}>
-                  <View style={styles.iconBox}>
-                    <Text style={styles.iconText}>{status === "approved" ? "🚌" : "⛔"}</Text>
-                  </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ color: "#F4EEE6", fontWeight: "900" }}>
+                    {titleFor(it)}
+                  </Text>
 
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.rowTitle}>
-                      {title} • {route}
-                    </Text>
-                    <Text style={styles.rowMeta}>{when}</Text>
-                    <Text style={styles.rowMeta2}>{meta}</Text>
-                  </View>
+                  <Text style={{ color: isDebit ? "#FF8A8A" : "#7CFF9B", fontWeight: "900" }}>
+                    {amountText}
+                  </Text>
                 </View>
 
-                <Text style={[styles.amount, status === "approved" ? styles.neg : styles.dimAmount]}>
-                  {status === "approved" ? "-" : ""}₱{amt.toFixed(2)}
-                </Text>
-              </TouchableOpacity>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
+                  <Text style={{ color: "rgba(244,238,230,0.55)", fontSize: 12 }}>
+                    {new Date(it.created_at).toLocaleString()}
+                  </Text>
+
+                  <Text style={{ color: "rgba(244,238,230,0.75)", fontSize: 12, fontWeight: "800" }}>
+                    {badgeFor(it)}
+                  </Text>
+                </View>
+
+                {it.meta ? (
+                  <Text style={{ marginTop: 8, color: "rgba(244,238,230,0.5)", fontSize: 12 }}>
+                    {it.meta}
+                  </Text>
+                ) : null}
+              </View>
             );
           })}
 
-          {computed.filtered.length === 0 ? (
-            <Text style={styles.dim}>No transactions found.</Text>
+          {!loading && items.length === 0 ? (
+            <Text style={{ color: "rgba(244,238,230,0.65)", marginTop: 10 }}>
+              No transactions yet.
+            </Text>
           ) : null}
-        </View>
 
-        <View style={{ height: 30 }} />
-      </ScrollView>
-
-      <BottomNav navigation={navigation} active="History" />
-    </SafeAreaView>
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      </Card>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0B0E14" },
-  content: { padding: 18 },
-
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  dim: { color: "rgba(255,255,255,0.65)", marginTop: 10 },
-
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  title: { color: "#fff", fontSize: 24, fontWeight: "900" },
-  subtitle: { color: "rgba(255,255,255,0.6)", marginTop: 4 },
-
-  smallBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
-  smallBtnText: { color: "rgba(255,255,255,0.85)", fontWeight: "800" },
-
-  bigCard: {
-    marginTop: 16,
-    borderRadius: 22,
-    padding: 16,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
-  cardLabel: { color: "rgba(255,255,255,0.65)", fontSize: 12 },
-  bigValue: { color: "#fff", fontSize: 34, fontWeight: "900", marginTop: 8 },
-
-  pillsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
-  pill: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
-  pillActive: { backgroundColor: "#FFD36A", borderColor: "rgba(255,211,106,0.7)" },
-  pillText: { color: "rgba(255,255,255,0.8)", fontWeight: "900", fontSize: 12 },
-  pillTextActive: { color: "#0B0E14" },
-
-  cardHint: { color: "rgba(255,255,255,0.55)", marginTop: 12, fontSize: 12, lineHeight: 18 },
-
-  sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "900", marginTop: 18 },
-
-  row: {
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  rowLeft: { flexDirection: "row", alignItems: "flex-start", gap: 12, flex: 1 },
-
-  iconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 2,
-  },
-  iconText: { fontSize: 16 },
-
-  rowTitle: { color: "#fff", fontWeight: "900" },
-  rowMeta: { color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 12 },
-  rowMeta2: { color: "rgba(255,255,255,0.45)", marginTop: 4, fontSize: 11 },
-
-  amount: { fontWeight: "900", fontSize: 14 },
-  neg: { color: "#FF8A8A" },
-  dimAmount: { color: "rgba(255,255,255,0.45)" },
-});

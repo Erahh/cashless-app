@@ -1,24 +1,29 @@
 // App.js
-import React, { useEffect, useContext } from "react";
+import React, { useEffect, useContext, useRef } from "react";
 import { AppState } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
+import { StatusBar } from "expo-status-bar";
 
 import AppNavigator from "./navigation/AppNavigator";
 import { AppLockProvider, AppLockContext } from "./context/AppLockContext";
 import { supabase } from "./api/supabase";
 
-import { StatusBar } from "expo-status-bar";
-
 function AppWithLock() {
   const { setLocked } = useContext(AppLockContext);
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    const sub = AppState.addEventListener("change", async (state) => {
-      // Lock when leaving the app (inactive/background)
-      if (state === "background" || state === "inactive") {
+    const sub = AppState.addEventListener("change", async (nextState) => {
+      // Only lock when moving from active -> background/inactive
+      if (
+        appState.current === "active" &&
+        (nextState === "background" || nextState === "inactive")
+      ) {
         const { data } = await supabase.auth.getSession();
         if (data?.session) setLocked(true);
       }
+
+      appState.current = nextState;
     });
 
     return () => sub.remove();
@@ -34,10 +39,10 @@ function AppWithLock() {
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <AppLockProvider>
+    <AppLockProvider>
+      <NavigationContainer>
         <AppWithLock />
-      </AppLockProvider>
-    </NavigationContainer>
+      </NavigationContainer>
+    </AppLockProvider>
   );
 }

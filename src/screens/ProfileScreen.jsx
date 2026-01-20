@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useContext } from "react";
+import { AppLockContext } from "../context/AppLockContext";
 import {
   View,
   Text,
@@ -15,6 +16,7 @@ export default function ProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [account, setAccount] = useState(null);
+  const { setLocked } = useContext(AppLockContext);
 
   const computed = useMemo(() => {
     const name = profile?.full_name || "—";
@@ -50,7 +52,7 @@ export default function ProfileScreen({ navigation }) {
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       const userId = userRes?.user?.id;
       if (userErr || !userId) {
-        navigation.reset({ index: 0, routes: [{ name: "OTPScreen" }] });
+        navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
         return;
       }
 
@@ -70,12 +72,20 @@ export default function ProfileScreen({ navigation }) {
 
       setProfile(p);
       setAccount(a);
-    } catch (e) {
-      Alert.alert("Error", e.message || "Failed to load profile");
     } finally {
       setLoading(false);
     }
   }
+
+  const signOutToPhone = async () => {
+    try {
+      await supabase.auth.signOut();
+      setLocked(false);
+      navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
+    } catch (e) {
+      Alert.alert("Error", e.message || "Failed to sign out");
+    }
+  };
 
   useEffect(() => {
     const unsub = navigation.addListener("focus", load);
@@ -99,10 +109,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.headerTitle}>Profile</Text>
 
           <TouchableOpacity
-            onPress={async () => {
-              await supabase.auth.signOut();
-              navigation.reset({ index: 0, routes: [{ name: "OTPScreen" }] });
-            }}
+            onPress={signOutToPhone}
             style={[styles.iconBtn, { backgroundColor: "rgba(255, 90, 90, 0.14)" }]}
             activeOpacity={0.9}
           >
@@ -192,6 +199,58 @@ export default function ProfileScreen({ navigation }) {
               <TouchableOpacity style={styles.ctaBtn} onPress={() => navigation.navigate("PassengerType")} activeOpacity={0.9}>
                 <Text style={styles.ctaBtnText}>Apply for Verification</Text>
               </TouchableOpacity>
+            </View>
+
+            <View style={{ marginTop: 12 }}>
+              <GlassCard title="Account Actions" icon="⚙️">
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert("Switch number", "Sign out and use a different phone number?", [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Switch", style: "destructive", onPress: signOutToPhone },
+                    ]);
+                  }}
+                  activeOpacity={0.9}
+                  style={{
+                    marginTop: 6,
+                    borderRadius: 14,
+                    paddingVertical: 14,
+                    paddingHorizontal: 14,
+                    backgroundColor: "rgba(255,255,255,0.06)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.10)",
+                  }}
+                >
+                  <Text style={{ color: "#FFD36A", fontWeight: "900" }}>Use different number</Text>
+                  <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
+                    This will log you out and return to the phone login screen.
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert("Logout", "Are you sure you want to logout?", [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Logout", style: "destructive", onPress: signOutToPhone },
+                    ]);
+                  }}
+                  activeOpacity={0.9}
+                  style={{
+                    marginTop: 10,
+                    borderRadius: 14,
+                    paddingVertical: 14,
+                    paddingHorizontal: 14,
+                    backgroundColor: "rgba(255, 90, 90, 0.10)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255, 90, 90, 0.20)",
+                  }}
+                >
+                  <Text style={{ color: "#FF7A7A", fontWeight: "900" }}>Logout</Text>
+                  <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
+                    You will need OTP again to login.
+                  </Text>
+                </TouchableOpacity>
+              </GlassCard>
             </View>
           </>
         ) : null}

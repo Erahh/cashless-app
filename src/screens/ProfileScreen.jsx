@@ -72,6 +72,8 @@ export default function ProfileScreen({ navigation }) {
 
       setProfile(p);
       setAccount(a);
+    } catch (e) {
+      Alert.alert("Error", e.message || "Failed to load profile");
     } finally {
       setLoading(false);
     }
@@ -201,57 +203,55 @@ export default function ProfileScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <View style={{ marginTop: 12 }}>
-              <GlassCard title="Account Actions" icon="⚙️">
-                <TouchableOpacity
-                  onPress={() => {
-                    Alert.alert("Switch number", "Sign out and use a different phone number?", [
-                      { text: "Cancel", style: "cancel" },
-                      { text: "Switch", style: "destructive", onPress: signOutToPhone },
-                    ]);
-                  }}
-                  activeOpacity={0.9}
-                  style={{
-                    marginTop: 6,
-                    borderRadius: 14,
-                    paddingVertical: 14,
-                    paddingHorizontal: 14,
-                    backgroundColor: "rgba(255,255,255,0.06)",
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.10)",
-                  }}
-                >
-                  <Text style={{ color: "#FFD36A", fontWeight: "900" }}>Use different number</Text>
-                  <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
-                    This will log you out and return to the phone login screen.
-                  </Text>
-                </TouchableOpacity>
+            <GlassCard title="Account Actions" icon="⚙️">
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert("Switch number", "Sign out and use a different phone number?", [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Switch", style: "destructive", onPress: signOutToPhone },
+                  ]);
+                }}
+                activeOpacity={0.9}
+                style={{
+                  marginTop: 6,
+                  borderRadius: 14,
+                  paddingVertical: 14,
+                  paddingHorizontal: 14,
+                  backgroundColor: "rgba(255,255,255,0.06)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.10)",
+                }}
+              >
+                <Text style={{ color: "#FFD36A", fontWeight: "900" }}>Use different number</Text>
+                <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
+                  This will log you out and return to the phone login screen.
+                </Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={() => {
-                    Alert.alert("Logout", "Are you sure you want to logout?", [
-                      { text: "Cancel", style: "cancel" },
-                      { text: "Logout", style: "destructive", onPress: signOutToPhone },
-                    ]);
-                  }}
-                  activeOpacity={0.9}
-                  style={{
-                    marginTop: 10,
-                    borderRadius: 14,
-                    paddingVertical: 14,
-                    paddingHorizontal: 14,
-                    backgroundColor: "rgba(255, 90, 90, 0.10)",
-                    borderWidth: 1,
-                    borderColor: "rgba(255, 90, 90, 0.20)",
-                  }}
-                >
-                  <Text style={{ color: "#FF7A7A", fontWeight: "900" }}>Logout</Text>
-                  <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
-                    You will need OTP again to login.
-                  </Text>
-                </TouchableOpacity>
-              </GlassCard>
-            </View>
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert("Logout", "Are you sure you want to logout?", [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Logout", style: "destructive", onPress: signOutToPhone },
+                  ]);
+                }}
+                activeOpacity={0.9}
+                style={{
+                  marginTop: 10,
+                  borderRadius: 14,
+                  paddingVertical: 14,
+                  paddingHorizontal: 14,
+                  backgroundColor: "rgba(255, 90, 90, 0.10)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 90, 90, 0.20)",
+                }}
+              >
+                <Text style={{ color: "#FF7A7A", fontWeight: "900" }}>Logout</Text>
+                <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
+                  You will need OTP again to login.
+                </Text>
+              </TouchableOpacity>
+            </GlassCard>
           </>
         ) : null}
       </ScrollView>

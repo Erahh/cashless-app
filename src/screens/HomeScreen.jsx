@@ -36,9 +36,10 @@ export default function HomeScreen({ navigation, route }) {
   const [recent, setRecent] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  const loadStatus = async ({ silent = false } = {}) => {
+  const loadStatus = async ({ silent = false, canRetry = true } = {}) => {
     try {
-      setLoading(true);
+      // Only show full-screen loader if it's a fresh load (no status) or not silent
+      if (!status || !silent) setLoading(true);
       if (!silent) setNetMsg("");
 
       const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
@@ -88,12 +89,22 @@ export default function HomeScreen({ navigation, route }) {
         // ignore recent errors (dashboard can still load)
       }
     } catch (e) {
-      const msg =
-        e?.name === "AbortError"
-          ? "Server waking up (Render sleep). Tap Refresh in a few seconds."
-          : e.message;
+      const isTimeout = e?.name === "AbortError";
+      const msg = isTimeout
+        ? "Server waking up (Render sleep). Retrying..."
+        : e.message;
 
       setNetMsg(msg);
+
+      // ✅ one retry after short delay (only on timeout)
+      if (isTimeout && canRetry) {
+        try {
+          await new Promise((r) => setTimeout(r, 1500));
+          return await loadStatus({ silent: true, canRetry: false });
+        } catch {
+          // keep the netMsg already shown
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -263,14 +274,16 @@ export default function HomeScreen({ navigation, route }) {
         {/* Quick Actions */}
         <QuickActions
           items={[
-            { key: "topup", icon: "💳", title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("SendLoad") },
-            { key: "scan", icon: "📷", title: "Scan", sub: "Collect fare", onPress: () => navigation.navigate("OperatorScan") },
-            { key: "earn", icon: "💰", title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("Earnings") },
-            { key: "hist", icon: "🧾", title: "History", sub: "My scans", onPress: () => navigation.navigate("Transactions") },
-            { key: "ver", icon: "✅", title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminVerification") },
-            { key: "set", icon: "💸", title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminSettlements") },
-            { key: "rep", icon: "📄", title: "Reports", sub: "Activity", onPress: () => navigation.navigate("Transactions") },
-          ]}
+            { key: "topup", icon: "💳", title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
+            { key: "commuter_scan", icon: "📷", title: "Scan", sub: "Pay fare", onPress: () => navigation.navigate("CommuterScan"), show: computed.isCommuter },
+            { key: "hist", icon: "🧾", title: "History", sub: "Transactions", onPress: () => navigation.navigate("Transactions"), show: true },
+
+            { key: "operator_scan", icon: "📷", title: "Scan", sub: "Collect fare", onPress: () => navigation.navigate("OperatorScan"), show: computed.isOperator },
+            { key: "earn", icon: "💰", title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("Earnings"), show: computed.isOperator },
+
+            { key: "ver", icon: "✅", title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminVerification"), show: computed.isAdmin },
+            { key: "set", icon: "💸", title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminSettlements"), show: computed.isAdmin },
+          ].filter(a => a.show)}
         />
 
         {/* Role-aware Mid Card */}
@@ -390,7 +403,6 @@ export default function HomeScreen({ navigation, route }) {
           }}
           onPress={async () => {
             await loadStatus({ silent: false });
-            if (netMsg) Alert.alert("Network", netMsg);
           }}
         >
           <Text style={{ color: "rgba(255,255,255,0.85)", fontWeight: "800" }}>

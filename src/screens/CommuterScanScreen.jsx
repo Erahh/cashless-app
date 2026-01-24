@@ -1,186 +1,158 @@
-import React, { useEffect, useState, useRef } from "react";
-import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import React, { useMemo, useState } from "react";
+import { View, Text, TextInput, Alert, TouchableOpacity } from "react-native";
+import { Screen, Card, PrimaryButton, GhostButton, Pill } from "../components/ui";
+import QRScanView from "../components/QRScanView";
+import { payOperator } from "../api/payApi";
 
-export default function CommuterScanScreen({ navigation }) {
-    const [permission, requestPermission] = useCameraPermissions();
-    const [scanned, setScanned] = useState(false);
-    const [ready, setReady] = useState(false);
-    const lastValueRef = useRef(null);
+/**
+ * What QR should contain:
+ * - simplest: "OPQR-<operatorId>-...." (raw string)
+ * - OR JSON: {"operator_qr":"OPQR-..."}
+ */
+function extractOperatorQr(scanned) {
+    const raw = String(scanned || "").trim();
+    if (!raw) return "";
 
-    useEffect(() => {
-        (async () => {
-            if (!permission) return;
-            if (!permission.granted) await requestPermission();
-            setReady(true);
-        })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [permission]);
-
-    const onBarcodeScanned = ({ data }) => {
-        if (scanned) return;
-        if (!data) return;
-
-        // prevent duplicate rapid scans
-        if (lastValueRef.current === data) return;
-        lastValueRef.current = data;
-
-        setScanned(true);
-
-        // ✅ Accept formats:
-        // 1) plain token: OPQR_xxx
-        // 2) payload: cashless:opqr:OPQR_xxx
-        // 3) JSON: {"qr_token":"OPQR_xxx","operator_id":"..."}
-        let qr_token = null;
-
+    // If JSON payload
+    if (raw.startsWith("{") && raw.endsWith("}")) {
         try {
-            if (data.startsWith("{")) {
-                const obj = JSON.parse(data);
-                qr_token = obj.qr_token || obj.token || null;
-            } else if (data.startsWith("cashless:opqr:")) {
-                qr_token = data.replace("cashless:opqr:", "").trim();
-            } else {
-                qr_token = String(data).trim();
-            }
-        } catch {
-            qr_token = String(data).trim();
-        }
-
-        if (!qr_token || qr_token.length < 6) {
-            Alert.alert("Invalid QR", "This QR code is not recognized.", [
-                { text: "Scan again", onPress: () => setScanned(false) },
-            ]);
-            return;
-        }
-
-        // go to confirm screen
-        navigation.navigate("PayConfirm", { qr_token });
-    };
-
-    if (!permission || !ready) {
-        return (
-            <View style={styles.safe}>
-                <ActivityIndicator />
-                <Text style={styles.dim}>Preparing camera…</Text>
-            </View>
-        );
+            const obj = JSON.parse(raw);
+            if (obj?.operator_qr) return String(obj.operator_qr).trim();
+        } catch { }
     }
 
-    if (!permission.granted) {
-        return (
-            <View style={styles.safe}>
-                <Text style={styles.title}>Camera permission needed</Text>
-                <Text style={styles.dim}>Enable camera access to scan operator QR.</Text>
-
-                <TouchableOpacity style={styles.btn} onPress={requestPermission} activeOpacity={0.9}>
-                    <Text style={styles.btnText}>Allow Camera</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.linkBtn}>
-                    <Text style={styles.link}>Back</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
-    return (
-        <View style={styles.wrap}>
-            <CameraView
-                style={StyleSheet.absoluteFillObject}
-                facing="back"
-                barcodeScannerSettings={{
-                    barcodeTypes: ["qr"],
-                }}
-                onBarcodeScanned={scanned ? undefined : onBarcodeScanned}
-            />
-
-            {/* Overlay */}
-            <View style={styles.overlay}>
-                <View style={styles.topBar}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn} activeOpacity={0.9}>
-                        <Text style={styles.iconTxt}>‹</Text>
-                    </TouchableOpacity>
-
-                    <Text style={styles.header}>Scan Operator QR</Text>
-
-                    <View style={{ width: 42 }} />
-                </View>
-
-                <View style={styles.center}>
-                    <View style={styles.frame} />
-                    <Text style={styles.hint}>Align the QR inside the frame</Text>
-                    <Text style={styles.subHint}>We’ll show a confirmation before charging your wallet.</Text>
-                </View>
-
-                <View style={styles.bottomBar}>
-                    {scanned ? (
-                        <TouchableOpacity
-                            style={[styles.btn, { backgroundColor: "rgba(255,255,255,0.12)" }]}
-                            onPress={() => setScanned(false)}
-                            activeOpacity={0.9}
-                        >
-                            <Text style={[styles.btnText, { color: "#fff" }]}>Scan Again</Text>
-                        </TouchableOpacity>
-                    ) : (
-                        <Text style={styles.dimSmall}>Camera ready…</Text>
-                    )}
-                </View>
-            </View>
-        </View>
-    );
+    // otherwise raw token
+    return raw;
 }
 
-const styles = StyleSheet.create({
-    wrap: { flex: 1, backgroundColor: "#0B0E14" },
-    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.25)" },
+export default function CommuterScanScreen({ navigation }) {
+    const [operatorQr, setOperatorQr] = useState("");
+    const [amount, setAmount] = useState("");
+    const [step, setStep] = useState("scan"); // scan | pay
+    const [loading, setLoading] = useState(false);
 
-    topBar: {
-        paddingTop: 60,
-        paddingHorizontal: 18,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-    },
-    iconBtn: {
-        width: 42,
-        height: 42,
-        borderRadius: 14,
-        backgroundColor: "rgba(255,255,255,0.12)",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    iconTxt: { color: "#fff", fontSize: 20, fontWeight: "900" },
-    header: { color: "#fff", fontSize: 16, fontWeight: "900" },
+    const amountNum = useMemo(() => Number(amount || 0), [amount]);
 
-    center: { flex: 1, alignItems: "center", justifyContent: "center" },
-    frame: {
-        width: 260,
-        height: 260,
-        borderRadius: 22,
-        borderWidth: 2,
-        borderColor: "rgba(255,211,106,0.95)",
-        backgroundColor: "rgba(0,0,0,0.15)",
-    },
-    hint: { marginTop: 16, color: "#FFD36A", fontWeight: "900" },
-    subHint: { marginTop: 6, color: "rgba(255,255,255,0.7)", paddingHorizontal: 30, textAlign: "center" },
+    const onScanned = ({ data }) => {
+        const op = extractOperatorQr(data);
+        if (!op) return;
 
-    bottomBar: { padding: 18, paddingBottom: 30, alignItems: "center" },
-    dimSmall: { color: "rgba(255,255,255,0.55)" },
+        setOperatorQr(op);
+        setStep("pay");
+    };
 
-    safe: { flex: 1, backgroundColor: "#0B0E14", alignItems: "center", justifyContent: "center", padding: 18 },
-    title: { color: "#fff", fontSize: 18, fontWeight: "900", marginBottom: 8 },
-    dim: { color: "rgba(255,255,255,0.7)" },
+    const confirmPay = async () => {
+        try {
+            if (!operatorQr) return Alert.alert("Pay", "Missing operator QR.");
+            if (!amountNum || amountNum <= 0) return Alert.alert("Pay", "Enter a valid amount.");
+            if (amountNum < 5) return Alert.alert("Pay", "Minimum fare is ₱5 (for demo).");
 
-    btn: {
-        marginTop: 18,
-        backgroundColor: "#FFD36A",
-        paddingVertical: 14,
-        paddingHorizontal: 18,
-        borderRadius: 16,
-        alignItems: "center",
-        minWidth: 180,
-    },
-    btnText: { color: "#0B0E14", fontWeight: "900" },
-    linkBtn: { marginTop: 14 },
-    link: { color: "rgba(255,255,255,0.75)", textDecorationLine: "underline" },
-});
+            Alert.alert(
+                "Confirm Payment",
+                `Pay ₱${amountNum.toFixed(2)} to operator?`,
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Pay",
+                        style: "default",
+                        onPress: async () => {
+                            setLoading(true);
+                            try {
+                                const res = await payOperator({ operator_qr: operatorQr, amount: amountNum });
+
+                                Alert.alert(
+                                    "Paid ✅",
+                                    `Transaction: ${res?.tx_id || "OK"}\nNew balance: ₱${Number(res?.commuter_balance ?? 0).toFixed(2)}`,
+                                    [
+                                        {
+                                            text: "Back to Home",
+                                            onPress: () => navigation.navigate("Home", { refresh: true }),
+                                        },
+                                    ]
+                                );
+                            } catch (e) {
+                                Alert.alert("Payment Failed", e.message || "Unable to pay");
+                            } finally {
+                                setLoading(false);
+                            }
+                        },
+                    },
+                ]
+            );
+        } catch (e) {
+            Alert.alert("Error", e.message);
+        }
+    };
+
+    return (
+        <Screen title="Commuter Scan" subtitle="Scan operator QR then pay fare from your wallet.">
+            {step === "scan" ? (
+                <Card>
+                    <Pill text="Step 1 • Scan Operator QR" />
+                    <View style={{ marginTop: 14 }}>
+                        <QRScanView
+                            label="Scan Operator QR"
+                            hint="Point camera to the operator’s QR code."
+                            onScanned={onScanned}
+                            enabled={step === "scan"}
+                        />
+                    </View>
+
+                    <View style={{ marginTop: 14 }}>
+                        <GhostButton label="Back" onPress={() => navigation.goBack()} />
+                    </View>
+                </Card>
+            ) : (
+                <Card>
+                    <Pill text="Step 2 • Enter Fare" />
+
+                    <Text style={{ marginTop: 16, color: "rgba(244,238,230,0.75)", fontWeight: "800" }}>
+                        Operator QR
+                    </Text>
+                    <Text style={{ marginTop: 6, color: "#F4EEE6", fontWeight: "900" }} numberOfLines={1}>
+                        {operatorQr}
+                    </Text>
+
+                    <Text style={{ marginTop: 18, color: "rgba(244,238,230,0.75)" }}>Fare Amount (PHP)</Text>
+                    <TextInput
+                        value={amount}
+                        onChangeText={(t) => setAmount(t.replace(/[^\d.]/g, ""))}
+                        keyboardType="decimal-pad"
+                        placeholder="e.g. 15"
+                        placeholderTextColor="rgba(244,238,230,0.35)"
+                        style={{
+                            marginTop: 10,
+                            borderRadius: 14,
+                            padding: 14,
+                            borderWidth: 1,
+                            borderColor: "rgba(255,255,255,0.10)",
+                            backgroundColor: "rgba(0,0,0,0.18)",
+                            color: "#F4EEE6",
+                            fontWeight: "900",
+                            fontSize: 18,
+                        }}
+                    />
+
+                    <View style={{ marginTop: 16, gap: 10 }}>
+                        <PrimaryButton label={loading ? "Processing..." : "Pay Now"} onPress={confirmPay} disabled={loading} />
+                        <TouchableOpacity
+                            onPress={() => {
+                                setStep("scan");
+                                setAmount("");
+                                setOperatorQr("");
+                            }}
+                            style={{ paddingVertical: 12 }}
+                            activeOpacity={0.9}
+                        >
+                            <Text style={{ color: "rgba(255,255,255,0.75)", textAlign: "center", fontWeight: "800" }}>
+                                Scan different operator
+                            </Text>
+                        </TouchableOpacity>
+
+                        <GhostButton label="Back" onPress={() => navigation.goBack()} />
+                    </View>
+                </Card>
+            )}
+        </Screen>
+    );
+}

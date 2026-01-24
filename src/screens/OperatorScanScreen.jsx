@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { useCameraPermissions } from "expo-camera";
+import QRScanView from "../components/QRScanView";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
@@ -40,7 +41,7 @@ export default function OperatorScanScreen({ navigation }) {
         const saved = await AsyncStorage.getItem(KEY);
         const v = saved ? JSON.parse(saved) : null;
         setVehicle(v);
-        
+
         // Redirect to OperatorSetup if no vehicle selected
         if (!v?.id) {
           navigation.navigate("OperatorSetup");
@@ -51,7 +52,7 @@ export default function OperatorScanScreen({ navigation }) {
         navigation.navigate("OperatorSetup");
         return;
       }
-      
+
       // Reset scan state
       setScanning(true);
       setLast(null);
@@ -182,16 +183,12 @@ export default function OperatorScanScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.cameraWrap}>
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          barcodeScannerSettings={{
-            barcodeTypes: ["qr"],
-          }}
-          onBarcodeScanned={onBarcodeScanned}
-        />
-
+      <QRScanView
+        style={styles.cameraWrap}
+        onScanned={onBarcodeScanned}
+        enabled={canScan}
+        managedPermission={false} // ✅ because OperatorScanScreen already handles permission UI
+      >
         {/* Overlay */}
         <View style={styles.overlay}>
           <View style={styles.scanBox} />
@@ -199,7 +196,7 @@ export default function OperatorScanScreen({ navigation }) {
             {submitting ? "Processing…" : scanning ? "Scanning…" : "Paused"}
           </Text>
         </View>
-      </View>
+      </QRScanView>
 
       {/* Result card */}
       <View style={styles.bottomSheet}>

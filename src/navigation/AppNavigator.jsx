@@ -32,6 +32,7 @@ import MyQRScreen from "../screens/MyQRScreen";
 import TopUpCheckoutScreen from "../screens/TopUpCheckoutScreen";
 import CommuterScanScreen from "../screens/CommuterScanScreen";
 import PayConfirmScreen from "../screens/PayConfirmScreen";
+import OperatorMyQRScreen from "../screens/OperatorMyQRScreen";
 
 import AdminVerificationScreen from "../screens/AdminVerificationScreen";
 import AdminVerificationDetailScreen from "../screens/AdminVerificationDetailScreen";
@@ -106,6 +107,7 @@ export default function AppNavigator() {
           <Stack.Screen name="MyQR" component={MyQRScreen} />
           <Stack.Screen name="CommuterScan" component={CommuterScanScreen} />
           <Stack.Screen name="PayConfirm" component={PayConfirmScreen} />
+          <Stack.Screen name="OperatorMyQR" component={OperatorMyQRScreen} />
 
           {/* Checkout */}
           <Stack.Screen name="TopUpCheckout" component={TopUpCheckoutScreen} />

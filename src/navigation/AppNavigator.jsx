@@ -10,7 +10,6 @@ import MPINSetupScreen from "../screens/MPINSetupScreen";
 import ActivatedScreen from "../screens/ActivatedScreen";
 import PersonalInfoScreen from "../screens/PersonalInfoScreen";
 import ReviewInfoScreen from "../screens/ReviewInfoScreen";
-import SetMPINScreen from "../screens/SetMPINScreen";
 import HomeScreen from "../screens/HomeScreen";
 import MPINUnlockScreen from "../screens/MPINUnlockScreen";
 
@@ -39,6 +38,7 @@ import AdminVerificationDetailScreen from "../screens/AdminVerificationDetailScr
 import OperatorEarningsScreen from "../screens/OperatorEarningsScreen";
 import EarningsScreen from "../screens/EarningsScreen";
 import AdminSettlementsScreen from "../screens/AdminSettlementsScreen";
+import AdminCreateOperatorScreen from "../screens/AdminCreateOperatorScreen";
 
 
 
@@ -67,13 +67,13 @@ export default function AppNavigator() {
           <Stack.Screen name="Activated" component={ActivatedScreen} />
           <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
           <Stack.Screen name="ReviewInfo" component={ReviewInfoScreen} />
-          <Stack.Screen name="SetMPIN" component={SetMPINScreen} />
           <Stack.Screen name="AdminVerification" component={AdminVerificationScreen} />
           <Stack.Screen name="AdminVerificationDetail" component={AdminVerificationDetailScreen} />
           <Stack.Screen name="Transactions" component={TransactionsScreen} />
           {/* Main */}
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="AdminSettlements" component={AdminSettlementsScreen} />
+          <Stack.Screen name="AdminCreateOperator" component={AdminCreateOperatorScreen} />
 
           {/* Verification Flow */}
           <Stack.Screen name="PassengerType" component={PassengerTypeScreen} />

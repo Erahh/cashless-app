@@ -1,6 +1,26 @@
 import { supabase } from "./supabase";
 import { API_BASE_URL } from "../config/api";
 
+export async function createOperatorByPhone(phone) {
+  const { data: s } = await supabase.auth.getSession();
+  const token = s?.session?.access_token;
+  if (!token) throw new Error("No session");
+
+  const res = await fetch(`${API_BASE_URL}/admin/operators/create`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ phone }),
+  });
+
+  const text = await res.text();
+  const json = text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error(json?.error || `Failed (HTTP ${res.status})`);
+  return json;
+}
+
 async function getToken() {
   const { data } = await supabase.auth.getSession();
   const token = data?.session?.access_token;

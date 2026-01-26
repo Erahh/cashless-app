@@ -39,7 +39,7 @@ export default function AuthGateScreen({ navigation }) {
 
         // If table not ready or row missing, check if profile exists
         if (error || !account) {
-          // Check if profile exists to decide between PersonalInfo or SetMPIN
+          // Check if profile exists to decide between PersonalInfo or MPINSetup
           const { data: profile } = await supabase
             .from("profiles")
             .select("id")
@@ -50,8 +50,8 @@ export default function AuthGateScreen({ navigation }) {
             // No profile → start registration flow
             if (mounted) navigation.reset({ index: 0, routes: [{ name: "PersonalInfo" }] });
           } else {
-            // Profile exists but account not set up → go to SetMPIN
-            if (mounted) navigation.reset({ index: 0, routes: [{ name: "SetMPIN" }] });
+            // Profile exists but account not set up → go to MPINSetup
+            if (mounted) navigation.reset({ index: 0, routes: [{ name: "MPINSetup" }] });
           }
           return;
         }
@@ -69,8 +69,8 @@ export default function AuthGateScreen({ navigation }) {
             // No profile → start registration flow
             if (mounted) navigation.reset({ index: 0, routes: [{ name: "PersonalInfo" }] });
           } else {
-            // Profile exists but pin not set → go to SetMPIN
-            if (mounted) navigation.reset({ index: 0, routes: [{ name: "SetMPIN" }] });
+            // Profile exists but pin not set → go to MPINSetup
+            if (mounted) navigation.reset({ index: 0, routes: [{ name: "MPINSetup" }] });
           }
           return;
         }

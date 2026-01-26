@@ -283,6 +283,7 @@ export default function HomeScreen({ navigation, route }) {
             { key: "hist", icon: "🧾", title: "History", sub: "Transactions", onPress: () => navigation.navigate("Transactions"), show: computed.isOperator }, // Also Operator History
 
             { key: "ver", icon: "✅", title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminVerification"), show: computed.isAdmin },
+            { key: "create_op", icon: "🚌", title: "New Op", sub: "Create Operator", onPress: () => navigation.navigate("AdminCreateOperator"), show: computed.isAdmin },
             { key: "set", icon: "💸", title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminSettlements"), show: computed.isAdmin },
 
             // Commuter history fallback if not one of above (or just always show history at bottom list, but user requested specific QuickActions)

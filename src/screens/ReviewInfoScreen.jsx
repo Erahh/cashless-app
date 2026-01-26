@@ -26,7 +26,7 @@ export default function ReviewInfoScreen({ route, navigation }) {
           <Row k="Address" v={p?.address_line} />
         </Block>
 
-        <TouchableOpacity onPress={() => navigation.navigate("SetMPIN")} style={styles.btn} activeOpacity={0.9}>
+        <TouchableOpacity onPress={() => navigation.navigate("MPINSetup")} style={styles.btn} activeOpacity={0.9}>
           <Text style={styles.btnText}>Confirm</Text>
         </TouchableOpacity>
 

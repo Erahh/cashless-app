@@ -3,6 +3,7 @@ import { View, Text, TextInput, Button, Alert, TouchableOpacity } from "react-na
 import { AppLockContext } from "../context/AppLockContext";
 import { supabase } from "../api/supabase";
 import * as Crypto from "expo-crypto";
+import { verifyMpin } from "../api/mpinLocal";
 
 export default function MPINUnlockScreen({ navigation }) {
   const { setLocked } = useContext(AppLockContext);
@@ -60,6 +61,17 @@ export default function MPINUnlockScreen({ navigation }) {
         return;
       }
 
+      // ✅ Faster: try local verification first
+      const isCorrectLocal = await verifyMpin(mpin);
+      if (isCorrectLocal) {
+        setAttempts(0);
+        setMpin("");
+        setLocked(false);
+        navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+        return;
+      }
+
+      // fallback to Supabase check (optional, but good for sync)
       const enteredHash = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
         mpin
@@ -68,7 +80,7 @@ export default function MPINUnlockScreen({ navigation }) {
       const { data: pinData, error: pinErr } = await supabase
         .from("user_pins")
         .select("pin_hash")
-        .eq("user_id", userId)
+        .eq("commuter_id", userId)
         .single();
 
       // If no pin found, count as failed attempt (kept your behavior)

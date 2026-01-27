@@ -7,7 +7,9 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
@@ -68,15 +70,15 @@ export default function MyQRScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.content}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>My QR</Text>
-            <Text style={styles.subtitle}>Show this to the operator to pay</Text>
-          </View>
-
-          <TouchableOpacity style={styles.smallBtn} onPress={load}>
-            <Text style={styles.smallBtnText}>Refresh</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Header - Same as Wallet */}
+        <View style={styles.topRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={20} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My QR</Text>
+          <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
+            <Ionicons name="refresh" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -113,31 +115,46 @@ export default function MyQRScreen({ navigation }) {
         >
           <Text style={styles.primaryBtnText}>How it works</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0B0E14" },
-  content: { padding: 18, flex: 1 },
+  safe: { flex: 1, backgroundColor: "#1A1D24" },
+  content: { padding: 18, paddingTop: 60 },
 
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   dim: { color: "rgba(255,255,255,0.65)", marginTop: 10 },
 
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  title: { color: "#fff", fontSize: 24, fontWeight: "900" },
-  subtitle: { color: "rgba(255,255,255,0.6)", marginTop: 4 },
-
-  smallBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+  // Header - Same as Wallet
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
   },
-  smallBtnText: { color: "rgba(255,255,255,0.85)", fontWeight: "800" },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  refreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   card: {
     marginTop: 16,

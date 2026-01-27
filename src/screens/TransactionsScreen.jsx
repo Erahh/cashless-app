@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, RefreshControl, Alert } from "react-native";
-import { Screen, Card, Pill } from "../components/ui";
+import { View, Text, ScrollView, RefreshControl, Alert, SafeAreaView, TouchableOpacity, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Card, Pill } from "../components/ui";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
 
@@ -72,72 +73,128 @@ export default function TransactionsScreen({ navigation }) {
   };
 
   return (
-    <Screen title="Transactions" subtitle="Your wallet activity history.">
-      <Card>
-        <Pill text={loading ? "Loading..." : `${items.length} records`} />
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {/* Header - Same as Wallet */}
+        <View style={styles.topRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={20} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Transactions</Text>
+          <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
+            <Ionicons name="refresh" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
 
-        <ScrollView
-          style={{ marginTop: 14 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          showsVerticalScrollIndicator={false}
-        >
-          {items.map((it) => {
-            const isDebit =
-              it.source === "ledger" &&
-              (String(it.kind).includes("debit") || String(it.kind).includes("fare"));
+        <Card>
+          <Pill text={loading ? "Loading..." : `${items.length} records`} />
 
-            const amountText = (isDebit ? "-" : "+") + formatPHP(it.amount);
+          <ScrollView
+            style={{ marginTop: 14 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            showsVerticalScrollIndicator={false}
+          >
+            {items.map((it) => {
+              const isDebit =
+                it.source === "ledger" &&
+                (String(it.kind).includes("debit") || String(it.kind).includes("fare"));
 
-            return (
-              <View
-                key={it.id}
-                style={{
-                  padding: 14,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.10)",
-                  backgroundColor: "rgba(0,0,0,0.18)",
-                  marginBottom: 10,
-                }}
-              >
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ color: "#F4EEE6", fontWeight: "900" }}>
-                    {titleFor(it)}
-                  </Text>
+              const amountText = (isDebit ? "-" : "+") + formatPHP(it.amount);
 
-                  <Text style={{ color: isDebit ? "#FF8A8A" : "#7CFF9B", fontWeight: "900" }}>
-                    {amountText}
-                  </Text>
+              return (
+                <View
+                  key={it.id}
+                  style={{
+                    padding: 14,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.10)",
+                    backgroundColor: "rgba(0,0,0,0.18)",
+                    marginBottom: 10,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ color: "#F4EEE6", fontWeight: "900" }}>
+                      {titleFor(it)}
+                    </Text>
+
+                    <Text style={{ color: isDebit ? "#FF8A8A" : "#7CFF9B", fontWeight: "900" }}>
+                      {amountText}
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
+                    <Text style={{ color: "rgba(244,238,230,0.55)", fontSize: 12 }}>
+                      {new Date(it.created_at).toLocaleString()}
+                    </Text>
+
+                    <Text style={{ color: "rgba(244,238,230,0.75)", fontSize: 12, fontWeight: "800" }}>
+                      {badgeFor(it)}
+                    </Text>
+                  </View>
+
+                  {it.meta ? (
+                    <Text style={{ marginTop: 8, color: "rgba(244,238,230,0.5)", fontSize: 12 }}>
+                      {it.meta}
+                    </Text>
+                  ) : null}
                 </View>
+              );
+            })}
 
-                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
-                  <Text style={{ color: "rgba(244,238,230,0.55)", fontSize: 12 }}>
-                    {new Date(it.created_at).toLocaleString()}
-                  </Text>
+            {!loading && items.length === 0 ? (
+              <Text style={{ color: "rgba(244,238,230,0.65)", marginTop: 10 }}>
+                No transactions yet.
+              </Text>
+            ) : null}
 
-                  <Text style={{ color: "rgba(244,238,230,0.75)", fontSize: 12, fontWeight: "800" }}>
-                    {badgeFor(it)}
-                  </Text>
-                </View>
-
-                {it.meta ? (
-                  <Text style={{ marginTop: 8, color: "rgba(244,238,230,0.5)", fontSize: 12 }}>
-                    {it.meta}
-                  </Text>
-                ) : null}
-              </View>
-            );
-          })}
-
-          {!loading && items.length === 0 ? (
-            <Text style={{ color: "rgba(244,238,230,0.65)", marginTop: 10 }}>
-              No transactions yet.
-            </Text>
-          ) : null}
-
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      </Card>
-    </Screen>
+            <View style={{ height: 24 }} />
+          </ScrollView>
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#1A1D24",
+  },
+  content: {
+    padding: 18,
+    paddingTop: 60,
+  },
+  // Header - Same as Wallet
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  refreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

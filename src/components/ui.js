@@ -1,10 +1,16 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-export function Screen({ title, subtitle, rightSlot, children }) {
+export function Screen({ title, subtitle, rightSlot, onBack, children }) {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
+        {onBack && (
+          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+            <Ionicons name="chevron-back" size={24} color="#F4EEE6" />
+          </TouchableOpacity>
+        )}
         <View style={{ flex: 1 }}>
           {title ? <Text style={styles.title}>{title}</Text> : null}
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -61,6 +67,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 14,
+  },
+  backBtn: {
+    marginRight: 12,
+    padding: 4,
   },
   title: {
     fontSize: 26,
@@ -127,4 +137,3 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
-    

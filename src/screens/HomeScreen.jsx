@@ -368,17 +368,29 @@ export default function HomeScreen({ navigation, route }) {
                 ? `GCash • ${String(tx.status || "").toUpperCase()}`
                 : tx.meta || String(tx.kind || "ledger");
 
+            // Format date nicely
+            const txDate = new Date(tx.created_at);
+            const dateStr = txDate.toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            });
+            const timeStr = txDate.toLocaleTimeString(undefined, {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            });
+
             return (
               <View key={tx.id} style={styles.txRow}>
                 <View style={styles.txLeft}>
                   <View style={styles.txIcon}>
                     <Text style={styles.txIconText}>{tx.source === "topup" ? "💳" : "🚌"}</Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.txTitle}>{title}</Text>
-                    <Text style={styles.txMeta}>
-                      {meta} • {new Date(tx.created_at).toLocaleString()}
-                    </Text>
+                    <Text style={styles.txMeta}>{meta}</Text>
+                    <Text style={styles.txTime}>{dateStr} • {timeStr}</Text>
                   </View>
                 </View>
 
@@ -587,7 +599,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  txLeft: { flexDirection: "row", alignItems: "center" },
+  txLeft: { flexDirection: "row", alignItems: "center", flex: 1, marginRight: 12 },
   txIcon: {
     width: 38,
     height: 38,
@@ -599,9 +611,10 @@ const styles = StyleSheet.create({
   },
   txIconText: { fontSize: 16 },
   txTitle: { color: "#fff", fontWeight: "800" },
-  txMeta: { color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 12 },
+  txMeta: { color: "rgba(255,255,255,0.65)", marginTop: 3, fontSize: 12, fontWeight: "600" },
+  txTime: { color: "rgba(255,255,255,0.45)", marginTop: 2, fontSize: 11 },
 
-  txAmount: { fontWeight: "900", fontSize: 14 },
+  txAmount: { fontWeight: "900", fontSize: 16 },
   txNeg: { color: "#FF8A8A" },
   txPos: { color: "#7CFF9B" },
 });

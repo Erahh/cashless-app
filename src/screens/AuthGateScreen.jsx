@@ -19,10 +19,12 @@ export default function AuthGateScreen({ navigation }) {
 
     async function go() {
       try {
-        const { data: sessionRes } = await supabase.auth.getSession();
+        const { data: sessionRes, error: sErr } = await supabase.auth.getSession();
+        if (sErr) throw sErr;
+
         const session = sessionRes?.session;
 
-        // 1) No session => Phone login (which then goes to OTP)
+        // 1) No session => Phone login
         if (!session?.user?.id) {
           if (mounted) navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
           return;
@@ -30,53 +32,42 @@ export default function AuthGateScreen({ navigation }) {
 
         const userId = session.user.id;
 
-        // 2) Check activation state
-        const { data: account, error } = await supabase
+        // 2) Read commuter account (may not exist yet)
+        const { data: account, error: aErr } = await supabase
           .from("commuter_accounts")
           .select("account_active, pin_set")
           .eq("commuter_id", userId)
-          .single();
+          .maybeSingle();
 
-        // If table not ready or row missing, check if profile exists
-        if (error || !account) {
-          // Check if profile exists to decide between PersonalInfo or MPINSetup
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("id", userId)
-            .single();
+        // 3) Read profile (may not exist yet)
+        const { data: profile, error: pErr } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", userId)
+          .maybeSingle();
 
-          if (!profile) {
-            // No profile → start registration flow
-            if (mounted) navigation.reset({ index: 0, routes: [{ name: "PersonalInfo" }] });
-          } else {
-            // Profile exists but account not set up → go to MPINSetup
-            if (mounted) navigation.reset({ index: 0, routes: [{ name: "MPINSetup" }] });
-          }
+        // If DB errors happen, treat as fallback (send to PersonalInfo)
+        // (safe for demo + avoids hard crash)
+        if (aErr) console.warn("commuter_accounts read:", aErr.message);
+        if (pErr) console.warn("profiles read:", pErr.message);
+
+        // A) Profile missing => PersonalInfo
+        if (!profile?.id) {
+          if (mounted) navigation.reset({ index: 0, routes: [{ name: "PersonalInfo" }] });
           return;
         }
 
-        // Check if account is active and pin is set
-        if (!account.account_active || !account.pin_set) {
-          // Check if profile exists
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("id", userId)
-            .single();
+        // B) Profile exists but account row missing OR pin not set OR inactive => MPINSetup
+        const active = !!account?.account_active;
+        const pinSet = !!account?.pin_set;
 
-          if (!profile) {
-            // No profile → start registration flow
-            if (mounted) navigation.reset({ index: 0, routes: [{ name: "PersonalInfo" }] });
-          } else {
-            // Profile exists but pin not set → go to MPINSetup
-            if (mounted) navigation.reset({ index: 0, routes: [{ name: "MPINSetup" }] });
-          }
+        if (!active || !pinSet) {
+          if (mounted) navigation.reset({ index: 0, routes: [{ name: "MPINSetup" }] });
           return;
         }
 
-        // 3) Active => Home
-        if (mounted) navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+        // C) Ready => RoleGate
+        if (mounted) navigation.reset({ index: 0, routes: [{ name: "RoleGate" }] });
       } catch (e) {
         console.error("AuthGate error:", e);
         // fallback to Phone login

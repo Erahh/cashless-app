@@ -278,13 +278,13 @@ export default function HomeScreen({ navigation, route }) {
             { key: "topup", icon: "💳", title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
             { key: "my_qr", icon: "📲", title: "My QR", sub: "Show Code", onPress: () => navigation.navigate("MyQR"), show: computed.isCommuter },
 
-            { key: "op_qr", icon: "📲", title: "My QR", sub: "Receive Pay", onPress: () => navigation.navigate("OperatorMyQR"), show: computed.isOperator },
-            { key: "earn", icon: "💰", title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("Earnings"), show: computed.isOperator },
+            { key: "op_qr", icon: "📲", title: "My QR", sub: "Receive Pay", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorMyQR" }), show: computed.isOperator },
+            { key: "earn", icon: "💰", title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorEarnings" }), show: computed.isOperator },
             { key: "hist", icon: "🧾", title: "History", sub: "Transactions", onPress: () => navigation.navigate("Transactions"), show: computed.isOperator }, // Also Operator History
 
-            { key: "ver", icon: "✅", title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminVerification"), show: computed.isAdmin },
-            { key: "create_op", icon: "🚌", title: "New Op", sub: "Create Operator", onPress: () => navigation.navigate("AdminCreateOperator"), show: computed.isAdmin },
-            { key: "set", icon: "💸", title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminSettlements"), show: computed.isAdmin },
+            { key: "ver", icon: "✅", title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminApp", { screen: "AdminVerification" }), show: computed.isAdmin },
+            { key: "create_op", icon: "🚌", title: "New Op", sub: "Create Operator", onPress: () => navigation.navigate("AdminApp", { screen: "AdminCreateOperator" }), show: computed.isAdmin },
+            { key: "set", icon: "💸", title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminApp", { screen: "AdminSettlements" }), show: computed.isAdmin },
 
             // Commuter history fallback if not one of above (or just always show history at bottom list, but user requested specific QuickActions)
             { key: "commuter_hist", icon: "🧾", title: "History", sub: "Transactions", onPress: () => navigation.navigate("Transactions"), show: false },
@@ -296,8 +296,8 @@ export default function HomeScreen({ navigation, route }) {
           style={styles.midCard}
           activeOpacity={0.9}
           onPress={() => {
-            if (computed.isOperator) return navigation.navigate("OperatorMyQR");
-            if (computed.isAdmin) return navigation.navigate("AdminSettlements");
+            if (computed.isOperator) return navigation.navigate("OperatorApp", { screen: "OperatorMyQR" });
+            if (computed.isAdmin) return navigation.navigate("AdminApp", { screen: "AdminSettlements" });
             return navigation.navigate("CommuterScan");
           }}
         >

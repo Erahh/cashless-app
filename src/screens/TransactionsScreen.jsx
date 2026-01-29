@@ -74,21 +74,22 @@ export default function TransactionsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Fixed Header - Outside ScrollView */}
+      <View style={styles.topRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={20} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Transactions</Text>
+        <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
+          <Ionicons name="refresh" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Header - Same as Wallet */}
-        <View style={styles.topRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={20} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Transactions</Text>
-          <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
-            <Ionicons name="refresh" size={18} color="#fff" />
-          </TouchableOpacity>
-        </View>
 
         <Card>
           <Pill text={loading ? "Loading..." : `${items.length} records`} />
@@ -167,14 +168,15 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 18,
-    paddingTop: 60,
   },
-  // Header - Same as Wallet
+  // Header (fixed outside ScrollView)
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   backBtn: {
     width: 40,

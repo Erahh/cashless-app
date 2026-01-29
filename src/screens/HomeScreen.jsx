@@ -276,7 +276,7 @@ export default function HomeScreen({ navigation, route }) {
           items={[
             { key: "commuter_scan", icon: "📷", title: "Scan", sub: "Pay fare", onPress: () => navigation.navigate("CommuterScan"), show: computed.isCommuter },
             { key: "topup", icon: "💳", title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
-            { key: "my_qr", icon: "📲", title: "My QR", sub: "Show Code", onPress: () => navigation.navigate("MyQR"), show: computed.isCommuter },
+            { key: "tap_pay", icon: "�", title: "Tap to Pay", sub: "NFC (Demo)", onPress: () => navigation.navigate("NFCTapPay"), show: computed.isCommuter },
 
             { key: "op_qr", icon: "📲", title: "My QR", sub: "Receive Pay", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorMyQR" }), show: computed.isOperator },
             { key: "earn", icon: "💰", title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorEarnings" }), show: computed.isOperator },

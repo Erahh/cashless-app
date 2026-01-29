@@ -11,6 +11,7 @@ import ProfileScreen from "../screens/ProfileScreen";
 import MyQRScreen from "../screens/MyQRScreen";
 import CommuterScanScreen from "../screens/CommuterScanScreen";
 import PayConfirmScreen from "../screens/PayConfirmScreen";
+import NFCTapPayScreen from "../screens/NFCTapPayScreen";
 import TopUpCheckoutScreen from "../screens/TopUpCheckoutScreen";
 
 import PassengerTypeScreen from "../screens/PassengerTypeScreen";
@@ -38,6 +39,7 @@ export default function CommuterNavigator() {
             <Stack.Screen name="MyQR" component={MyQRScreen} />
             <Stack.Screen name="CommuterScan" component={CommuterScanScreen} />
             <Stack.Screen name="PayConfirm" component={PayConfirmScreen} />
+            <Stack.Screen name="NFCTapPay" component={NFCTapPayScreen} />
 
             {/* Verification */}
             <Stack.Screen name="PassengerType" component={PassengerTypeScreen} />

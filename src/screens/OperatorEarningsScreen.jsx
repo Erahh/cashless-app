@@ -1,24 +1,38 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  SafeAreaView,
   ActivityIndicator,
   Alert,
 } from "react-native";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
 
+// ✅ Helper: Render cold start safe timeout
+async function fetchWithTimeout(url, options = {}, ms = 35000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 export default function OperatorEarningsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({ total: 0, status: "unpaid", items: [] });
+  const [netMsg, setNetMsg] = useState("");
+  const [data, setData] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  const load = async () => {
+  const load = async ({ silent = false, canRetry = true } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
+      if (!silent) setNetMsg("");
 
       const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
       if (sessionErr) throw sessionErr;
@@ -26,40 +40,87 @@ export default function OperatorEarningsScreen({ navigation }) {
       const token = sessionData?.session?.access_token;
       if (!token) throw new Error("No session. Please login again.");
 
-      const res = await fetch(`${API_BASE_URL}/settlements/me?status=unpaid`, {
+      // ✅ This is the ONLY endpoint assumption.
+      // If your backend uses a different route, just change it here.
+      const res = await fetchWithTimeout(`${API_BASE_URL}/operator/earnings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to load earnings");
+      const text = await res.text();
+      let json = null;
 
-      setData({
-        total: Number(json.total ?? 0),
-        status: json.status || "unpaid",
-        items: json.items || [],
-      });
+      if (text) {
+        try {
+          json = JSON.parse(text);
+        } catch {
+          throw new Error(`Server returned non-JSON (HTTP ${res.status})`);
+        }
+      }
+
+      if (!res.ok) {
+        throw new Error(json?.error || `Request failed (HTTP ${res.status})`);
+      }
+
+      setData(json);
+      setLastUpdated(new Date().toISOString());
+      setNetMsg("");
     } catch (e) {
-      Alert.alert("Error", e.message);
+      const isTimeout = e?.name === "AbortError";
+      const msg = isTimeout ? "Server waking up (Render sleep). Retrying..." : e.message;
+      setNetMsg(msg);
+
+      if (isTimeout && canRetry) {
+        try {
+          await new Promise((r) => setTimeout(r, 1500));
+          return await load({ silent: true, canRetry: false });
+        } catch {
+          // keep netMsg
+        }
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const unsub = navigation?.addListener?.("focus", load);
-    load();
+    const unsub = navigation?.addListener?.("focus", () => load({ silent: true }));
+    load({ silent: false });
     return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const computed = useMemo(() => {
-    const totalText = Number(data.total || 0).toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    // Expected (recommended) backend response shape:
+    // {
+    //   ok: true,
+    //   summary: { today_total, week_total, unpaid_total, paid_total },
+    //   settlements: [{ id, amount, status, created_at, route_name, vehicle_id, paid_at }]
+    // }
+    const s = data?.summary || {};
+    const settlements = Array.isArray(data?.settlements) ? data.settlements : [];
 
-    const count = (data.items || []).length;
+    const today = Number(s.today_total ?? 0);
+    const week = Number(s.week_total ?? 0);
+    const unpaid = Number(s.unpaid_total ?? 0);
+    const paid = Number(s.paid_total ?? 0);
 
-    return { totalText, count };
+    const money = (n) =>
+      Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Small badge tone based on unpaid
+    const badge =
+      unpaid > 0
+        ? { text: "UNPAID • Pending Payout", tone: "warn" }
+        : { text: "ALL PAID • Up to date", tone: "good" };
+
+    return {
+      todayText: money(today),
+      weekText: money(week),
+      unpaidText: money(unpaid),
+      paidText: money(paid),
+      badge,
+      settlements,
+    };
   }, [data]);
 
   if (loading) {
@@ -67,7 +128,9 @@ export default function OperatorEarningsScreen({ navigation }) {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <ActivityIndicator />
-          <Text style={styles.dim}>Loading earnings...</Text>
+          <Text style={{ color: "rgba(255,255,255,0.7)", marginTop: 10 }}>
+            Loading operator earnings...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -75,151 +138,217 @@ export default function OperatorEarningsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.smallLabel}>Operator Earnings</Text>
-            <Text style={styles.title}>Unpaid Settlements</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{computed.count} trips • {String(data.status).toUpperCase()}</Text>
+            <Text style={styles.balance}>₱{computed.todayText}</Text>
+            <Text style={styles.subtitle}>Today’s collected fares</Text>
+
+            {lastUpdated ? (
+              <Text style={styles.updatedAt}>
+                Last updated: {new Date(lastUpdated).toLocaleTimeString()}
+              </Text>
+            ) : null}
+
+            <View style={[styles.badge, styles[`badge_${computed.badge.tone}`]]}>
+              <Text style={styles.badgeText}>{computed.badge.text}</Text>
             </View>
           </View>
 
-          <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.icon}>✕</Text>
+          <TouchableOpacity style={styles.smallBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.smallBtnText}>Back</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Total Card */}
-        <View style={styles.bigCard}>
-          <Text style={styles.cardLabel}>Unpaid Total</Text>
-          <Text style={styles.bigValue}>₱{computed.totalText}</Text>
+        {netMsg ? (
+          <View style={styles.netBox}>
+            <Text style={styles.netTitle}>Connection</Text>
+            <Text style={styles.netText}>{netMsg}</Text>
+          </View>
+        ) : null}
 
-          <View style={styles.cardRow}>
-            <View style={styles.mini}>
-              <Text style={styles.miniLabel}>Trips</Text>
-              <Text style={styles.miniValue}>{computed.count}</Text>
+        {/* Big Card */}
+        <View style={styles.bigCard}>
+          <View style={styles.bigCardTopRow}>
+            <View>
+              <Text style={styles.cardLabel}>Unpaid (Payout Queue)</Text>
+              <Text style={styles.cardValue}>₱{computed.unpaidText}</Text>
             </View>
 
-            <View style={styles.mini}>
-              <Text style={styles.miniLabel}>Status</Text>
-              <Text style={styles.miniValue}>{String(data.status).toUpperCase()}</Text>
+            <View style={styles.pill}>
+              <Text style={styles.pillText}>Operator</Text>
             </View>
           </View>
 
-          <Text style={styles.hint}>
-            This is a settlement ledger. Admin can mark these as paid later.
+          <View style={styles.waveBox}>
+            <View style={styles.waveLine} />
+          </View>
+
+          <Text style={styles.cardHint}>
+            Admin marks settlements as paid. This shows how much is waiting for payout.
           </Text>
         </View>
 
-        {/* Quick Actions */}
-        <Text style={styles.sectionTitle}>Actions</Text>
+        {/* Stats cards (same vibe as commuter wallet card) */}
+        <View style={styles.statsRow}>
+          <TouchableOpacity style={styles.statCard} activeOpacity={0.9}>
+            <Text style={styles.statLabel}>This Week</Text>
+            <Text style={styles.statValue}>₱{computed.weekText}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.statCard} activeOpacity={0.9}>
+            <Text style={styles.statLabel}>Paid Total</Text>
+            <Text style={styles.statValue}>₱{computed.paidText}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick actions */}
         <View style={styles.actionsRow}>
-          <ActionCard
-            icon="🔄"
-            title="Refresh"
-            subtitle="Reload"
-            onPress={load}
-          />
-          <ActionCard
-            icon="🚌"
-            title="Change Vehicle"
-            subtitle="Operator setup"
-            onPress={() => navigation.navigate("OperatorSetup")}
-          />
-          <ActionCard
-            icon="📷"
-            title="Scan"
-            subtitle="Open scanner"
-            onPress={() => navigation.navigate("OperatorScan")}
-          />
+          <TouchableOpacity
+            style={styles.actionCard}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate("OperatorApp", { screen: "OperatorScan" })}
+          >
+            <View style={styles.actionIcon}>
+              <Text style={styles.actionIconText}>📷</Text>
+            </View>
+            <Text style={styles.actionTitle}>Scan</Text>
+            <Text style={styles.actionSub}>Collect fare</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate("OperatorApp", { screen: "OperatorMyQR" })}
+          >
+            <View style={styles.actionIcon}>
+              <Text style={styles.actionIconText}>📲</Text>
+            </View>
+            <Text style={styles.actionTitle}>My QR</Text>
+            <Text style={styles.actionSub}>Receive pay</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            activeOpacity={0.9}
+            onPress={() => load({ silent: false })}
+          >
+            <View style={styles.actionIcon}>
+              <Text style={styles.actionIconText}>🔄</Text>
+            </View>
+            <Text style={styles.actionTitle}>Refresh</Text>
+            <Text style={styles.actionSub}>Update list</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* List */}
+        {/* Recent settlements */}
         <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Recent Unpaid</Text>
-          <Text style={styles.dim}>{computed.count} items</Text>
+          <Text style={styles.sectionTitle}>Recent Settlements</Text>
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert(
+                "Info",
+                "This list shows operator settlements created when commuters pay fares. Admin marks them as paid."
+              )
+            }
+          >
+            <Text style={styles.link}>What’s this?</Text>
+          </TouchableOpacity>
         </View>
 
-        {computed.count === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyTitle}>No unpaid settlements</Text>
-            <Text style={styles.emptyText}>
-              Scan commuter QR codes to generate settlement entries.
-            </Text>
-          </View>
-        ) : (
-          <View style={{ marginTop: 12, gap: 10 }}>
-            {data.items.map((x) => (
-              <View key={x.id} style={styles.rowCard}>
-                <View style={styles.rowLeft}>
-                  <View style={styles.rowIcon}>
-                    <Text style={styles.rowIconText}>🧾</Text>
+        <View style={styles.list}>
+          {computed.settlements.slice(0, 20).map((x) => {
+            const amount = Number(x.amount || 0);
+            const status = String(x.status || "unpaid").toLowerCase();
+
+            const date = x.paid_at || x.created_at;
+            const d = date ? new Date(date) : null;
+
+            const dateStr = d
+              ? d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+              : "—";
+
+            const timeStr = d
+              ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })
+              : "";
+
+            const statusText = status === "paid" ? "PAID" : "UNPAID";
+
+            return (
+              <View key={x.id} style={styles.txRow}>
+                <View style={styles.txLeft}>
+                  <View style={styles.txIcon}>
+                    <Text style={styles.txIconText}>{status === "paid" ? "✅" : "⏳"}</Text>
                   </View>
-                  <View>
-                    <Text style={styles.rowTitle}>₱{Number(x.amount || 0).toFixed(2)}</Text>
-                    <Text style={styles.rowMeta}>
-                      {x.route_name ? `Route ${x.route_name}` : "No route"} •{" "}
-                      {new Date(x.created_at).toLocaleString()}
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.txTitle}>
+                      Settlement • {statusText}
                     </Text>
-                    <Text style={styles.rowSub}>
-                      Vehicle: {String(x.vehicle_id).slice(0, 8)}… • Tx: {String(x.tx_id).slice(0, 8)}…
+
+                    <Text style={styles.txMeta}>
+                      {x.route_name ? `Route: ${x.route_name}` : "Route: —"}{" "}
+                      {x.vehicle_id ? `• Vehicle: ${String(x.vehicle_id).slice(0, 6)}…` : ""}
+                    </Text>
+
+                    <Text style={styles.txTime}>
+                      {dateStr} {timeStr ? `• ${timeStr}` : ""}
                     </Text>
                   </View>
                 </View>
 
-                <View style={styles.statusPill}>
-                  <Text style={styles.statusText}>{String(x.status).toUpperCase()}</Text>
-                </View>
+                <Text style={[styles.txAmount, status === "paid" ? styles.txPos : styles.txWarn]}>
+                  ₱{amount.toFixed(2)}
+                </Text>
               </View>
-            ))}
-          </View>
-        )}
+            );
+          })}
 
-        <View style={{ height: 24 }} />
+          {computed.settlements.length === 0 ? (
+            <Text style={{ color: "rgba(255,255,255,0.55)", marginTop: 10 }}>
+              No settlements yet. Scan commuter QR to collect fare.
+            </Text>
+          ) : null}
+        </View>
 
-        {/* Bottom Buttons */}
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate("OperatorScan")}>
-          <Text style={styles.primaryText}>Start Scanning</Text>
+        {/* Back to scan */}
+        <TouchableOpacity
+          style={{ marginTop: 12, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", alignItems: "center" }}
+          onPress={() => navigation.navigate("OperatorApp", { screen: "OperatorScan" })}
+        >
+          <Text style={{ color: "rgba(255,255,255,0.85)", fontWeight: "800" }}>
+            Back to Scan
+          </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.ghostBtn} onPress={() => navigation.navigate("Home")}>
-          <Text style={styles.ghostText}>Back to Home</Text>
-        </TouchableOpacity>
-
-        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function ActionCard({ icon, title, subtitle, onPress }) {
-  return (
-    <TouchableOpacity style={styles.actionCard} activeOpacity={0.9} onPress={onPress}>
-      <View style={styles.actionIcon}>
-        <Text style={styles.actionIconText}>{icon}</Text>
-      </View>
-      <Text style={styles.actionTitle}>{title}</Text>
-      <Text style={styles.actionSub}>{subtitle}</Text>
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0B0E14" },
-  content: { padding: 18, paddingTop: 60 },
+  scroll: { flex: 1 },
+  content: { padding: 18, paddingBottom: 80 },
 
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  dim: { color: "rgba(255,255,255,0.6)", marginTop: 8, fontSize: 12 },
 
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    marginTop: 6,
   },
   smallLabel: { color: "rgba(255,255,255,0.65)", fontSize: 12 },
-  title: { color: "#fff", fontSize: 22, fontWeight: "900", marginTop: 6 },
+  balance: { color: "#fff", fontSize: 32, fontWeight: "800", marginTop: 6 },
+  subtitle: { color: "rgba(255,255,255,0.70)", marginTop: 6 },
+
+  updatedAt: { marginTop: 6, color: "rgba(255,255,255,0.45)", fontSize: 12 },
 
   badge: {
     alignSelf: "flex-start",
@@ -227,21 +356,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
   },
-  badgeText: { color: "rgba(255,255,255,0.85)", fontWeight: "900", fontSize: 12 },
+  badgeText: { color: "#0B0E14", fontWeight: "800", fontSize: 12 },
+  badge_good: { backgroundColor: "#7CFF9B" },
+  badge_warn: { backgroundColor: "#FFD36A" },
+  badge_bad: { backgroundColor: "#FF7A7A" },
+  badge_neutral: { backgroundColor: "rgba(255,255,255,0.8)" },
 
-  iconBtn: {
-    width: 44,
-    height: 44,
+  smallBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.07)",
-    alignItems: "center",
-    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
   },
-  icon: { color: "rgba(255,255,255,0.85)", fontWeight: "900", fontSize: 16 },
+  smallBtnText: { color: "rgba(255,255,255,0.85)", fontWeight: "800" },
+
+  netBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 211, 106, 0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 211, 106, 0.25)",
+  },
+  netTitle: { color: "#FFD36A", fontWeight: "900" },
+  netText: { marginTop: 6, color: "rgba(255,255,255,0.75)", lineHeight: 18 },
 
   bigCard: {
     marginTop: 18,
@@ -251,32 +392,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
   },
+  bigCardTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   cardLabel: { color: "rgba(255,255,255,0.65)", fontSize: 12 },
-  bigValue: { color: "#FFD36A", fontSize: 34, fontWeight: "900", marginTop: 10 },
+  cardValue: { color: "#fff", fontSize: 22, fontWeight: "800", marginTop: 6 },
 
-  cardRow: { flexDirection: "row", gap: 10, marginTop: 14 },
-  mini: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 12,
+  pill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 211, 106, 0.95)",
+  },
+  pillText: { fontWeight: "900", color: "#0B0E14" },
+
+  waveBox: {
+    height: 56,
+    marginTop: 14,
+    borderRadius: 14,
     backgroundColor: "rgba(0,0,0,0.22)",
+    overflow: "hidden",
+    justifyContent: "center",
+  },
+  waveLine: { height: 3, width: "100%", backgroundColor: "rgba(255, 150, 80, 0.9)" },
+
+  cardHint: { color: "rgba(255,255,255,0.55)", marginTop: 10, fontSize: 12 },
+
+  statsRow: { flexDirection: "row", gap: 12, marginTop: 12 },
+  statCard: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
-  miniLabel: { color: "rgba(255,255,255,0.55)", fontSize: 12 },
-  miniValue: { color: "#fff", fontWeight: "900", marginTop: 6 },
+  statLabel: { color: "rgba(255,255,255,0.65)", fontSize: 12, fontWeight: "800" },
+  statValue: { color: "#fff", fontSize: 18, fontWeight: "900", marginTop: 8 },
 
-  hint: { color: "rgba(255,255,255,0.55)", marginTop: 12, fontSize: 12, lineHeight: 18 },
-
-  sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "900", marginTop: 18 },
-  sectionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 12,
-  },
-
-  actionsRow: { flexDirection: "row", gap: 10, marginTop: 12 },
+  actionsRow: { flexDirection: "row", gap: 12, marginTop: 14 },
   actionCard: {
     flex: 1,
     padding: 14,
@@ -295,72 +447,44 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   actionIconText: { fontSize: 16 },
-  actionTitle: { color: "#fff", fontWeight: "900" },
+  actionTitle: { color: "#fff", fontWeight: "800" },
   actionSub: { color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 12 },
 
-  emptyBox: {
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 16,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
-  emptyTitle: { color: "#fff", fontWeight: "900" },
-  emptyText: { color: "rgba(255,255,255,0.65)", marginTop: 6, lineHeight: 18 },
+  sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "800", marginTop: 18 },
+  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
+  link: { color: "rgba(255,255,255,0.75)", textDecorationLine: "underline" },
 
-  rowCard: {
-    borderRadius: 18,
+  list: { marginTop: 12 },
+
+  txRow: {
     padding: 14,
+    borderRadius: 16,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 10,
   },
-  rowLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1, paddingRight: 10 },
-  rowIcon: {
+  txLeft: { flexDirection: "row", alignItems: "center", flex: 1, marginRight: 12 },
+
+  txIcon: {
     width: 38,
     height: 38,
     borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.10)",
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 12,
   },
-  rowIconText: { fontSize: 16 },
+  txIconText: { fontSize: 16 },
 
-  rowTitle: { color: "#fff", fontWeight: "900" },
-  rowMeta: { color: "rgba(255,255,255,0.65)", marginTop: 4, fontSize: 12 },
-  rowSub: { color: "rgba(255,255,255,0.45)", marginTop: 4, fontSize: 11 },
+  txTitle: { color: "#fff", fontWeight: "800" },
+  txMeta: { color: "rgba(255,255,255,0.65)", marginTop: 3, fontSize: 12, fontWeight: "600" },
+  txTime: { color: "rgba(255,255,255,0.45)", marginTop: 2, fontSize: 11 },
 
-  statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(255, 211, 106, 0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 211, 106, 0.30)",
-  },
-  statusText: { color: "#FFD36A", fontWeight: "900", fontSize: 12 },
-
-  primaryBtn: {
-    marginTop: 18,
-    backgroundColor: "#FFD36A",
-    paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-  primaryText: { color: "#0B0E14", fontWeight: "900", fontSize: 15 },
-
-  ghostBtn: {
-    marginTop: 12,
-    paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  ghostText: { color: "rgba(255,255,255,0.85)", fontWeight: "900", fontSize: 15 },
+  txAmount: { fontWeight: "900", fontSize: 16 },
+  txPos: { color: "#7CFF9B" },
+  txWarn: { color: "#FFD36A" },
 });

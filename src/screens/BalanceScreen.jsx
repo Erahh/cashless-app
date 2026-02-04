@@ -54,24 +54,25 @@ export default function BalanceScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.topRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={20} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Wallet</Text>
-          <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
-            <Ionicons name="refresh" size={18} color="#fff" />
-          </TouchableOpacity>
-        </View>
+      {/* Fixed Header - Outside ScrollView */}
+      <View style={styles.topRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={20} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Wallet</Text>
+        <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
+          <Ionicons name="refresh" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator color="#FFD36A" size="large" />
             <Text style={styles.dim}>Loading wallet...</Text>
           </View>
         ) : (
+
           <>
             {/* ═══════════════════════════════════════════════════════════════
                 UNIFIED WALLET CARD - Balance + Spending
@@ -209,7 +210,7 @@ export default function BalanceScreen({ navigation }) {
       </ScrollView>
 
       <BottomNav navigation={navigation} active="Wallet" />
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 
@@ -217,12 +218,14 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#1A1D24" },
   content: { padding: 20, paddingTop: 16 },
 
-  // Header
+  // Header (fixed outside ScrollView)
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   backBtn: {
     width: 40,

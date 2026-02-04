@@ -276,7 +276,7 @@ export default function HomeScreen({ navigation, route }) {
           items={[
             { key: "commuter_scan", icon: "📷", title: "Scan", sub: "Pay fare", onPress: () => navigation.navigate("CommuterScan"), show: computed.isCommuter },
             { key: "topup", icon: "💳", title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
-            { key: "my_qr", icon: "📲", title: "My QR", sub: "Show Code", onPress: () => navigation.navigate("MyQR"), show: computed.isCommuter },
+            { key: "tap_pay", icon: "📳", title: "Tap to Pay", sub: "NFC (Demo)", onPress: () => navigation.navigate("NFCTapPay"), show: computed.isCommuter },
 
             { key: "op_qr", icon: "📲", title: "My QR", sub: "Receive Pay", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorMyQR" }), show: computed.isOperator },
             { key: "earn", icon: "💰", title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorEarnings" }), show: computed.isOperator },
@@ -291,37 +291,60 @@ export default function HomeScreen({ navigation, route }) {
           ].filter(a => a.show)}
         />
 
-        {/* Role-aware Mid Card */}
-        <TouchableOpacity
-          style={styles.midCard}
-          activeOpacity={0.9}
-          onPress={() => {
-            if (computed.isOperator) return navigation.navigate("OperatorApp", { screen: "OperatorMyQR" });
-            if (computed.isAdmin) return navigation.navigate("AdminApp", { screen: "AdminSettlements" });
-            return navigation.navigate("CommuterScan");
-          }}
-        >
-          <View>
-            <Text style={styles.cardLabel}>
-              {computed.isOperator ? "Operator" : computed.isAdmin ? "Admin" : "Commuter"}
-            </Text>
-            <Text style={styles.cardValue}>
-              {computed.isOperator
-                ? "Show Payment QR"
-                : computed.isAdmin
-                  ? "Payout Queue"
-                  : "Scan Operator QR"}
-            </Text>
-            <Text style={styles.cardHint}>
-              {computed.isOperator
-                ? "Tap to show QR for commuters"
-                : computed.isAdmin
-                  ? "Tap to manage settlements"
-                  : "Tap to pay fare"}
-            </Text>
+        {/* Role-aware Mid Cards */}
+        {computed.isCommuter ? (
+          <View style={styles.midCardsRow}>
+            {/* RFID Registration Card */}
+            <TouchableOpacity
+              style={styles.midCardHalf}
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate("RegisterRFID")}
+            >
+              <View style={styles.midCardIcon}>
+                <Text style={styles.midCardIconText}>📡</Text>
+              </View>
+              <Text style={styles.midCardTitle}>Register RFID</Text>
+              <Text style={styles.midCardHint}>NFC Card</Text>
+            </TouchableOpacity>
+
+            {/* Map Directions Card */}
+            <TouchableOpacity
+              style={styles.midCardHalf}
+              activeOpacity={0.9}
+              onPress={() => Alert.alert("Map Directions", "Opening map to show nearby stops and routes...")}
+            >
+              <View style={styles.midCardIcon}>
+                <Text style={styles.midCardIconText}>🗺️</Text>
+              </View>
+              <Text style={styles.midCardTitle}>Map Directions</Text>
+              <Text style={styles.midCardHint}>Find Routes</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.arrow}>›</Text>
-        </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.midCard}
+            activeOpacity={0.9}
+            onPress={() => {
+              if (computed.isOperator) return navigation.navigate("OperatorApp", { screen: "OperatorMyQR" });
+              if (computed.isAdmin) return navigation.navigate("AdminApp", { screen: "AdminSettlements" });
+            }}
+          >
+            <View>
+              <Text style={styles.cardLabel}>
+                {computed.isOperator ? "Operator" : "Admin"}
+              </Text>
+              <Text style={styles.cardValue}>
+                {computed.isOperator ? "Show Payment QR" : "Payout Queue"}
+              </Text>
+              <Text style={styles.cardHint}>
+                {computed.isOperator
+                  ? "Tap to show QR for commuters"
+                  : "Tap to manage settlements"}
+              </Text>
+            </View>
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Verification Callout (only if not verified) */}
         {computed.showCallout ? (
@@ -567,6 +590,46 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   arrow: { color: "rgba(255,255,255,0.7)", fontSize: 26, marginLeft: 10 },
+
+  // Two-card layout for commuters
+  midCardsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 14,
+  },
+  midCardHalf: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 18,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    alignItems: "center",
+  },
+  midCardIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  midCardIconText: {
+    fontSize: 28,
+  },
+  midCardTitle: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  midCardHint: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    textAlign: "center",
+  },
 
   callout: {
     marginTop: 14,

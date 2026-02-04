@@ -13,6 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
+import QuickActions from "../components/QuickActions";
+import BottomNav from "../components/BottomNav";
 
 export default function MyQRScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -70,69 +72,89 @@ export default function MyQRScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header - Same as Wallet */}
-        <View style={styles.topRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={20} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>My QR</Text>
-          <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
-            <Ionicons name="refresh" size={18} color="#fff" />
-          </TouchableOpacity>
-        </View>
+      {/* Header */}
+      <View style={styles.topRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={20} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My QR</Text>
+        <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
+          <Ionicons name="refresh" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>Payment Code</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* QR Code Card - Centered and Minimal */}
+        <View style={styles.qrCard}>
+          <Text style={styles.title}>My Payment QR</Text>
 
           <View style={styles.qrBox}>
             {computed.value ? (
-              <QRCode value={computed.value} size={220} />
+              <QRCode value={computed.value} size={240} />
             ) : (
               <Text style={styles.dim}>No QR found</Text>
             )}
           </View>
 
-          <Text style={styles.meta}>
-            Issued: {computed.issuedAt || "—"}
-          </Text>
-
-          <View style={styles.tokenBox}>
-            <Text style={styles.tokenLabel}>Token</Text>
-            <Text style={styles.tokenValue} numberOfLines={2}>
-              {computed.value}
-            </Text>
-          </View>
-
-          <Text style={styles.hint}>
-            ✅ The operator scans this QR to deduct fare from your wallet.
+          <Text style={styles.instruction}>
+            Show this QR to the operator to pay your fare
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={() => Alert.alert("Tip", "Open Operator Scan screen on the operator phone.")}
-        >
-          <Text style={styles.primaryBtnText}>How it works</Text>
-        </TouchableOpacity>
+        {/* Quick Actions */}
+        <QuickActions
+          items={[
+            {
+              key: "topup",
+              icon: "💳",
+              title: "Top Up",
+              sub: "GCash",
+              onPress: () => navigation.navigate("SendLoad")
+            },
+            {
+              key: "send_load",
+              icon: "💸",
+              title: "Send Load",
+              sub: "Transfer",
+              onPress: () => Alert.alert("Send Load", "Coming soon!")
+            },
+            {
+              key: "register_rfid",
+              icon: "📡",
+              title: "Register RFID",
+              sub: "NFC Card",
+              onPress: () => navigation.navigate("RegisterRFID")
+            },
+          ]}
+        />
+
+        <View style={{ height: 140 }} />
       </ScrollView>
+
+      <BottomNav navigation={navigation} active="MyQR" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#1A1D24" },
-  content: { padding: 18, paddingTop: 60 },
+  safe: { flex: 1, backgroundColor: "#0B0E14" },
+  content: {
+    padding: 20,
+    paddingTop: 20,
+    alignItems: "center",
+  },
 
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   dim: { color: "rgba(255,255,255,0.65)", marginTop: 10 },
 
-  // Header - Same as Wallet
+  // Header
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   backBtn: {
     width: 40,
@@ -156,46 +178,43 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  card: {
-    marginTop: 16,
-    borderRadius: 22,
-    padding: 16,
+  qrCard: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 28,
+    padding: 32,
     backgroundColor: "rgba(255,255,255,0.08)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    marginBottom: 24,
   },
-  cardLabel: { color: "rgba(255,255,255,0.65)", fontSize: 12 },
+
+  title: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "800",
+    marginBottom: 24,
+  },
 
   qrBox: {
-    marginTop: 14,
-    borderRadius: 18,
-    padding: 14,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 24,
+    padding: 20,
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
-  meta: { color: "rgba(255,255,255,0.55)", marginTop: 12, fontSize: 12 },
-
-  tokenBox: {
-    marginTop: 12,
-    borderRadius: 16,
-    padding: 12,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+  instruction: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
   },
-  tokenLabel: { color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: "800" },
-  tokenValue: { color: "#fff", marginTop: 6, fontWeight: "800" },
-
-  hint: { color: "rgba(255,255,255,0.6)", marginTop: 12, fontSize: 12, lineHeight: 18 },
-
-  primaryBtn: {
-    marginTop: 14,
-    backgroundColor: "#FFD36A",
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-  primaryBtnText: { color: "#0B0E14", fontWeight: "900" },
 });

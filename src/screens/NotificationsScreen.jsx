@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { fetchNotifications } from "../api/notificationsApi";
 import BottomNav from "../components/BottomNav";
 
@@ -53,18 +54,18 @@ export default function NotificationsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Header - Fixed outside ScrollView */}
+      <View style={styles.topRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={20} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Notifications</Text>
+        <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
+          <Ionicons name="refresh" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <Text style={styles.back}>‹ Back</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
-            <Text style={styles.refreshText}>Refresh</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.title}>Notifications</Text>
         <Text style={styles.sub}>Ride alerts and system messages</Text>
 
         {/* Small status pills (UI only) */}
@@ -151,23 +152,40 @@ export default function NotificationsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0B0E14" },
-  content: { padding: 18, paddingTop: 18 },
+  content: { padding: 18, paddingTop: 10 },
 
-  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  back: { color: "rgba(255,255,255,0.75)", fontWeight: "800" },
-
-  refreshBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.04)",
+  // Header (fixed outside ScrollView)
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
-  refreshText: { color: "#fff", fontWeight: "800" },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  refreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-  title: { color: "#fff", fontSize: 26, fontWeight: "900", marginTop: 14 },
-  sub: { marginTop: 8, color: "rgba(255,255,255,0.65)" },
+  sub: { marginTop: 4, marginBottom: 12, color: "rgba(255,255,255,0.65)", fontSize: 14 },
 
   pillsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
   pill: {

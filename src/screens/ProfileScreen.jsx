@@ -11,6 +11,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { supabase } from "../api/supabase";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function ProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -34,7 +35,13 @@ export default function ProfileScreen({ navigation }) {
 
     let verLabel = "Unverified";
     let verTone = "bad";
-    if (ver === "verified" || account?.verified) { verLabel = "Verified"; verTone = "good"; }
+    let discountActive = false;
+
+    if (ver === "verified" || account?.verified) {
+      verLabel = "Verified";
+      verTone = "good";
+      discountActive = true;
+    }
     else if (ver === "pending") { verLabel = "Pending"; verTone = "warn"; }
     else if (ver === "rejected") { verLabel = "Rejected"; verTone = "bad"; }
 
@@ -43,7 +50,7 @@ export default function ProfileScreen({ navigation }) {
         ? "CASUAL • Regular Fare"
         : `${passengerLabel.toUpperCase()} • ${verLabel.toUpperCase()}`;
 
-    return { name, initials, passengerLabel, verLabel, verTone, chipText };
+    return { name, initials, passengerLabel, verLabel, verTone, chipText, passengerType, discountActive };
   }, [profile, account]);
 
   async function load() {
@@ -99,305 +106,621 @@ export default function ProfileScreen({ navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#7CFF9B" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Top header */}
-        <View style={styles.topRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn} activeOpacity={0.9}>
-            <Text style={styles.iconTxt}>‹</Text>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-
           <Text style={styles.headerTitle}>Profile</Text>
+          <View style={{ width: 44 }} />
+        </View>
+
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{computed.initials}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.profileName}>{computed.name}</Text>
+          <Text style={styles.profileEmail}>{profile?.email || profile?.phone || "—"}</Text>
+
+          <View style={[styles.badge, styles[`badge_${computed.verTone}`]]}>
+            <Text style={styles.badgeText}>{computed.chipText}</Text>
+          </View>
+
+          <View style={styles.profileActions}>
+            <TouchableOpacity
+              style={styles.editProfileBtn}
+              onPress={() => navigation.navigate("PersonalInfo")}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="create-outline" size={18} color="#0B0E14" />
+              <Text style={styles.editProfileText}>Edit Profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.verifyBtn,
+                computed.verLabel === "Verified" && styles.verifyBtnVerified,
+                computed.verLabel === "Pending" && styles.verifyBtnPending,
+              ]}
+              onPress={() => {
+                if (computed.verLabel === "Verified" || computed.verLabel === "Pending") return;
+                navigation.navigate("PassengerType");
+              }}
+              activeOpacity={computed.verLabel === "Verified" || computed.verLabel === "Pending" ? 1 : 0.8}
+              disabled={computed.verLabel === "Verified" || computed.verLabel === "Pending"}
+            >
+              <Ionicons
+                name={
+                  computed.verLabel === "Verified" ? "checkmark-circle" :
+                    computed.verLabel === "Pending" ? "time-outline" :
+                      "shield-checkmark-outline"
+                }
+                size={18}
+                color={
+                  computed.verLabel === "Verified" ? "#0B0E14" :
+                    computed.verLabel === "Pending" ? "#0B0E14" :
+                      "#0B0E14"
+                }
+              />
+              <Text style={styles.verifyBtnText}>
+                {computed.verLabel === "Verified" ? "Verified ✓" :
+                  computed.verLabel === "Pending" ? "Pending" :
+                    computed.verLabel === "Rejected" ? "Re-upload ID" :
+                      "Verify ID"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Discount Status Indicator */}
+        {computed.passengerType !== "casual" && (
+          <View style={[
+            styles.discountIndicator,
+            computed.discountActive ? styles.discountActive : styles.discountInactive
+          ]}>
+            <View style={styles.discountLeft}>
+              <Ionicons
+                name={computed.discountActive ? "checkmark-circle" : "alert-circle"}
+                size={24}
+                color={computed.discountActive ? "#7CFF9B" : "#FFD36A"}
+              />
+              <View style={styles.discountContent}>
+                <Text style={styles.discountTitle}>
+                  {computed.discountActive ? "Discount Active ✅" : "Discount Not Active"}
+                </Text>
+                <Text style={styles.discountText}>
+                  {computed.discountActive
+                    ? `You're receiving ${computed.passengerLabel} discounted fares`
+                    : computed.verLabel === "Pending"
+                      ? "Your verification is pending admin approval"
+                      : "Upload your ID to activate discounted fares"
+                  }
+                </Text>
+              </View>
+            </View>
+            {!computed.discountActive && (
+              <TouchableOpacity
+                style={styles.discountBtn}
+                onPress={() => navigation.navigate("PassengerType")}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="arrow-forward" size={20} color="#0B0E14" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Personal Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+          <View style={styles.infoCard}>
+            <InfoRow icon="person-outline" label="Full Name" value={profile?.full_name} />
+            <InfoRow icon="mail-outline" label="Email" value={profile?.email || "—"} />
+            <InfoRow icon="call-outline" label="Phone" value={profile?.phone || "—"} />
+            <InfoRow icon="calendar-outline" label="Birthdate" value={profile?.birthdate || "—"} />
+          </View>
+        </View>
+
+        {/* Address Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Address</Text>
+          <View style={styles.infoCard}>
+            <InfoRow icon="location-outline" label="Province" value={profile?.province || "—"} />
+            <InfoRow icon="business-outline" label="City/Municipality" value={profile?.city || "—"} />
+            <InfoRow icon="home-outline" label="Barangay" value={profile?.barangay || "—"} />
+            <InfoRow icon="mail-outline" label="ZIP Code" value={profile?.zip_code || "—"} />
+            <InfoRow icon="navigate-outline" label="Street Address" value={profile?.address_line || "—"} />
+          </View>
+        </View>
+
+        {/* Account Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account Details</Text>
+          <View style={styles.infoCard}>
+            <InfoRow
+              icon="shield-checkmark-outline"
+              label="Account Status"
+              value={account?.account_active ? "ACTIVE" : "INACTIVE"}
+              valueColor={account?.account_active ? "#7CFF9B" : "#FF7A7A"}
+            />
+            <InfoRow
+              icon="key-outline"
+              label="MPIN Status"
+              value={account?.pin_set ? "SET" : "NOT SET"}
+              valueColor={account?.pin_set ? "#7CFF9B" : "#FFD36A"}
+            />
+            <InfoRow
+              icon="person-outline"
+              label="Passenger Type"
+              value={(account?.passenger_type || "casual").toUpperCase()}
+            />
+            <InfoRow
+              icon="checkmark-done-outline"
+              label="Verification"
+              value={(account?.verification_status || "unverified").toUpperCase()}
+              valueColor={
+                computed.verTone === "good" ? "#7CFF9B" :
+                  computed.verTone === "warn" ? "#FFD36A" : "#FF7A7A"
+              }
+            />
+            {account?.verified_at && (
+              <InfoRow
+                icon="time-outline"
+                label="Verified At"
+                value={new Date(account.verified_at).toLocaleDateString()}
+              />
+            )}
+          </View>
+        </View>
+
+        {/* Settings Menu */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Settings</Text>
+          <View style={styles.menuCard}>
+            <MenuItem
+              icon="language-outline"
+              title="Language"
+              onPress={() => Alert.alert("Language", "Language settings coming soon!")}
+            />
+            <MenuItem
+              icon="color-palette-outline"
+              title="Appearance"
+              onPress={() => Alert.alert("Appearance", "Theme settings coming soon!")}
+            />
+            <MenuItem
+              icon="shield-checkmark-outline"
+              title="Security"
+              onPress={() => Alert.alert("Security", "Security settings coming soon!")}
+            />
+          </View>
+        </View>
+
+        {/* Account Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account Actions</Text>
 
           <TouchableOpacity
-            onPress={signOutToPhone}
-            style={[styles.iconBtn, { backgroundColor: "rgba(255, 90, 90, 0.14)" }]}
-            activeOpacity={0.9}
+            style={styles.actionCard}
+            onPress={() => {
+              Alert.alert("Switch number", "Sign out and use a different phone number?", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Switch", style: "destructive", onPress: signOutToPhone },
+              ]);
+            }}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.iconTxt, { color: "#FF7A7A" }]}>⎋</Text>
+            <View style={styles.actionLeft}>
+              <View style={[styles.actionIcon, { backgroundColor: "rgba(255,211,106,0.15)" }]}>
+                <Ionicons name="phone-portrait-outline" size={20} color="#FFD36A" />
+              </View>
+              <View style={styles.actionContent}>
+                <Text style={styles.actionTitle}>Use different number</Text>
+                <Text style={styles.actionSub}>Switch to another phone number</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionCard, styles.actionCardDanger]}
+            onPress={() => {
+              Alert.alert("Logout", "Are you sure you want to logout?", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Logout", style: "destructive", onPress: signOutToPhone },
+              ]);
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={styles.actionLeft}>
+              <View style={[styles.actionIcon, { backgroundColor: "rgba(255,122,122,0.15)" }]}>
+                <Ionicons name="log-out-outline" size={20} color="#FF7A7A" />
+              </View>
+              <View style={styles.actionContent}>
+                <Text style={[styles.actionTitle, { color: "#FF7A7A" }]}>Logout</Text>
+                <Text style={styles.actionSub}>Sign out from your account</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
           </TouchableOpacity>
         </View>
 
-        {/* Hero */}
-        <View style={styles.heroCard}>
-          {loading ? (
-            <View style={{ paddingVertical: 30, alignItems: "center" }}>
-              <ActivityIndicator />
-              <Text style={styles.loadingText}>Loading your profile…</Text>
-            </View>
-          ) : (
-            <>
-              <View style={styles.heroTop}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{computed.initials}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{computed.name}</Text>
-                  <Text style={styles.subLine}>{profile?.phone || "—"}</Text>
-                </View>
-              </View>
-
-              <View style={[styles.chip, styles[`chip_${computed.verTone}`]]}>
-                <Text style={styles.chipText}>{computed.chipText}</Text>
-              </View>
-
-              {/* Quick actions */}
-              <View style={styles.quickRow}>
-                <QuickButton
-                  icon="🪪"
-                  title="Verification"
-                  sub="Student/Senior"
-                  onPress={() => navigation.navigate("PassengerType")}
-                />
-                <QuickButton
-                  icon="✏️"
-                  title="Edit"
-                  sub="Personal info"
-                  onPress={() => navigation.navigate("PersonalInfo")}
-                />
-                <QuickButton
-                  icon="🧾"
-                  title="History"
-                  sub="Transactions"
-                  onPress={() => navigation.navigate("Transactions")}
-                />
-              </View>
-            </>
-          )}
-        </View>
-
-        {/* Details cards */}
-        {!loading ? (
-          <>
-            <GlassCard title="Personal Details" icon="👤">
-              <Row label="Full Name" value={profile?.full_name} />
-              <Row label="Email" value={profile?.email || "—"} />
-              <Row label="Birthdate" value={profile?.birthdate || "—"} />
-            </GlassCard>
-
-            <GlassCard title="Address" icon="📍">
-              <Row label="Province" value={profile?.province || "—"} />
-              <Row label="City/Municipality" value={profile?.city || "—"} />
-              <Row label="Barangay" value={profile?.barangay || "—"} />
-              <Row label="ZIP Code" value={profile?.zip_code || "—"} />
-              <Row label="House No. + Street" value={profile?.address_line || "—"} />
-            </GlassCard>
-
-            <GlassCard title="Account" icon="🔐">
-              <Row label="Account Active" value={account?.account_active ? "YES" : "NO"} />
-              <Row label="MPIN Set" value={account?.pin_set ? "YES" : "NO"} />
-              <Row label="Passenger Type" value={(account?.passenger_type || "casual").toUpperCase()} />
-              <Row label="Verification Status" value={(account?.verification_status || "unverified").toUpperCase()} />
-              <Row label="Verified At" value={account?.verified_at || "—"} />
-            </GlassCard>
-
-            {/* CTA */}
-            <View style={styles.ctaWrap}>
-              <Text style={styles.ctaTitle}>Want discounted fares?</Text>
-              <Text style={styles.ctaText}>
-                Apply for Student/Senior verification. Upload your ID now and wait for approval.
-              </Text>
-              <TouchableOpacity style={styles.ctaBtn} onPress={() => navigation.navigate("PassengerType")} activeOpacity={0.9}>
-                <Text style={styles.ctaBtnText}>Apply for Verification</Text>
-              </TouchableOpacity>
-            </View>
-
-            <GlassCard title="Account Actions" icon="⚙️">
-              <TouchableOpacity
-                onPress={() => {
-                  Alert.alert("Switch number", "Sign out and use a different phone number?", [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Switch", style: "destructive", onPress: signOutToPhone },
-                  ]);
-                }}
-                activeOpacity={0.9}
-                style={{
-                  marginTop: 6,
-                  borderRadius: 14,
-                  paddingVertical: 14,
-                  paddingHorizontal: 14,
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.10)",
-                }}
-              >
-                <Text style={{ color: "#FFD36A", fontWeight: "900" }}>Use different number</Text>
-                <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
-                  This will log you out and return to the phone login screen.
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  Alert.alert("Logout", "Are you sure you want to logout?", [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Logout", style: "destructive", onPress: signOutToPhone },
-                  ]);
-                }}
-                activeOpacity={0.9}
-                style={{
-                  marginTop: 10,
-                  borderRadius: 14,
-                  paddingVertical: 14,
-                  paddingHorizontal: 14,
-                  backgroundColor: "rgba(255, 90, 90, 0.10)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 90, 90, 0.20)",
-                }}
-              >
-                <Text style={{ color: "#FF7A7A", fontWeight: "900" }}>Logout</Text>
-                <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
-                  You will need OTP again to login.
-                </Text>
-              </TouchableOpacity>
-            </GlassCard>
-          </>
-        ) : null}
+        {/* App Version */}
+        <Text style={styles.versionText}>ERA Wallet v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function GlassCard({ title, icon, children }) {
+function InfoRow({ icon, label, value, valueColor }) {
   return (
-    <View style={styles.glassCard}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardIcon}>{icon}</Text>
-        <Text style={styles.cardTitle}>{title}</Text>
+    <View style={styles.infoRow}>
+      <View style={styles.infoLeft}>
+        <Ionicons name={icon} size={18} color="rgba(255,255,255,0.5)" />
+        <Text style={styles.infoLabel}>{label}</Text>
       </View>
-      {children}
+      <Text style={[styles.infoValue, valueColor && { color: valueColor }]}>
+        {value || "—"}
+      </Text>
     </View>
   );
 }
 
-function Row({ label, value }) {
+function MenuItem({ icon, title, onPress }) {
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value || "—"}</Text>
-    </View>
-  );
-}
-
-function QuickButton({ icon, title, sub, onPress }) {
-  return (
-    <TouchableOpacity style={styles.quickBtn} onPress={onPress} activeOpacity={0.9}>
-      <View style={styles.quickIcon}>
-        <Text style={{ fontSize: 16 }}>{icon}</Text>
+    <TouchableOpacity
+      style={styles.menuItem}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.menuLeft}>
+        <Ionicons name={icon} size={20} color="#fff" />
+        <Text style={styles.menuTitle}>{title}</Text>
       </View>
-      <Text style={styles.quickTitle}>{title}</Text>
-      <Text style={styles.quickSub}>{sub}</Text>
+      <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0B0E14" },
-  content: { padding: 18, paddingBottom: 40 },
+  safe: {
+    flex: 1,
+    backgroundColor: "#0B0E14",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "rgba(255,255,255,0.65)",
+    marginTop: 12,
+    fontSize: 14,
+  },
+  content: {
+    padding: 20,
+    paddingBottom: 40,
+  },
 
-  topRow: {
+  // Header
+  header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 6,
-    marginBottom: 14,
+    marginTop: 10,
+    marginBottom: 28,
   },
-  headerTitle: { color: "#fff", fontSize: 18, fontWeight: "900" },
-  iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconTxt: { color: "#fff", fontSize: 20, fontWeight: "900" },
-
-  heroCard: {
-    borderRadius: 22,
-    padding: 16,
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
+  // Profile Card
+  profileCard: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 24,
+    padding: 24,
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
-    marginBottom: 12,
+    marginBottom: 20,
   },
-  loadingText: { color: "rgba(255,255,255,0.65)", marginTop: 10 },
-
-  heroTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  avatarContainer: {
+    marginBottom: 16,
+  },
   avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,211,106,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,211,106,0.35)",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(124,255,155,0.15)",
+    borderWidth: 3,
+    borderColor: "#7CFF9B",
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: "#FFD36A", fontWeight: "900", fontSize: 16 },
-  name: { color: "#fff", fontWeight: "900", fontSize: 18 },
-  subLine: { color: "rgba(255,255,255,0.65)", marginTop: 2 },
-
-  chip: { marginTop: 12, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
-  chipText: { color: "#0B0E14", fontWeight: "900", fontSize: 12 },
-  chip_good: { backgroundColor: "#7CFF9B" },
-  chip_warn: { backgroundColor: "#FFD36A" },
-  chip_bad: { backgroundColor: "#FF7A7A" },
-
-  quickRow: { flexDirection: "row", gap: 10, marginTop: 14 },
-  quickBtn: {
+  avatarText: {
+    color: "#7CFF9B",
+    fontSize: 28,
+    fontWeight: "900",
+  },
+  profileName: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "900",
+    marginBottom: 6,
+  },
+  profileEmail: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  badge: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    marginBottom: 20,
+  },
+  badgeText: {
+    color: "#0B0E14",
+    fontWeight: "900",
+    fontSize: 12,
+  },
+  badge_good: {
+    backgroundColor: "#7CFF9B",
+  },
+  badge_warn: {
+    backgroundColor: "#FFD36A",
+  },
+  badge_bad: {
+    backgroundColor: "#FF7A7A",
+  },
+  editProfileBtn: {
     flex: 1,
-    borderRadius: 18,
-    padding: 12,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
-  quickIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    gap: 8,
+    backgroundColor: "#7CFF9B",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
   },
-  quickTitle: { color: "#fff", fontWeight: "900" },
-  quickSub: { color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 12 },
-
-  glassCard: {
-    marginTop: 12,
-    borderRadius: 22,
-    padding: 16,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+  editProfileText: {
+    color: "#0B0E14",
+    fontSize: 15,
+    fontWeight: "900",
   },
-  cardHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-  cardIcon: { fontSize: 16 },
-  cardTitle: { color: "#fff", fontWeight: "900", fontSize: 16 },
-
-  row: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" },
-  rowLabel: { color: "rgba(255,255,255,0.55)", fontSize: 12 },
-  rowValue: { color: "#fff", fontWeight: "800", marginTop: 4 },
-
-  ctaWrap: {
-    marginTop: 14,
-    borderRadius: 22,
-    padding: 16,
-    backgroundColor: "rgba(255, 211, 106, 0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 211, 106, 0.22)",
+  profileActions: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
   },
-  ctaTitle: { color: "#FFD36A", fontWeight: "900", fontSize: 14 },
-  ctaText: { color: "rgba(255,255,255,0.75)", marginTop: 8, lineHeight: 18 },
-  ctaBtn: {
-    marginTop: 12,
+  verifyBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: "#FFD36A",
     paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: "center",
+    paddingHorizontal: 20,
+    borderRadius: 12,
   },
-  ctaBtnText: { color: "#0B0E14", fontWeight: "900" },
+  verifyBtnVerified: {
+    backgroundColor: "#7CFF9B",
+    opacity: 0.7,
+  },
+  verifyBtnPending: {
+    backgroundColor: "#FFD36A",
+    opacity: 0.7,
+  },
+  verifyBtnText: {
+    color: "#0B0E14",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+
+
+  // Discount Indicator
+  discountIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 2,
+  },
+  discountActive: {
+    backgroundColor: "rgba(124,255,155,0.10)",
+    borderColor: "#7CFF9B",
+  },
+  discountInactive: {
+    backgroundColor: "rgba(255,211,106,0.10)",
+    borderColor: "#FFD36A",
+  },
+  discountLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  discountContent: {
+    flex: 1,
+  },
+  discountTitle: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "900",
+    marginBottom: 4,
+  },
+  discountText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  discountBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FFD36A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Sections
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+
+  // Info Card
+  infoCard: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    overflow: "hidden",
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  infoLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  infoLabel: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 14,
+  },
+  infoValue: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  // Menu Card
+  menuCard: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    overflow: "hidden",
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  menuLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  menuTitle: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  // Actions
+  actionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  actionCardDanger: {
+    backgroundColor: "rgba(255,122,122,0.08)",
+    borderColor: "rgba(255,122,122,0.20)",
+  },
+  actionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  actionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionContent: {
+    flex: 1,
+  },
+  actionTitle: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  actionSub: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+  },
+
+  // Version
+  versionText: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 12,
+  },
 });

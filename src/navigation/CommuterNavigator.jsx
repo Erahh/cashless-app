@@ -12,10 +12,13 @@ import MyQRScreen from "../screens/MyQRScreen";
 import CommuterScanScreen from "../screens/CommuterScanScreen";
 import PayConfirmScreen from "../screens/PayConfirmScreen";
 import NFCTapPayScreen from "../screens/NFCTapPayScreen";
+import RegisterRFIDScreen from "../screens/RegisterRFIDScreen";
 import TopUpCheckoutScreen from "../screens/TopUpCheckoutScreen";
 
 import PassengerTypeScreen from "../screens/PassengerTypeScreen";
 import DiscountInfoScreen from "../screens/DiscountInfoScreen";
+import UploadFrontIDScreen from "../screens/UploadFrontIDScreen";
+import UploadBackIDScreen from "../screens/UploadBackIDScreen";
 import UploadVerificationScreen from "../screens/UploadVerificationScreen";
 import VerificationSubmittedScreen from "../screens/VerificationSubmittedScreen";
 
@@ -40,10 +43,13 @@ export default function CommuterNavigator() {
             <Stack.Screen name="CommuterScan" component={CommuterScanScreen} />
             <Stack.Screen name="PayConfirm" component={PayConfirmScreen} />
             <Stack.Screen name="NFCTapPay" component={NFCTapPayScreen} />
+            <Stack.Screen name="RegisterRFID" component={RegisterRFIDScreen} />
 
             {/* Verification */}
             <Stack.Screen name="PassengerType" component={PassengerTypeScreen} />
             <Stack.Screen name="DiscountInfo" component={DiscountInfoScreen} />
+            <Stack.Screen name="UploadFrontID" component={UploadFrontIDScreen} />
+            <Stack.Screen name="UploadBackID" component={UploadBackIDScreen} />
             <Stack.Screen name="UploadVerification" component={UploadVerificationScreen} />
             <Stack.Screen name="VerificationSubmitted" component={VerificationSubmittedScreen} />
 

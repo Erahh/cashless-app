@@ -28,24 +28,40 @@ export default function TopUpCheckoutScreen({ navigation, route }) {
     };
 
     useEffect(() => {
-        let interval;
+        let channel;
 
         (async () => {
-            // open PayMongo checkout
+            // 1. Open Browser
             await WebBrowser.openBrowserAsync(url);
-
-            // once user closes browser, start polling
             setLoading(false);
+
+            // 2. Poll once immediately to check status
             await pollOnce();
 
-            interval = setInterval(pollOnce, 1500);
-
-            // stop polling after 45 seconds
-            setTimeout(() => clearInterval(interval), 45000);
+            // 3. ✨ REALTIME SUBSCRIPTION (Senior Dev Approach)
+            // Listen for UPDATES on this specific topup ID
+            channel = supabase
+                .channel(`topup-${ref}`)
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "UPDATE",
+                        schema: "public",
+                        table: "wallet_topups",
+                        filter: `id=eq.${ref}`,
+                    },
+                    (payload) => {
+                        console.log("🔥 Realtime Update:", payload);
+                        if (payload.new?.status) {
+                            setStatus(payload.new.status);
+                        }
+                    }
+                )
+                .subscribe();
         })();
 
         return () => {
-            if (interval) clearInterval(interval);
+            if (channel) supabase.removeChannel(channel);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

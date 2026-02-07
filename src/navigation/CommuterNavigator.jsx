@@ -23,6 +23,8 @@ import UploadVerificationScreen from "../screens/UploadVerificationScreen";
 import VerificationSubmittedScreen from "../screens/VerificationSubmittedScreen";
 
 import GuardianLinkScreen from "../screens/GuardianLinkScreen";
+import FriendsMapScreen from "../screens/FriendsMapScreen";
+import AddFriendScreen from "../screens/AddFriendScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -55,6 +57,10 @@ export default function CommuterNavigator() {
 
             {/* Guardian */}
             <Stack.Screen name="GuardianLink" component={GuardianLinkScreen} />
+
+            {/* Friends Map */}
+            <Stack.Screen name="FriendsMap" component={FriendsMapScreen} />
+            <Stack.Screen name="AddFriend" component={AddFriendScreen} />
 
             {/* Profile */}
             <Stack.Screen name="Profile" component={ProfileScreen} />

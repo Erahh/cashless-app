@@ -307,17 +307,18 @@ export default function HomeScreen({ navigation, route }) {
               <Text style={styles.midCardHint}>NFC Card</Text>
             </TouchableOpacity>
 
-            {/* Map Directions Card */}
+            {/* Friends Map Card - Real-Time Location */}
             <TouchableOpacity
-              style={styles.midCardHalf}
+              style={[styles.midCardHalf, styles.friendsMapCard]}
               activeOpacity={0.9}
-              onPress={() => Alert.alert("Map Directions", "Opening map to show nearby stops and routes...")}
+              onPress={() => navigation.navigate("FriendsMap")}
             >
-              <View style={styles.midCardIcon}>
+              <View style={[styles.midCardIcon, styles.friendsMapIcon]}>
                 <Text style={styles.midCardIconText}>🗺️</Text>
+                <View style={styles.onlinePulse} />
               </View>
-              <Text style={styles.midCardTitle}>Map Directions</Text>
-              <Text style={styles.midCardHint}>Find Routes</Text>
+              <Text style={styles.midCardTitle}>Friends Map</Text>
+              <Text style={styles.midCardHint}>Live Location 🟢</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -680,4 +681,29 @@ const styles = StyleSheet.create({
   txAmount: { fontWeight: "900", fontSize: 16 },
   txNeg: { color: "#FF8A8A" },
   txPos: { color: "#7CFF9B" },
+
+  // Friends Map Card - Futuristic styling
+  friendsMapCard: {
+    backgroundColor: "rgba(76, 175, 80, 0.08)",
+    borderColor: "rgba(76, 175, 80, 0.25)",
+    borderWidth: 1.5,
+  },
+  friendsMapIcon: {
+    backgroundColor: "rgba(76, 175, 80, 0.15)",
+    position: "relative",
+  },
+  onlinePulse: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+  },
 });

@@ -58,3 +58,8 @@ export async function verifyMpinOnRender(mpin) {
     body: JSON.stringify({ mpin }),
   });
 }
+
+// ✅ Generic API helper (used by Friends Map screens)
+export async function api(path, options = {}) {
+  return renderApiRequest(path, options);
+}

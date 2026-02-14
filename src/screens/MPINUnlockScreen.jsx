@@ -67,7 +67,7 @@ export default function MPINUnlockScreen({ navigation }) {
         setAttempts(0);
         setMpin("");
         setLocked(false);
-        navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+        navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
         return;
       }
 
@@ -130,7 +130,7 @@ export default function MPINUnlockScreen({ navigation }) {
       setAttempts(0);
       setMpin("");
       setLocked(false);
-      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+      navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
     } catch (err) {
       Alert.alert("Error", err.message || "Unlock failed");
     }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -13,8 +13,10 @@ import { supabase } from "../api/supabase";
 import * as Crypto from "expo-crypto";
 import { setMpinOnRender } from "../api/apiHelper";
 import { setMpin as setMpinLocal } from "../api/mpinLocal";
+import { AppLockContext } from "../context/AppLockContext";
 
 export default function MPINSetupScreen({ navigation }) {
+  const { setLocked } = useContext(AppLockContext);
   const [mpin, setMpin] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,8 +47,11 @@ export default function MPINSetupScreen({ navigation }) {
       // ✅ Local: enables MPINUnlock flow on app reopen
       await setMpinLocal(mpin);
 
-      // Success - navigate to home screen
-      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+      // ✅ Mark as unlocked so AppNavigator shows the full stack
+      setLocked(false);
+
+      // ✅ Navigate to RoleGate (determines CommuterApp / OperatorApp / AdminApp)
+      navigation.reset({ index: 0, routes: [{ name: "RoleGate" }] });
     } catch (e) {
       console.error("Set MPIN error:", e);
       Alert.alert("Error", e?.message || "Failed to set MPIN");

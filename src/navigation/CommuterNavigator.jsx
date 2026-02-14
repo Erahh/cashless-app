@@ -14,6 +14,7 @@ import PayConfirmScreen from "../screens/PayConfirmScreen";
 import NFCTapPayScreen from "../screens/NFCTapPayScreen";
 import RegisterRFIDScreen from "../screens/RegisterRFIDScreen";
 import TopUpCheckoutScreen from "../screens/TopUpCheckoutScreen";
+import TopUpScreen from "../screens/TopUpScreen";
 
 import PassengerTypeScreen from "../screens/PassengerTypeScreen";
 import DiscountInfoScreen from "../screens/DiscountInfoScreen";
@@ -38,6 +39,7 @@ export default function CommuterNavigator() {
             <Stack.Screen name="Balance" component={BalanceScreen} />
             <Stack.Screen name="Transactions" component={TransactionsScreen} />
             <Stack.Screen name="SendLoad" component={SendLoadScreen} />
+            <Stack.Screen name="TopUp" component={TopUpScreen} />
             <Stack.Screen name="TopUpCheckout" component={TopUpCheckoutScreen} />
 
             {/* QR + Pay */}

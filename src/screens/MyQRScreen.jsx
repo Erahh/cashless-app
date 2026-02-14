@@ -99,6 +99,16 @@ export default function MyQRScreen({ navigation }) {
           <Text style={styles.instruction}>
             Show this QR to the operator to pay your fare
           </Text>
+
+          {/* Scan Card Button */}
+          <TouchableOpacity
+            style={styles.scanCardBtn}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate("CommuterScan")}
+          >
+            <Ionicons name="scan-outline" size={18} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.scanCardText}>Scan Card</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Quick Actions */}
@@ -216,5 +226,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,
+  },
+
+  scanCardBtn: {
+    marginTop: 20,
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  scanCardText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

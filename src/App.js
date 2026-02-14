@@ -7,10 +7,14 @@ import { StatusBar } from "expo-status-bar";
 import AppNavigator from "./navigation/AppNavigator";
 import { AppLockProvider, AppLockContext } from "./context/AppLockContext";
 import { supabase } from "./api/supabase";
+import { usePushNotifications } from "./hooks/usePushNotifications";
 
 function AppWithLock() {
   const { setLocked } = useContext(AppLockContext);
   const appState = useRef(AppState.currentState);
+
+  // 📱 Register push notifications (safe, never blocks or crashes)
+  usePushNotifications();
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", async (nextState) => {

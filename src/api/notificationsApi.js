@@ -19,3 +19,44 @@ export async function fetchNotifications(limit = 30) {
   if (!res.ok) throw new Error(json.error || "Failed to load notifications");
   return json.items || [];
 }
+
+/**
+ * Register an Expo push token with the backend.
+ * Call this on app launch (after login) so the server knows where to send notifications.
+ */
+export async function registerPushToken(pushToken) {
+  const token = await getToken();
+
+  const res = await fetch(`${API_BASE_URL}/notifications/register-push`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ token: pushToken }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Failed to register push token");
+  return json;
+}
+
+/**
+ * Unregister a push token (e.g., on logout).
+ */
+export async function unregisterPushToken(pushToken) {
+  const token = await getToken();
+
+  const res = await fetch(`${API_BASE_URL}/notifications/unregister-push`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ token: pushToken }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Failed to unregister push token");
+  return json;
+}

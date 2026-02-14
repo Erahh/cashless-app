@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect, useState, useRef } from "react";
 import { fetchNotifications } from "../api/notificationsApi";
 import {
   View,
@@ -35,6 +35,8 @@ export default function HomeScreen({ navigation, route }) {
   const [netMsg, setNetMsg] = useState("");
   const [recent, setRecent] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [notifCount, setNotifCount] = useState(0);
+  const lastSeenNotif = useRef(null);
 
   const loadStatus = async ({ silent = false, canRetry = true } = {}) => {
     try {
@@ -87,6 +89,18 @@ export default function HomeScreen({ navigation, route }) {
         }
       } catch {
         // ignore recent errors (dashboard can still load)
+      }
+
+      // ✅ Load notification count (only new ones since last viewed)
+      try {
+        const notifs = await fetchNotifications(50);
+        const cutoff = lastSeenNotif.current;
+        const fresh = cutoff
+          ? notifs.filter((n) => new Date(n.created_at) > new Date(cutoff))
+          : notifs;
+        setNotifCount(fresh.length);
+      } catch {
+        // ignore notification count errors
       }
     } catch (e) {
       const isTimeout = e?.name === "AbortError";
@@ -220,12 +234,20 @@ export default function HomeScreen({ navigation, route }) {
           {/* ✅ Notifications */}
           <TouchableOpacity
             style={styles.notifBtn}
-            onPress={() => navigation.navigate("Notifications")}
+            onPress={() => {
+              lastSeenNotif.current = new Date().toISOString();
+              setNotifCount(0);
+              navigation.navigate("Notifications");
+            }}
           >
             <Text style={styles.notifIcon}>🔔</Text>
-            <View style={styles.notifDot}>
-              <Text style={styles.notifDotText}>!</Text>
-            </View>
+            {notifCount > 0 && (
+              <View style={styles.notifDot}>
+                <Text style={styles.notifDotText}>
+                  {notifCount > 99 ? "99+" : notifCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -247,35 +269,55 @@ export default function HomeScreen({ navigation, route }) {
           </View>
         ) : null}
 
-        {/* Spend / Stats Card */}
+        {/* ═══════ UNIFIED WALLET CARD ═══════ */}
         <TouchableOpacity
-          style={styles.bigCard}
+          style={styles.walletCard}
           activeOpacity={0.9}
           onPress={() => navigation.navigate("Balance")}
         >
-          <View style={styles.bigCardTopRow}>
-            <View>
-              <Text style={styles.cardLabel}>Wallet Status</Text>
-              <Text style={styles.cardValue}>₱{computed.balanceText}</Text>
-            </View>
-
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>↑ 3.2%</Text>
+          {/* Balance Section */}
+          <View style={styles.walletBalanceSection}>
+            <View style={styles.walletBalanceInner}>
+              <Text style={styles.walletBalanceLabel}>{"Available\nBalance"}</Text>
+              <Text style={styles.walletBalanceAmount}>₱{computed.balanceText}</Text>
             </View>
           </View>
 
-          <View style={styles.waveBox}>
-            <View style={styles.waveLine} />
-          </View>
+          {/* Divider */}
+          <View style={styles.walletDivider} />
 
-          <Text style={styles.cardHint}>Tap to view wallet & transactions</Text>
+          {/* Spending Section */}
+          <View style={styles.walletSpendingSection}>
+            <View style={styles.walletSpendingLeft}>
+              <Text style={styles.walletSpendingLabel}>SPENDING</Text>
+              <Text style={styles.walletSpendingHint}>Tap to view details →</Text>
+            </View>
+            <View style={styles.walletSpendingRight}>
+              <View style={styles.walletPercentRow}>
+                <Text style={styles.walletPercentText}>↑ 3.2%</Text>
+                <Text style={styles.walletPercentLabel}>last week</Text>
+              </View>
+              {/* Mini Wave Graph (bar chart) */}
+              <View style={styles.walletWaveRow}>
+                <View style={[styles.walletWaveBar, { height: 6 }]} />
+                <View style={[styles.walletWaveBar, { height: 12 }]} />
+                <View style={[styles.walletWaveBar, { height: 8 }]} />
+                <View style={[styles.walletWaveBar, { height: 16 }]} />
+                <View style={[styles.walletWaveBar, { height: 10 }]} />
+                <View style={[styles.walletWaveBar, { height: 18 }]} />
+                <View style={[styles.walletWaveBar, { height: 14 }]} />
+                <View style={[styles.walletWaveBar, { height: 10 }]} />
+              </View>
+            </View>
+          </View>
         </TouchableOpacity>
 
         {/* Quick Actions */}
         <QuickActions
           items={[
             { key: "commuter_scan", icon: "📷", title: "Scan", sub: "Pay fare", onPress: () => navigation.navigate("CommuterScan"), show: computed.isCommuter },
-            { key: "topup", icon: "💳", title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
+            { key: "topup", icon: "💳", title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("TopUp"), show: computed.isCommuter },
+            { key: "sendload", icon: "💸", title: "Send Load", sub: "P2P", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
             { key: "tap_pay", icon: "📳", title: "Tap to Pay", sub: "NFC (Demo)", onPress: () => navigation.navigate("NFCTapPay"), show: computed.isCommuter },
 
             { key: "op_qr", icon: "📲", title: "My QR", sub: "Receive Pay", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorMyQR" }), show: computed.isOperator },
@@ -510,48 +552,115 @@ const styles = StyleSheet.create({
   notifIcon: { fontSize: 18 },
   notifDot: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    top: 4,
+    right: 2,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: "#FF5E5E",
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: "#0B0E14",
   },
-  notifDotText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  notifDotText: { color: "#fff", fontSize: 10, fontWeight: "900" },
 
-  bigCard: {
+  // ═══════ UNIFIED WALLET CARD ═══════
+  walletCard: {
     marginTop: 18,
-    borderRadius: 22,
-    padding: 16,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderRadius: 28,
+    padding: 20,
+    backgroundColor: "#2D2519",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,211,106,0.2)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 12,
   },
-  bigCardTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  cardLabel: { color: "rgba(255,255,255,0.65)", fontSize: 12 },
-  cardValue: { color: "#fff", fontSize: 22, fontWeight: "800", marginTop: 6 },
-
-  pill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(255, 211, 106, 0.95)",
+  walletBalanceSection: {
+    marginBottom: 18,
   },
-  pillText: { fontWeight: "900", color: "#0B0E14" },
-
-  waveBox: {
-    height: 56,
-    marginTop: 14,
-    borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.22)",
-    overflow: "hidden",
-    justifyContent: "center",
+  walletBalanceInner: {
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 22,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  waveLine: { height: 3, width: "100%", backgroundColor: "rgba(255, 150, 80, 0.9)" },
-
-  cardHint: { color: "rgba(255,255,255,0.55)", marginTop: 10, fontSize: 12 },
+  walletBalanceLabel: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 13,
+    fontWeight: "500",
+    letterSpacing: 0.3,
+  },
+  walletBalanceAmount: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "900",
+    letterSpacing: -1,
+  },
+  walletDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    marginBottom: 18,
+  },
+  walletSpendingSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  walletSpendingLeft: {
+    flex: 1,
+  },
+  walletSpendingLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  walletSpendingHint: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 12,
+  },
+  walletSpendingRight: {
+    alignItems: "flex-end",
+  },
+  walletPercentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 8,
+  },
+  walletPercentText: {
+    color: "#FFD36A",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  walletPercentLabel: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 10,
+  },
+  walletWaveRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 3,
+  },
+  walletWaveBar: {
+    width: 8,
+    borderRadius: 2,
+    backgroundColor: "#FF9650",
+  },
 
   sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "800", marginTop: 18 },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },

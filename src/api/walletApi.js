@@ -34,3 +34,19 @@ export async function demoTopUp(amount) {
   if (!res.ok) throw new Error(json.error || "Top up failed");
   return json;
 }
+
+export async function sendLoad(receiver_phone, amount, notes) {
+  const token = await getToken();
+  const res = await fetch(`${API_BASE_URL}/load-transfer/send`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ receiver_phone, amount: Number(amount), notes }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Transfer failed");
+  return json;
+}

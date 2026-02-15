@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -16,6 +16,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Card, PrimaryButton, GhostButton, Pill } from "../components/ui";
 import { sendLoad } from "../api/walletApi";
+import { renderApiRequest } from "../api/apiHelper";
 import { useRoute } from "@react-navigation/native";
 
 export default function SendLoadScreen({ navigation }) {
@@ -25,11 +26,45 @@ export default function SendLoadScreen({ navigation }) {
     const [notes, setNotes] = useState("");
     const [loading, setLoading] = useState(false);
 
+    // Quick Pick data
+    const [recentRecipients, setRecentRecipients] = useState([]);
+    const [friends, setFriends] = useState([]);
+    const [loadingPicks, setLoadingPicks] = useState(true);
+
     React.useEffect(() => {
         if (route.params?.phone) {
             setPhone(route.params.phone);
         }
     }, [route.params?.phone]);
+
+    // Fetch recent recipients and friends on mount
+    useEffect(() => {
+        const fetchQuickPicks = async () => {
+            try {
+                setLoadingPicks(true);
+
+                // Fetch both in parallel
+                const [recentRes, friendsRes] = await Promise.all([
+                    renderApiRequest("/wallet/recent-recipients").catch(() => ({ recipients: [] })),
+                    renderApiRequest("/friends/list").catch(() => ({ friends: [] })),
+                ]);
+
+                setRecentRecipients(recentRes?.recipients || []);
+
+                // Filter to accepted friends only
+                const accepted = (friendsRes?.friends || [])
+                    .filter(f => f.status === "accepted" && f.friend_phone)
+                    .slice(0, 10);
+                setFriends(accepted);
+            } catch {
+                // Silently fail — quick picks are optional
+            } finally {
+                setLoadingPicks(false);
+            }
+        };
+
+        fetchQuickPicks();
+    }, []);
 
     // ✅ Phone: digits only, max 11 (PH mobile)
     const handlePhoneChange = (text) => {
@@ -58,6 +93,30 @@ export default function SendLoadScreen({ navigation }) {
     // ✅ Quick amount presets
     const presets = [50, 100, 200, 500];
 
+    // Convert +63 phone to local 09xx format
+    const toLocal = (p) => {
+        if (!p) return "";
+        const cleaned = p.replace(/[^0-9+]/g, "");
+        if (cleaned.startsWith("+63")) return "0" + cleaned.slice(3);
+        return cleaned;
+    };
+
+    // Pick a contact from quick picks
+    const pickContact = (phoneNum) => {
+        const local = toLocal(phoneNum);
+        setPhone(local);
+    };
+
+    // Get initials from a name
+    const getInitials = (name) => {
+        return (name || "?")
+            .split(" ")
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((s) => s[0]?.toUpperCase())
+            .join("") || "?";
+    };
+
     const handleSend = async () => {
         if (!phone) return Alert.alert("Required", "Please enter receiver's phone number");
         if (phone.length < 11) return Alert.alert("Invalid Number", "Please enter a valid 11-digit phone number (e.g. 09171234567)");
@@ -84,6 +143,9 @@ export default function SendLoadScreen({ navigation }) {
         ? phone.slice(0, 4) + " " + phone.slice(4, 7) + (phone.length > 7 ? " " + phone.slice(7) : "")
         : phone;
 
+    const hasQuickPicks = recentRecipients.length > 0 || friends.length > 0;
+    const showQuickPicks = phone.length === 0 && hasQuickPicks;
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -100,6 +162,67 @@ export default function SendLoadScreen({ navigation }) {
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                     >
+                        {/* ✅ Quick Pick Section */}
+                        {showQuickPicks && (
+                            <Card style={styles.quickPickCard}>
+                                <View style={styles.quickPickHeader}>
+                                    <Ionicons name="flash" size={16} color="#F2E94E" />
+                                    <Text style={styles.quickPickTitle}>Quick Pick</Text>
+                                </View>
+
+                                {/* Recent Recipients */}
+                                {recentRecipients.length > 0 && (
+                                    <>
+                                        <Text style={styles.quickPickSubtitle}>Recent</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
+                                            {recentRecipients.map((r, i) => (
+                                                <TouchableOpacity
+                                                    key={`recent-${i}`}
+                                                    style={styles.chip}
+                                                    activeOpacity={0.7}
+                                                    onPress={() => {
+                                                        // Recent recipients don't have phone, so we skip
+                                                        Alert.alert("Recent", `${r.name}\n\nTo send to this person again, enter their phone number.`);
+                                                    }}
+                                                >
+                                                    <View style={styles.chipAvatar}>
+                                                        <Text style={styles.chipAvatarText}>{getInitials(r.name)}</Text>
+                                                    </View>
+                                                    <Text style={styles.chipName} numberOfLines={1}>{r.name}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    </>
+                                )}
+
+                                {/* Friends */}
+                                {friends.length > 0 && (
+                                    <>
+                                        <Text style={styles.quickPickSubtitle}>Friends</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
+                                            {friends.map((f) => (
+                                                <TouchableOpacity
+                                                    key={f.connection_id}
+                                                    style={styles.chip}
+                                                    activeOpacity={0.7}
+                                                    onPress={() => pickContact(f.friend_phone)}
+                                                >
+                                                    <View style={[styles.chipAvatar, styles.chipAvatarFriend]}>
+                                                        <Text style={styles.chipAvatarText}>{getInitials(f.friend_name)}</Text>
+                                                    </View>
+                                                    <Text style={styles.chipName} numberOfLines={1}>{f.friend_name}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    </>
+                                )}
+
+                                {loadingPicks && (
+                                    <ActivityIndicator size="small" color="rgba(244,238,230,0.4)" style={{ marginTop: 8 }} />
+                                )}
+                            </Card>
+                        )}
+
                         <Card style={styles.mainCard}>
                             <View style={styles.pillContainer}>
                                 <Pill text="P2P Transfer" />
@@ -230,6 +353,69 @@ export default function SendLoadScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+    // Quick Pick styles
+    quickPickCard: {
+        marginBottom: 8,
+        padding: 16,
+        backgroundColor: "rgba(242,233,78,0.04)",
+        borderColor: "rgba(242,233,78,0.12)",
+    },
+    quickPickHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 12,
+    },
+    quickPickTitle: {
+        color: "#F2E94E",
+        fontSize: 14,
+        fontWeight: "900",
+    },
+    quickPickSubtitle: {
+        color: "rgba(244,238,230,0.45)",
+        fontSize: 11,
+        fontWeight: "700",
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginBottom: 8,
+        marginTop: 4,
+    },
+    chipsRow: {
+        marginBottom: 12,
+    },
+    chip: {
+        alignItems: "center",
+        marginRight: 14,
+        width: 64,
+    },
+    chipAvatar: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: "rgba(124,255,155,0.12)",
+        borderWidth: 1.5,
+        borderColor: "rgba(124,255,155,0.3)",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 6,
+    },
+    chipAvatarFriend: {
+        backgroundColor: "rgba(124,155,255,0.12)",
+        borderColor: "rgba(124,155,255,0.3)",
+    },
+    chipAvatarText: {
+        color: "#fff",
+        fontSize: 14,
+        fontWeight: "800",
+    },
+    chipName: {
+        color: "rgba(244,238,230,0.7)",
+        fontSize: 11,
+        fontWeight: "600",
+        textAlign: "center",
+    },
+
+    // Existing styles
     mainCard: {
         marginTop: 10,
         padding: 20,
@@ -357,3 +543,4 @@ const styles = StyleSheet.create({
         fontWeight: "700",
     },
 });
+

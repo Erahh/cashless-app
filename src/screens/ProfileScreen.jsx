@@ -13,11 +13,14 @@ import {
 } from "react-native";
 import { supabase } from "../api/supabase";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { renderApiRequest } from "../api/apiHelper";
 
 export default function ProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [account, setAccount] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const { setLocked } = useContext(AppLockContext);
 
   const computed = useMemo(() => {
@@ -97,6 +100,78 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
+  // ✅ Profile photo upload using expo-image-picker
+  const handleAvatarUpload = async () => {
+    try {
+      // Ask user to pick from gallery or camera
+      const choice = await new Promise((resolve) => {
+        Alert.alert("Profile Photo", "Choose a photo source", [
+          { text: "Camera", onPress: () => resolve("camera") },
+          { text: "Gallery", onPress: () => resolve("gallery") },
+          { text: "Cancel", style: "cancel", onPress: () => resolve(null) },
+        ]);
+      });
+
+      if (!choice) return;
+
+      let result;
+
+      if (choice === "camera") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          return Alert.alert("Permission Required", "Camera access is needed to take a photo.");
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? ["images"],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+          base64: true,
+        });
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          return Alert.alert("Permission Required", "Photo library access is needed.");
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? ["images"],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+          base64: true,
+        });
+      }
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        return Alert.alert("Error", "Failed to process image. Please try again.");
+      }
+
+      setUploading(true);
+
+      // Determine mime type from URI
+      const ext = (asset.uri || "").split(".").pop()?.toLowerCase();
+      const mime = ext === "png" ? "image/png" : "image/jpeg";
+      const imageData = `data:${mime};base64,${asset.base64}`;
+
+      const res = await renderApiRequest("/me/avatar", {
+        method: "PUT",
+        body: JSON.stringify({ image: imageData }),
+      });
+
+      if (res.ok && res.avatar_url) {
+        setProfile((prev) => ({ ...prev, avatar_url: res.avatar_url }));
+        Alert.alert("Success", "Profile photo updated!");
+      }
+    } catch (e) {
+      Alert.alert("Upload Failed", e.message || "Failed to upload photo.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   useEffect(() => {
     const unsub = navigation.addListener("focus", load);
     return unsub;
@@ -139,7 +214,12 @@ export default function ProfileScreen({ navigation }) {
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={handleAvatarUpload}
+            activeOpacity={0.7}
+            disabled={uploading}
+          >
             {profile?.avatar_url ? (
               <Image
                 source={{ uri: profile.avatar_url }}
@@ -150,7 +230,15 @@ export default function ProfileScreen({ navigation }) {
                 <Text style={styles.avatarText}>{computed.initials}</Text>
               </View>
             )}
-          </View>
+            {/* Camera badge */}
+            <View style={styles.cameraBadge}>
+              {uploading ? (
+                <ActivityIndicator size={12} color="#000" />
+              ) : (
+                <Ionicons name="camera" size={14} color="#000" />
+              )}
+            </View>
+          </TouchableOpacity>
 
           <Text style={styles.profileName}>{computed.name}</Text>
           <Text style={styles.profileEmail}>{profile?.email || profile?.phone || "—"}</Text>
@@ -471,6 +559,7 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     marginBottom: 16,
+    position: "relative",
   },
   avatar: {
     width: 80,
@@ -493,6 +582,19 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     borderWidth: 3,
     borderColor: "#7CFF9B",
+  },
+  cameraBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: -4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#7CFF9B",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(30,30,30,0.9)",
   },
   profileName: {
     color: "#fff",

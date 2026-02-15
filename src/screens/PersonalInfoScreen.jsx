@@ -120,24 +120,37 @@ function PickerModal({
   );
 }
 
-export default function PersonalInfoScreen({ navigation }) {
-  const [firstName, setFirstName] = useState("");
-  const [middleName, setMiddleName] = useState("");
-  const [lastName, setLastName] = useState("");
+export default function PersonalInfoScreen({ navigation, route }) {
+  // Edit mode: pre-populate from existing profile
+  const editMode = route?.params?.editMode === true;
+  const existingProfile = route?.params?.profile || null;
+
+  // Parse full_name into parts for edit mode
+  const nameParts = (existingProfile?.full_name || "").split(" ").filter(Boolean);
+  const initFirst = editMode ? (existingProfile?.first_name || nameParts[0] || "") : "";
+  const initMiddle = editMode ? (existingProfile?.middle_name || (nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : "")) : "";
+  const initLast = editMode ? (existingProfile?.last_name || nameParts[nameParts.length - 1] || "") : "";
+
+  const [firstName, setFirstName] = useState(initFirst);
+  const [middleName, setMiddleName] = useState(initMiddle);
+  const [lastName, setLastName] = useState(initLast);
 
   // ✅ Date picker state (store Date object)
-  const [birthdateObj, setBirthdateObj] = useState(null);
+  const initBirthdate = editMode && existingProfile?.birthdate
+    ? new Date(existingProfile.birthdate + "T00:00:00")
+    : null;
+  const [birthdateObj, setBirthdateObj] = useState(initBirthdate);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(editMode ? (existingProfile?.email || "") : "");
 
   // ✅ Pickers (cascading)
-  const [province, setProvince] = useState("");
-  const [city, setCity] = useState("");
-  const [barangay, setBarangay] = useState("");
+  const [province, setProvince] = useState(editMode ? (existingProfile?.province || "") : "");
+  const [city, setCity] = useState(editMode ? (existingProfile?.city || "") : "");
+  const [barangay, setBarangay] = useState(editMode ? (existingProfile?.barangay || "") : "");
 
-  const [zipCode, setZipCode] = useState("");
-  const [addressLine, setAddressLine] = useState("");
+  const [zipCode, setZipCode] = useState(editMode ? (existingProfile?.zip_code || "") : "");
+  const [addressLine, setAddressLine] = useState(editMode ? (existingProfile?.address_line || "") : "");
 
   const [loading, setLoading] = useState(false);
 
@@ -230,7 +243,15 @@ export default function PersonalInfoScreen({ navigation }) {
 
       if (profileErr) throw profileErr;
 
-      // 5) Ensure commuter_accounts exists (inactive until MPIN setup)
+      // Edit mode: just go back to profile screen
+      if (editMode) {
+        Alert.alert("Success", "Profile updated successfully!", [
+          { text: "OK", onPress: () => navigation.goBack() }
+        ]);
+        return;
+      }
+
+      // 5) Registration mode: Ensure commuter_accounts exists
       const { data: acct, error: acctReadErr } = await supabase
         .from("commuter_accounts")
         .select("commuter_id, account_active")
@@ -348,8 +369,21 @@ export default function PersonalInfoScreen({ navigation }) {
   return (
     <AuthBackground>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Personal Information</Text>
-        <Text style={styles.subtitle}>Fill in your details to continue</Text>
+        {editMode && (
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+        )}
+        <Text style={styles.title}>
+          {editMode ? "Edit Personal Information" : "Personal Information"}
+        </Text>
+        <Text style={styles.subtitle}>
+          {editMode ? "Update your details below" : "Fill in your details to continue"}
+        </Text>
 
         <GlassInput
           label="First Name *"
@@ -448,7 +482,7 @@ export default function PersonalInfoScreen({ navigation }) {
         </View>
 
         <GoldButton
-          label={loading ? "Saving..." : "Continue"}
+          label={loading ? "Saving..." : editMode ? "Save Changes" : "Continue"}
           onPress={onContinue}
           disabled={loading}
         />
@@ -491,6 +525,15 @@ export default function PersonalInfoScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0B0E14" },
   content: { padding: 18, paddingBottom: 40 },
+  backButton: {
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  backButtonText: {
+    color: "#7CFF9B",
+    fontSize: 16,
+    fontWeight: "700",
+  },
   title: { color: "#fff", fontSize: 26, fontWeight: "900", marginBottom: 8 },
   subtitle: { color: "rgba(255,255,255,0.65)", marginBottom: 20 },
   sectionTitle: {

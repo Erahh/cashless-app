@@ -9,6 +9,7 @@ import {
   Alert,
   SafeAreaView,
   StyleSheet,
+  Image,
 } from "react-native";
 import { supabase } from "../api/supabase";
 import { Ionicons } from "@expo/vector-icons";
@@ -65,7 +66,7 @@ export default function ProfileScreen({ navigation }) {
 
       const { data: p, error: pErr } = await supabase
         .from("profiles")
-        .select("full_name, phone, email, birthdate, province, city, barangay, zip_code, address_line")
+        .select("full_name, phone, email, birthdate, province, city, barangay, zip_code, address_line, first_name, middle_name, last_name, avatar_url")
         .eq("id", userId)
         .single();
       if (pErr) throw pErr;
@@ -139,9 +140,16 @@ export default function ProfileScreen({ navigation }) {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{computed.initials}</Text>
-            </View>
+            {profile?.avatar_url ? (
+              <Image
+                source={{ uri: profile.avatar_url }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{computed.initials}</Text>
+              </View>
+            )}
           </View>
 
           <Text style={styles.profileName}>{computed.name}</Text>
@@ -154,7 +162,10 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.profileActions}>
             <TouchableOpacity
               style={styles.editProfileBtn}
-              onPress={() => navigation.navigate("PersonalInfo")}
+              onPress={() => navigation.navigate("PersonalInfo", {
+                editMode: true,
+                profile: profile
+              })}
               activeOpacity={0.8}
             >
               <Ionicons name="create-outline" size={18} color="#0B0E14" />
@@ -475,6 +486,13 @@ const styles = StyleSheet.create({
     color: "#7CFF9B",
     fontSize: 28,
     fontWeight: "900",
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: "#7CFF9B",
   },
   profileName: {
     color: "#fff",

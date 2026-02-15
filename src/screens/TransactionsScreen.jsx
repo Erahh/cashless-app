@@ -11,12 +11,21 @@ function formatPHP(n) {
 }
 
 function titleFor(item) {
-  if (item.source === "topup") return "Top Up";
-  // ledger kinds
-  if (String(item.kind).includes("fare")) return "Ride Fare";
-  if (String(item.kind).includes("debit")) return "Debit";
-  if (String(item.kind).includes("credit")) return "Credit";
-  return item.kind || "Transaction";
+  // Use label from API if available (includes description)
+  if (item.label) return item.label;
+  if (item.source === "topup") return "PayMongo Top Up";
+  // Fallback: identify by kind
+  switch (item.kind) {
+    case "topup_credit": return "PayMongo Top Up";
+    case "fare_debit": return "Ride Fare Payment";
+    case "load_transfer_debit": return item.description || "Send Load";
+    case "load_transfer_credit": return item.description || "Received Load";
+    default:
+      if (String(item.kind).includes("fare")) return "Ride Fare";
+      if (String(item.kind).includes("debit")) return "Debit";
+      if (String(item.kind).includes("credit")) return "Credit";
+      return item.kind || "Transaction";
+  }
 }
 
 function badgeFor(item) {

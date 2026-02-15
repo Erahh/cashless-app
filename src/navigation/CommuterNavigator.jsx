@@ -26,6 +26,7 @@ import VerificationSubmittedScreen from "../screens/VerificationSubmittedScreen"
 import GuardianLinkScreen from "../screens/GuardianLinkScreen";
 import FriendsMapScreen from "../screens/FriendsMapScreen";
 import AddFriendScreen from "../screens/AddFriendScreen";
+import PersonalInfoScreen from "../screens/PersonalInfoScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -66,6 +67,7 @@ export default function CommuterNavigator() {
 
             {/* Profile */}
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
         </Stack.Navigator>
     );

@@ -137,26 +137,58 @@ export default function BalanceScreen({ navigation }) {
             ═══════════════════════════════════════════════════════════════ */}
             <View style={styles.transactionList}>
               {(wallet?.ledger || []).slice(0, 5).map((x) => {
-                const isCredit = x.kind === "topup_credit";
+                const isCredit = x.kind === "topup_credit" || x.kind === "load_transfer_credit";
                 const txDate = new Date(x.created_at);
                 const dateStr = txDate.toLocaleDateString(undefined, {
                   month: 'short', day: 'numeric'
                 });
+
+                // Transaction identity based on kind
+                let txIcon = "🚌";
+                let txType = "Transfer";
+                let txName = "Transaction";
+
+                switch (x.kind) {
+                  case "topup_credit":
+                    txIcon = "💳";
+                    txType = "Receive";
+                    txName = "PayMongo Top Up";
+                    break;
+                  case "fare_debit":
+                    txIcon = "🚌";
+                    txType = "Payment";
+                    txName = "Ride Fare";
+                    break;
+                  case "load_transfer_debit":
+                    txIcon = "💸";
+                    txType = "Sent";
+                    txName = x.description || "Send Load";
+                    break;
+                  case "load_transfer_credit":
+                    txIcon = "📥";
+                    txType = "Received";
+                    txName = x.description || "Received Load";
+                    break;
+                  default:
+                    txIcon = isCredit ? "💳" : "🚌";
+                    txType = isCredit ? "Receive" : "Transfer";
+                    txName = x.description || x.kind || "Transaction";
+                }
 
                 return (
                   <View key={x.id} style={styles.txCard}>
                     <View style={styles.txLeft}>
                       <View style={[styles.txIconCircle, isCredit && styles.txIconCircleCredit]}>
                         <Text style={styles.txIconEmoji}>
-                          {isCredit ? "💳" : "🚌"}
+                          {txIcon}
                         </Text>
                       </View>
                       <View style={styles.txInfo}>
                         <Text style={styles.txType}>
-                          {isCredit ? "Receive" : "Transfer"}
+                          {txType}
                         </Text>
                         <Text style={styles.txName}>
-                          {isCredit ? "GCash Top Up" : "Fare Payment"}
+                          {txName}
                         </Text>
                       </View>
                     </View>

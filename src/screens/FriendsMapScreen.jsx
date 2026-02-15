@@ -22,8 +22,11 @@ export default function FriendsMapScreen({ navigation }) {
     const [loading, setLoading] = useState(true);
     const [shareLocation, setShareLocation] = useState(true);
     const [showFriendsList, setShowFriendsList] = useState(false);
+    const [onlineToast, setOnlineToast] = useState(null); // {name, visible}
     const webViewRef = useRef(null);
     const broadcastIntervalRef = useRef(null);
+    const prevOnlineRef = useRef({}); // Track previous online states
+    const toastTimeoutRef = useRef(null);
 
     useEffect(() => {
         initializeMap();
@@ -35,6 +38,9 @@ export default function FriendsMapScreen({ navigation }) {
             clearInterval(friendsInterval);
             if (broadcastIntervalRef.current) {
                 clearInterval(broadcastIntervalRef.current);
+            }
+            if (toastTimeoutRef.current) {
+                clearTimeout(toastTimeoutRef.current);
             }
         };
     }, []);
@@ -105,11 +111,36 @@ export default function FriendsMapScreen({ navigation }) {
         try {
             const response = await api('/friends/locations-realtime');
             if (response.ok) {
-                setFriends(response.friends || []);
+                const newFriends = response.friends || [];
+
+                // Detect friends who just came online
+                newFriends.forEach(f => {
+                    const wasOnline = prevOnlineRef.current[f.friend_id];
+                    if (f.is_online && wasOnline === false) {
+                        // Friend transitioned from offline to online
+                        showOnlineToast(f.friend_name || 'A friend');
+                    }
+                });
+
+                // Update previous online states
+                const onlineMap = {};
+                newFriends.forEach(f => { onlineMap[f.friend_id] = f.is_online; });
+                prevOnlineRef.current = onlineMap;
+
+                setFriends(newFriends);
             }
         } catch (error) {
             console.error('Error fetching friends locations:', error);
         }
+    };
+
+    const showOnlineToast = (friendName) => {
+        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+        setOnlineToast({ name: friendName });
+        toastTimeoutRef.current = setTimeout(() => {
+            setOnlineToast(null);
+            toastTimeoutRef.current = null;
+        }, 4000);
     };
 
     const toggleLocationSharing = async () => {
@@ -326,6 +357,18 @@ export default function FriendsMapScreen({ navigation }) {
                     <Ionicons name="refresh" size={24} color="#FFF" />
                 </TouchableOpacity>
             </View>
+
+            {/* Online Toast Notification */}
+            {onlineToast && (
+                <View style={styles.toastContainer}>
+                    <View style={styles.toast}>
+                        <Text style={styles.toastEmoji}>📍</Text>
+                        <Text style={styles.toastText}>
+                            {onlineToast.name} is now online
+                        </Text>
+                    </View>
+                </View>
+            )}
         </View>
     );
 }
@@ -502,5 +545,35 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.7)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    toastContainer: {
+        position: 'absolute',
+        top: 110,
+        left: 16,
+        right: 16,
+        alignItems: 'center',
+        zIndex: 999,
+    },
+    toast: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(76, 175, 80, 0.95)',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 25,
+        gap: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    toastEmoji: {
+        fontSize: 18,
+    },
+    toastText: {
+        color: '#FFF',
+        fontSize: 14,
+        fontWeight: '700',
     },
 });

@@ -23,26 +23,6 @@ export default function TopUpCheckoutScreen({ navigation, route }) {
             const json = await res.json();
             if (res.ok && json?.status) {
                 setStatus(json.status);
-
-                // 🛠️ DEV FEATURE: Auto-approve if still pending (for local testing)
-                if (json.status === "PENDING") {
-                    try {
-                        await fetch(`${API_BASE_URL}/wallet/topup/simulate-success`, {
-                            method: "POST",
-                            headers: { Authorization: `Bearer ${token}` },
-                        });
-                        // Re-check status after approval
-                        const checkRes = await fetch(`${API_BASE_URL}/wallet/topup/${ref}`, {
-                            headers: { Authorization: `Bearer ${token}` },
-                        });
-                        const checkJson = await checkRes.json();
-                        if (checkRes.ok && checkJson?.status) {
-                            setStatus(checkJson.status);
-                        }
-                    } catch {
-                        // Silent fail if simulate endpoint doesn't exist or errors
-                    }
-                }
             }
         } catch (e) {
             // silent polling errors

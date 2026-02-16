@@ -122,10 +122,10 @@ export default function ProfileScreen({ navigation }) {
           return Alert.alert("Permission Required", "Camera access is needed to take a photo.");
         }
         result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? ["images"],
+          mediaTypes: ["images"],
           allowsEditing: true,
           aspect: [1, 1],
-          quality: 0.7,
+          quality: 0.5, // Reduced to prevent 413 errors
           base64: true,
         });
       } else {
@@ -134,10 +134,10 @@ export default function ProfileScreen({ navigation }) {
           return Alert.alert("Permission Required", "Photo library access is needed.");
         }
         result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? ["images"],
+          mediaTypes: ["images"],
           allowsEditing: true,
           aspect: [1, 1],
-          quality: 0.7,
+          quality: 0.5, // Reduced to prevent 413 errors
           base64: true,
         });
       }
@@ -145,14 +145,28 @@ export default function ProfileScreen({ navigation }) {
       if (result.canceled || !result.assets?.[0]) return;
 
       const asset = result.assets[0];
+
+      // Determine mime type from URI
+      const ext = (asset.uri || "").split(".").pop()?.toLowerCase();
+      const allowedExts = ["jpg", "jpeg", "png"];
+      if (!allowedExts.includes(ext)) {
+        return Alert.alert("Unsupported File", "Please select a JPEG or PNG image.");
+      }
+
+      // Estimate size from base64 if fileSize is missing (base64 is ~33% larger than binary)
+      const estimatedSize = asset.base64 ? (asset.base64.length * 0.75) : 0;
+      const MAX_BYTES = 2 * 1024 * 1024; // 2MB
+
+      if (estimatedSize > MAX_BYTES) {
+        return Alert.alert("File Too Large", "Profile photo must be smaller than 2MB.");
+      }
+
       if (!asset.base64) {
         return Alert.alert("Error", "Failed to process image. Please try again.");
       }
 
       setUploading(true);
 
-      // Determine mime type from URI
-      const ext = (asset.uri || "").split(".").pop()?.toLowerCase();
       const mime = ext === "png" ? "image/png" : "image/jpeg";
       const imageData = `data:${mime};base64,${asset.base64}`;
 

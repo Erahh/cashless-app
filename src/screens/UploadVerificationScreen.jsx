@@ -49,16 +49,17 @@ export default function UploadVerificationScreen({ navigation, route }) {
     const userId = sessionData?.session?.user?.id;
     if (!userId) throw new Error("No session user");
 
-    // Fetch image bytes from local uri
-    const res = await fetch(asset.uri);
-    const blob = await res.blob();
-
-    const ext = (asset.uri.split(".").pop() || "jpg").toLowerCase();
+    const response = await fetch(asset.uri);
+    const blob = await response.blob();
+    const ext = (asset.uri.split("?")[0].split(".").pop() || "jpg").toLowerCase();
     const path = `${userId}/${passengerType}_${side}_${Date.now()}.${ext}`;
 
     const { error } = await supabase.storage
       .from("verification-docs")
-      .upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: true });
+      .upload(path, blob, {
+        contentType: blob.type || `image/${ext}`,
+        upsert: false
+      });
 
     if (error) throw error;
 

@@ -24,8 +24,36 @@ function AppWithLock() {
         appState.current === "active" &&
         (nextState === "background" || nextState === "inactive")
       ) {
-        const { data } = await supabase.auth.getSession();
-        if (data?.session) setLocked(true);
+        try {
+          const { data } = await supabase.auth.getSession();
+          const session = data?.session;
+
+          if (session?.user?.id) {
+            const userId = session.user.id;
+
+            // Check if user has completed registration (profile exists)
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("id", userId)
+              .maybeSingle();
+
+            if (profile?.id) {
+              // Check if pin is set (only lock if pin is set)
+              const { data: acc } = await supabase
+                .from("commuter_accounts")
+                .select("pin_set")
+                .eq("commuter_id", userId)
+                .maybeSingle();
+
+              if (acc?.pin_set) {
+                setLocked(true);
+              }
+            }
+          }
+        } catch (error) {
+          console.log("Error checking lock status:", error);
+        }
       }
 
       appState.current = nextState;

@@ -31,9 +31,6 @@
       },
       "package": "com.anonymous.ERAWALLET"
     },
-    "web": {
-      "favicon": "./src/assets/favicon.png"
-    },
     "plugins": [
       "expo-secure-store",
       "expo-web-browser",

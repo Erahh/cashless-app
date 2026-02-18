@@ -13,6 +13,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../api/supabase";
+import { API_BASE_URL } from "../config/api";
 
 export default function UploadBackIDScreen({ navigation, route }) {
     const { passenger_type, frontImage } = route.params || {};
@@ -57,17 +58,16 @@ export default function UploadBackIDScreen({ navigation, route }) {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Not authenticated");
 
-            const ext = uri.split(".").pop();
-            const fileName = `${user.id}/${passenger_type}_${side}_${Date.now()}.${ext}`;
 
             const response = await fetch(uri);
             const blob = await response.blob();
-            const arrayBuffer = await blob.arrayBuffer();
+            const ext = (uri.split("?")[0].split(".").pop() || "jpg").toLowerCase();
+            const fileName = `${user.id}/${passenger_type}_${side}_${Date.now()}.${ext}`;
 
             const { data, error } = await supabase.storage
                 .from("verification-docs")
-                .upload(fileName, arrayBuffer, {
-                    contentType: `image/${ext}`,
+                .upload(fileName, blob, {
+                    contentType: blob.type || `image/${ext}`,
                     upsert: false,
                 });
 
@@ -100,8 +100,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
 
             if (!token) throw new Error("No auth token");
 
-            const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://cashless-backend.onrender.com";
-            const response = await fetch(`${API_URL}/verification/submit`, {
+            const response = await fetch(`${API_BASE_URL}/verification/submit`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

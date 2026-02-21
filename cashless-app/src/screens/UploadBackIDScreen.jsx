@@ -53,27 +53,42 @@ export default function UploadBackIDScreen({ navigation, route }) {
         }
     };
 
-    const uploadToSupabase = async (uri, side) => {
+    const uploadToBackend = async (uri, side) => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("Not authenticated");
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
+            if (!token) throw new Error("No auth token");
 
-
+            // Get base64 data from URI
             const response = await fetch(uri);
             const blob = await response.blob();
-            const ext = (uri.split("?")[0].split(".").pop() || "jpg").toLowerCase();
-            const fileName = `${user.id}/${passenger_type}_${side}_${Date.now()}.${ext}`;
 
-            const { data, error } = await supabase.storage
-                .from("verification-docs")
-                .upload(fileName, blob, {
-                    contentType: blob.type || `image/${ext}`,
-                    upsert: false,
-                });
+            // Convert blob to base64
+            const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
 
-            if (error) throw error;
-            return data.path;
+            const res = await fetch(`${API_BASE_URL}/verification/upload`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    image: base64Data,
+                    document_type: side === "front" ? "id_front" : "id_back"
+                })
+            });
+
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || "Upload failed");
+
+            return result.file_path;
         } catch (err) {
+            console.error(`❌ Upload error (${side}):`, err);
             throw new Error(`Upload failed: ${err.message}`);
         }
     };
@@ -90,9 +105,9 @@ export default function UploadBackIDScreen({ navigation, route }) {
         setUploading(true);
 
         try {
-            // Upload both images
-            const frontPath = await uploadToSupabase(frontImage, "front");
-            const backPath = await uploadToSupabase(backImage, "back");
+            // Upload both images using our backend endpoint (fixes 0-byte issue)
+            const frontPath = await uploadToBackend(frontImage, "front");
+            const backPath = await uploadToBackend(backImage, "back");
 
             // Submit verification request to backend
             const { data: { session } } = await supabase.auth.getSession();

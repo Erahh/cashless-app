@@ -33,9 +33,10 @@ export default function UploadVerificationScreen({ navigation, route }) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'], // Updated from deprecated MediaTypeOptions.Images
       allowsEditing: true,
       quality: 0.8,
+      base64: true, // Request base64 for backend upload
     });
 
     if (!result.canceled) {
@@ -43,28 +44,53 @@ export default function UploadVerificationScreen({ navigation, route }) {
     }
   };
 
-  // Upload to private bucket verification-docs
-  const uploadToSupabase = async (asset, side) => {
+  // Upload via backend to bypass RLS/MIME restrictions
+  const uploadViaBackend = async (asset, side) => {
     const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData?.session?.user?.id;
-    if (!userId) throw new Error("No session user");
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error("No session user");
 
-    const response = await fetch(asset.uri);
-    const blob = await response.blob();
+    // Determine mime type from URI extension if possible, default to jpeg
     const ext = (asset.uri.split("?")[0].split(".").pop() || "jpg").toLowerCase();
-    const path = `${userId}/${passengerType}_${side}_${Date.now()}.${ext}`;
+    const mimeMap = {
+      png: "image/png",
+      webp: "image/webp",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      heic: "image/heic"
+    };
+    const mimeType = mimeMap[ext] || "image/jpeg";
 
-    const { error } = await supabase.storage
-      .from("verification-docs")
-      .upload(path, blob, {
-        contentType: blob.type || `image/${ext}`,
-        upsert: false
-      });
+    // Construct data URI
+    if (!asset.base64) {
+      console.error("❌ No base64 data found in asset!");
+      throw new Error("Could not read image data. Please try again.");
+    }
 
-    if (error) throw error;
+    console.log(`📤 Uploading ${side} ID... Base64 length:`, asset.base64.length);
 
-    // Return the file path inside bucket (store in DB)
-    return path;
+    const dataUri = `data:${mimeType};base64,${asset.base64}`;
+
+    const res = await fetch(`${API_BASE_URL}/verification/upload`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        image: dataUri,
+        document_type: side === "front" ? "id_front" : "id_back",
+      }),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json.error || "Upload failed");
+    }
+
+    // Return the file path provided by backend
+    return json.file_path;
   };
 
   const handleSubmit = async () => {
@@ -80,11 +106,11 @@ export default function UploadVerificationScreen({ navigation, route }) {
 
       setLoading(true);
 
-      // Upload files first
-      const id_front_path = await uploadToSupabase(front, "front");
-      const id_back_path = await uploadToSupabase(back, "back");
+      // Upload files via backend
+      const id_front_path = await uploadViaBackend(front, "front");
+      const id_back_path = await uploadViaBackend(back, "back");
 
-      // Get access token for backend call
+      // Get access token for submit call
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       if (!token) throw new Error("No access token. Please login again.");
@@ -119,6 +145,7 @@ export default function UploadVerificationScreen({ navigation, route }) {
       Alert.alert("Submitted ✅", "Your verification is now pending admin approval.");
       navigation.navigate("VerificationSubmitted");
     } catch (e) {
+      console.error("Upload error:", e);
       Alert.alert("Error", e.message);
     } finally {
       setLoading(false);

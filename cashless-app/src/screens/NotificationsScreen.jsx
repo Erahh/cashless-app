@@ -8,9 +8,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
+  TouchableWithoutFeedback,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { fetchNotifications } from "../api/notificationsApi";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { fetchNotifications, deleteNotification, clearNotifications } from "../api/notificationsApi";
 import BottomNav from "../components/BottomNav";
 
 function normalizePayload(payload) {
@@ -18,21 +20,24 @@ function normalizePayload(payload) {
   return {
     title: String(p.title || "Notification"),
     body: String(p.body || ""),
-    fare_amount: p.fare_amount != null ? Number(p.fare_amount) : null,
-    route_name: p.route_name != null ? String(p.route_name) : null,
-    scanned_at: p.scanned_at ? String(p.scanned_at) : null,
+    type: String(p.type || "system"), // 'transfer', 'payment', 'system'
   };
 }
 
 export default function NotificationsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+  const [isClearing, setIsClearing] = useState(false);
+  const [isFullList, setIsFullList] = useState(false);
 
-  const load = async () => {
+  const load = async (limit = 10) => {
     try {
       setLoading(true);
-      const data = await fetchNotifications(50);
+      const data = await fetchNotifications(limit);
       setItems(data);
+      setIsFullList(limit > 10);
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
@@ -41,109 +46,209 @@ export default function NotificationsScreen({ navigation }) {
   };
 
   useEffect(() => {
-    const unsub = navigation?.addListener?.("focus", load);
-    load();
+    const unsub = navigation?.addListener?.("focus", () => load(10));
+    load(10);
     return unsub;
   }, []);
 
-  const computed = useMemo(() => {
-    const queued = items.filter((x) => x.status === "queued").length;
-    const failed = items.filter((x) => x.status === "failed").length;
-    return { queued, failed };
-  }, [items]);
+  const handleSeeAll = () => {
+    load(50);
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      setMenuVisible(false);
+      await deleteNotification(id);
+      setItems((prev) => prev.filter((x) => x.id !== id));
+    } catch (e) {
+      Alert.alert("Error", "Could not delete notification");
+    }
+  };
+
+  const handleClearAll = async () => {
+    Alert.alert(
+      "Clear All",
+      "Are you sure you want to delete all notifications?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsClearing(true);
+              await clearNotifications();
+              setItems([]);
+            } catch (e) {
+              Alert.alert("Error", "Could not clear notifications");
+            } finally {
+              setIsClearing(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const openMenu = (id) => {
+    setSelectedId(id);
+    setMenuVisible(true);
+  };
+
+  // Icon mapping helper based on title/type (Upgraded Icons)
+  const getIconInfo = (title = "", type = "") => {
+    const lowerTitle = title.toLowerCase();
+    const lowerType = type.toLowerCase();
+
+    // 1) Ride / Travel Related
+    if (lowerTitle.includes("ride") || lowerTitle.includes("scanned") || lowerType === "ride" || lowerTitle.includes("fare")) {
+      return { icon: "bus-clock", color: "#FF9F43", lib: "MaterialCommunityIcons" };
+    }
+    // 2) Transfers / Sent
+    if (lowerTitle.includes("transfer") || lowerTitle.includes("send") || lowerType === "transfer") {
+      return { icon: "bank-transfer", color: "#3B99FF", lib: "MaterialCommunityIcons" };
+    }
+    // 3) Wallet / Payments
+    if (lowerTitle.includes("payment") || lowerTitle.includes("receive") || lowerType === "payment" || lowerTitle.includes("wallet")) {
+      return { icon: "wallet-outline", color: "#F7E353", lib: "MaterialCommunityIcons" };
+    }
+    // 4) Success / Verified / Identity
+    if (lowerTitle.includes("verified") || lowerTitle.includes("approved") || lowerTitle.includes("identity")) {
+      return { icon: "check-decagram", color: "#28C76F", lib: "MaterialCommunityIcons" };
+    }
+    // 5) Account / Profile
+    if (lowerTitle.includes("account") || lowerTitle.includes("profile") || lowerTitle.includes("mpin")) {
+      return { icon: "account-edit-outline", color: "#A0A0A0", lib: "MaterialCommunityIcons" };
+    }
+    // 6) Security / Alerts
+    if (lowerTitle.includes("security") || lowerTitle.includes("logged") || lowerTitle.includes("device") || lowerTitle.includes("failed")) {
+      return { icon: "shield-alert-outline", color: "#FF5C5C", lib: "MaterialCommunityIcons" };
+    }
+
+    return { icon: "bell-outline", color: "#A0A0A0", lib: "MaterialCommunityIcons" };
+  };
+
+  const RenderIcon = ({ name, color, lib }) => {
+    if (lib === "MaterialCommunityIcons") {
+      return <MaterialCommunityIcons name={name} size={22} color="#000" />;
+    }
+    return <Ionicons name={name} size={22} color="#000" />;
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header - Fixed outside ScrollView */}
-      <View style={styles.topRow}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color="#fff" />
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
-          <Ionicons name="refresh" size={18} color="#fff" />
+        <Text style={styles.headerTitle}>Notification</Text>
+        <TouchableOpacity onPress={load} style={styles.headerRefresh}>
+          <Ionicons name="refresh" size={20} color="rgba(255,255,255,0.4)" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.sub}>Ride alerts and system messages</Text>
-
-        {/* Small status pills (UI only) */}
-        <View style={styles.pillsRow}>
-          <View style={styles.pill}>
-            <Text style={styles.pillText}>Queued: {computed.queued}</Text>
-          </View>
-          <View style={[styles.pill, styles.pillWarn]}>
-            <Text style={styles.pillText}>Failed: {computed.failed}</Text>
-          </View>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>News</Text>
+          {items.length > 0 && (
+            <TouchableOpacity onPress={handleClearAll}>
+              <Text style={styles.clearAllText}>Clear All</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {loading ? (
+        {loading || isClearing ? (
           <View style={styles.center}>
-            <ActivityIndicator />
-            <Text style={styles.dim}>Loading notifications...</Text>
+            <ActivityIndicator color="#F7E353" />
           </View>
         ) : items.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No notifications yet</Text>
-            <Text style={styles.dim}>
-              Once guardian alerts or ride events happen, they will appear here.
-            </Text>
+          <View style={styles.emptyContainer}>
+            <Ionicons name="notifications-off-outline" size={60} color="rgba(255,255,255,0.1)" />
+            <Text style={styles.emptyText}>Nothing here yet</Text>
           </View>
         ) : (
           <View style={styles.list}>
             {items.map((n) => {
               const p = normalizePayload(n.payload);
-              const when = new Date(n.created_at).toLocaleString();
+              const { icon, color, lib } = getIconInfo(p.title, p.type);
 
-              const statusText = String(n.status || "").toUpperCase();
-              const tone =
-                n.status === "sent" ? "good" : n.status === "failed" ? "bad" : "warn";
+              // Formatting time like "12:45 am"
+              const date = new Date(n.created_at);
+              const hours = date.getHours();
+              const mins = date.getMinutes().toString().padStart(2, "0");
+              const ampm = hours >= 12 ? "pm" : "am";
+              const displayTime = `${hours % 12 || 12}:${mins} ${ampm}`;
 
               return (
-                <View key={n.id} style={styles.card}>
-                  <View style={styles.cardTop}>
-                    <View style={styles.left}>
-                      <View style={styles.icon}>
-                        <Text style={styles.iconText}>🔔</Text>
-                      </View>
-                      <View style={{ flexShrink: 1 }}>
+                <TouchableOpacity
+                  key={n.id}
+                  activeOpacity={0.9}
+                  onLongPress={() => openMenu(n.id)}
+                  style={styles.card}
+                >
+                  <View style={styles.cardRow}>
+                    {/* Circular Icon */}
+                    <View style={[styles.iconContainer, { backgroundColor: color }]}>
+                      <RenderIcon name={icon} color={color} lib={lib} />
+                    </View>
+
+                    {/* Content */}
+                    <View style={styles.cardMain}>
+                      <View style={styles.cardTopRow}>
                         <Text style={styles.cardTitle}>{p.title}</Text>
-                        <Text style={styles.cardMeta}>{when}</Text>
+                        <Text style={styles.cardTime}>{displayTime}</Text>
+                      </View>
+
+                      <Text style={styles.cardBody} numberOfLines={2}>
+                        {p.body || "System notification received."}
+                      </Text>
+
+                      {/* Status Dot */}
+                      <View style={styles.cardBottomRow}>
+                        <View style={styles.unreadDot} />
                       </View>
                     </View>
 
-                    <View style={[styles.statusPill, styles[`status_${tone}`]]}>
-                      <Text style={styles.statusPillText}>{statusText || "QUEUED"}</Text>
-                    </View>
+                    {/* Options Trigger (Mini) */}
+                    <TouchableOpacity onPress={() => openMenu(n.id)} style={styles.miniMoreBtn}>
+                      <Ionicons name="ellipsis-vertical" size={14} color="rgba(255,255,255,0.2)" />
+                    </TouchableOpacity>
                   </View>
-
-                  {p.body ? <Text style={styles.body}>{p.body}</Text> : null}
-
-                  {(p.route_name || p.fare_amount != null) ? (
-                    <View style={styles.details}>
-                      {p.route_name ? (
-                        <Text style={styles.detailText}>Route: {p.route_name}</Text>
-                      ) : null}
-                      {p.fare_amount != null ? (
-                        <Text style={styles.detailText}>
-                          Fare: ₱{Number(p.fare_amount).toFixed(2)}
-                        </Text>
-                      ) : null}
-                    </View>
-                  ) : null}
-
-                  {n.status === "failed" && n.error ? (
-                    <Text style={styles.errorText}>Error: {String(n.error)}</Text>
-                  ) : null}
-                </View>
+                </TouchableOpacity>
               );
             })}
+
+            {!isFullList && items.length === 10 && (
+              <TouchableOpacity style={styles.seeAllBtn} onPress={handleSeeAll}>
+                <Text style={styles.seeAllText}>See All Notifications</Text>
+                <Ionicons name="chevron-forward" size={16} color="#F7E353" />
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Action Sheet Modal */}
+      <Modal visible={menuVisible} transparent animationType="fade">
+        <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHandle} />
+              <TouchableOpacity style={styles.modalOption} onPress={() => handleDelete(selectedId)}>
+                <Ionicons name="trash-outline" size={22} color="#FF5C5C" />
+                <Text style={styles.modalOptionText}>Delete this notification</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalOption, { borderBottomWidth: 0 }]} onPress={() => setMenuVisible(false)}>
+                <Ionicons name="close-circle-outline" size={22} color="#fff" />
+                <Text style={styles.modalOptionText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       <BottomNav navigation={navigation} active="Alerts" />
     </SafeAreaView>
@@ -151,109 +256,93 @@ export default function NotificationsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0B0E14" },
-  content: { padding: 18, paddingTop: 10 },
-
-  // Header (fixed outside ScrollView)
-  topRow: {
+  safe: { flex: 1, backgroundColor: "#12100E" }, // Warm Dark
+  header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 10,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 20,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  backBtn: { width: 40, height: 40, justifyContent: "center" },
+  headerTitle: { color: "#fff", fontSize: 22, fontWeight: "600", letterSpacing: 0.5 },
+  headerRefresh: { width: 40, height: 40, alignItems: "flex-end", justifyContent: "center" },
+
+  scrollContent: { paddingHorizontal: 20 },
+  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 },
+  sectionTitle: { color: "rgba(255,255,255,0.4)", fontSize: 18, fontWeight: "500" },
+  clearAllText: { color: "#FF5C5C", fontSize: 13, fontWeight: "600" },
+
+  list: { gap: 12 },
+  card: {
     backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+  },
+  cardRow: { flexDirection: "row", gap: 14 },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 18,
+  cardMain: { flex: 1 },
+  cardTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  cardTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  cardTime: { color: "rgba(255,255,255,0.3)", fontSize: 11 },
+  cardBody: { color: "rgba(255,255,255,0.5)", fontSize: 13, lineHeight: 18, paddingRight: 20 },
+  cardBottomRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 2 },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#F7E353" }, // Match image yellow
+
+  miniMoreBtn: { position: "absolute", right: -5, top: 25 },
+
+  center: { marginTop: 50, alignItems: "center" },
+  emptyContainer: { marginTop: 100, alignItems: "center", opacity: 0.5 },
+  emptyText: { color: "#fff", marginTop: 10, fontSize: 14 },
+
+  seeAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 15,
+    marginTop: 10,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16,
+    gap: 8,
+  },
+  seeAllText: {
+    color: "#F7E353",
+    fontSize: 14,
     fontWeight: "700",
   },
-  refreshBtn: {
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
+  modalContent: {
+    backgroundColor: "#1C1C1E",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHandle: {
     width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  modalOption: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.05)",
+    gap: 15,
   },
-
-  sub: { marginTop: 4, marginBottom: 12, color: "rgba(255,255,255,0.65)", fontSize: 14 },
-
-  pillsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
-  pill: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    alignItems: "center",
-  },
-  pillWarn: {
-    backgroundColor: "rgba(255, 211, 106, 0.10)",
-    borderColor: "rgba(255, 211, 106, 0.25)",
-  },
-  pillText: { color: "rgba(255,255,255,0.75)", fontWeight: "800" },
-
-  center: { marginTop: 20, alignItems: "center" },
-  dim: { marginTop: 10, color: "rgba(255,255,255,0.6)" },
-
-  empty: {
-    marginTop: 14,
-    padding: 18,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
-  emptyTitle: { color: "#fff", fontWeight: "900", fontSize: 16 },
-
-  list: { marginTop: 12, gap: 10 },
-
-  card: {
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
-  left: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-
-  icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconText: { fontSize: 16 },
-
-  cardTitle: { color: "#fff", fontWeight: "900" },
-  cardMeta: { color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 12 },
-
-  statusPill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
-  status_good: { backgroundColor: "#7CFF9B" },
-  status_warn: { backgroundColor: "#FFD36A" },
-  status_bad: {
-    backgroundColor: "rgba(255, 122, 122, 0.25)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 122, 122, 0.35)",
-  },
-  statusPillText: { color: "#0B0E14", fontWeight: "900", fontSize: 12 },
-
-  body: { color: "rgba(255,255,255,0.78)", marginTop: 12, lineHeight: 18 },
-  details: { marginTop: 10, gap: 4 },
-  detailText: { color: "rgba(255,255,255,0.62)", fontSize: 12 },
-
-  errorText: { marginTop: 10, color: "#FF8A8A", fontWeight: "800", fontSize: 12 },
+  modalOptionText: { color: "#fff", fontSize: 16, fontWeight: "500" },
 });

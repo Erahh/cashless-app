@@ -60,3 +60,35 @@ export async function unregisterPushToken(pushToken) {
   if (!res.ok) throw new Error(json.error || "Failed to unregister push token");
   return json;
 }
+
+/**
+ * Delete a single notification.
+ */
+export async function deleteNotification(id) {
+  const token = await getToken();
+
+  const res = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Failed to delete notification");
+  return json;
+}
+
+/**
+ * Clear all notifications.
+ */
+export async function clearNotifications() {
+  const token = await getToken();
+
+  const res = await fetch(`${API_BASE_URL}/notifications/clear`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Failed to clear notifications");
+  return json;
+}

@@ -50,57 +50,56 @@ export default function HomeScreen({ navigation, route }) {
       const token = sessionData?.session?.access_token;
       if (!token) throw new Error("No session. Please login again.");
 
-      const res = await fetchWithTimeout(`${API_BASE_URL}/me/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // 🚀 Parallelize dashboard data fetching for a snappier experience
+      const [statusRes, txRes, notifs] = await Promise.all([
+        fetchWithTimeout(`${API_BASE_URL}/me/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetchWithTimeout(`${API_BASE_URL}/wallet/transactions?limit=5`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null), // Graceful fallback for transactions
+        fetchNotifications(50).catch(() => []) // Graceful fallback for notifications
+      ]);
 
-      // ✅ SAFE PARSE (handles empty body)
-      const text = await res.text();
+      // 1) Handle me/status result
+      const text = await statusRes.text();
       let json = null;
-
       if (text) {
         try {
           json = JSON.parse(text);
         } catch (e) {
-          throw new Error(`Server returned non-JSON (HTTP ${res.status})`);
+          throw new Error(`Server returned non-JSON (HTTP ${statusRes.status})`);
         }
       }
 
-      if (!res.ok) {
-        throw new Error(json?.error || `Request failed (HTTP ${res.status})`);
+      if (!statusRes.ok) {
+        throw new Error(json?.error || `Request failed (HTTP ${statusRes.status})`);
       }
 
-      setStatus(json);          // ✅ only on success
-      setNetMsg("");            // ✅ clear banner
+      setStatus(json);
+      setNetMsg("");
 
-      // ✅ Load recent transactions (top 5)
-      try {
-        const txRes = await fetchWithTimeout(`${API_BASE_URL}/wallet/transactions?limit=5`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const txText = await txRes.text();
-        let txJson = null;
-        if (txText) txJson = JSON.parse(txText);
-
-        if (txRes.ok) {
-          setRecent(txJson?.items || []);
-          setLastUpdated(new Date().toISOString());
+      // 2) Handle wallet transactions result
+      if (txRes && txRes.ok) {
+        try {
+          const txText = await txRes.text();
+          if (txText) {
+            const txJson = JSON.parse(txText);
+            setRecent(txJson?.items || []);
+            setLastUpdated(new Date().toISOString());
+          }
+        } catch (e) {
+          console.warn("Failed to parse transactions:", e.message);
         }
-      } catch {
-        // ignore recent errors (dashboard can still load)
       }
 
-      // ✅ Load notification count (only new ones since last viewed)
-      try {
-        const notifs = await fetchNotifications(50);
+      // 3) Handle notification count
+      if (notifs) {
         const cutoff = lastSeenNotif.current;
         const fresh = cutoff
           ? notifs.filter((n) => new Date(n.created_at) > new Date(cutoff))
           : notifs;
         setNotifCount(fresh.length);
-      } catch {
-        // ignore notification count errors
       }
     } catch (e) {
       const isTimeout = e?.name === "AbortError";

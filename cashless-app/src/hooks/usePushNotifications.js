@@ -20,17 +20,21 @@ Notifications.setNotificationHandler({
  *  1. Request permission
  *  2. Get Expo push token
  *  3. Send it to the backend
- *  4. Re-register when user logs in
+ *  4. Re-register when user logs in (only once)
  *
  * This hook is safe - all errors are caught and logged, never thrown.
  */
 export function usePushNotifications() {
     const tokenRef = useRef(null);
+    const hasRegisteredRef = useRef(false);
 
     useEffect(() => {
         let isMounted = true;
 
         async function setupPush() {
+            // Guard: only register once per mount cycle
+            if (hasRegisteredRef.current) return;
+
             try {
                 // 1. Check if logged in
                 const { data } = await supabase.auth.getSession();
@@ -57,6 +61,9 @@ export function usePushNotifications() {
                 });
 
                 if (!isMounted) return;
+
+                // Mark as registered so we don't spam
+                hasRegisteredRef.current = true;
                 tokenRef.current = pushToken.data;
 
                 console.log("📱 Push token:", pushToken.data);
@@ -78,7 +85,12 @@ export function usePushNotifications() {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event) => {
             if (event === "SIGNED_IN") {
-                setupPush();
+                setupPush(); // Will be skipped if already registered
+            }
+            if (event === "SIGNED_OUT") {
+                // Reset so we re-register on next sign in
+                hasRegisteredRef.current = false;
+                tokenRef.current = null;
             }
         });
 
@@ -94,9 +106,11 @@ export function usePushNotifications() {
 
         return () => {
             isMounted = false;
+            hasRegisteredRef.current = false;
             subscription?.unsubscribe();
         };
     }, []);
 
     return tokenRef;
 }
+

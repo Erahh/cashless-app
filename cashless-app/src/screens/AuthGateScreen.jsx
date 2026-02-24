@@ -32,19 +32,22 @@ export default function AuthGateScreen({ navigation }) {
 
         const userId = session.user.id;
 
-        // 2) Read commuter account (may not exist yet)
-        const { data: account, error: aErr } = await supabase
-          .from("commuter_accounts")
-          .select("account_active, pin_set")
-          .eq("commuter_id", userId)
-          .maybeSingle();
-
-        // 3) Read profile (may not exist yet)
-        const { data: profile, error: pErr } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", userId)
-          .maybeSingle();
+        // 🚀 Fetch account and profile in parallel
+        const [
+          { data: account, error: aErr },
+          { data: profile, error: pErr }
+        ] = await Promise.all([
+          supabase
+            .from("commuter_accounts")
+            .select("account_active, pin_set")
+            .eq("commuter_id", userId)
+            .maybeSingle(),
+          supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", userId)
+            .maybeSingle()
+        ]);
 
         // If DB errors happen, treat as fallback (send to PersonalInfo)
         // (safe for demo + avoids hard crash)

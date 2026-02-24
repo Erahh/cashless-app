@@ -50,27 +50,28 @@ export default function OTPScreen({ navigation, route }) {
       });
       if (error) throw error;
 
-      // ✅ Register this device for single-device login enforcement
-      try {
-        const { data: session } = await supabase.auth.getSession();
-        const accessToken = session?.session?.access_token;
-        if (accessToken) {
-          const res = await fetch(`${API_BASE_URL}/me/register-device`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-          });
-          const json = await res.json();
-          if (json.ok && json.device_token) {
-            await AsyncStorage.setItem("device_token", json.device_token);
+      // ✅ Register this device for single-device login enforcement (Non-blocking background task)
+      (async () => {
+        try {
+          const { data: session } = await supabase.auth.getSession();
+          const accessToken = session?.session?.access_token;
+          if (accessToken) {
+            const res = await fetch(`${API_BASE_URL}/me/register-device`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+            });
+            const json = await res.json();
+            if (json.ok && json.device_token) {
+              await AsyncStorage.setItem("device_token", json.device_token);
+            }
           }
+        } catch (deviceErr) {
+          console.warn("Device registration failed:", deviceErr.message);
         }
-      } catch (deviceErr) {
-        // Don't block login if device registration fails
-        console.warn("Device registration failed:", deviceErr.message);
-      }
+      })();
 
       // Route to AuthGate (it will decide Commuter/Operator/Admin)
       navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });

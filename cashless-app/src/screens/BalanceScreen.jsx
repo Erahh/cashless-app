@@ -9,12 +9,16 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, RefreshIcon, AnalyticsUpIcon, ArrowRight01Icon, WalletAdd01Icon, FlashIcon, QrCodeIcon } from "@hugeicons/core-free-icons";
 import { fetchWallet } from "../api/walletApi";
 import BottomNav from "../components/BottomNav";
 import QuickActions from "../components/QuickActions";
+import { useTheme } from "../context/ThemeContext";
 
 export default function BalanceScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [wallet, setWallet] = useState(null);
 
@@ -57,11 +61,11 @@ export default function BalanceScreen({ navigation }) {
       {/* Fixed Header - Outside ScrollView */}
       <View style={styles.topRow}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color="#fff" />
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Wallet</Text>
         <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
-          <Ionicons name="refresh" size={18} color="#fff" />
+          <HugeiconsIcon icon={RefreshIcon} size={18} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -97,7 +101,7 @@ export default function BalanceScreen({ navigation }) {
                 </View>
                 <View style={styles.spendingRight}>
                   <View style={styles.percentageRow}>
-                    <Ionicons name="trending-up" size={12} color="#FFD36A" />
+                    <HugeiconsIcon icon={AnalyticsUpIcon} size={12} color="#FFD36A" />
                     <Text style={styles.percentageText}>{spendingData.percentage}%</Text>
                     <Text style={styles.percentageLabel}>last week</Text>
                   </View>
@@ -128,7 +132,7 @@ export default function BalanceScreen({ navigation }) {
                 onPress={() => navigation.navigate("Transactions")}
                 activeOpacity={0.8}
               >
-                <Ionicons name="arrow-forward" size={20} color="rgba(255,255,255,0.7)" />
+                <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -214,21 +218,21 @@ export default function BalanceScreen({ navigation }) {
               items={[
                 {
                   key: "topup",
-                  icon: "💳",
+                  icon: WalletAdd01Icon,
                   title: "Top Up",
                   sub: "GCash",
                   onPress: () => navigation.navigate("SendLoad")
                 },
                 {
                   key: "send_load",
-                  icon: "💸",
+                  icon: FlashIcon,
                   title: "Send Load",
                   sub: "Transfer",
                   onPress: () => Alert.alert("Send Load", "Coming soon!")
                 },
                 {
                   key: "my_qr",
-                  icon: "📲",
+                  icon: QrCodeIcon,
                   title: "My QR",
                   sub: "Show Code",
                   onPress: () => navigation.navigate("MyQR")
@@ -246,11 +250,10 @@ export default function BalanceScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#1A1D24" },
+const createStyles = (theme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.background },
   content: { padding: 20, paddingTop: 16 },
 
-  // Header (fixed outside ScrollView)
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -263,12 +266,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: theme.card,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 18,
     fontWeight: "700",
   },
@@ -276,26 +279,21 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: theme.card,
     alignItems: "center",
     justifyContent: "center",
   },
 
   center: { marginTop: 60, alignItems: "center" },
-  dim: { marginTop: 16, color: "rgba(255,255,255,0.5)", fontSize: 14 },
+  dim: { marginTop: 16, color: theme.textSecondary, fontSize: 14 },
 
-  // ═══════════════════════════════════════════════════════════════
-  // UNIFIED WALLET CARD
-  // ═══════════════════════════════════════════════════════════════
   walletCard: {
     borderRadius: 28,
     padding: 20,
     marginBottom: 24,
-    // Darker brown gradient effect
-    backgroundColor: "#2D2519",
+    backgroundColor: theme.cardAlt,
     borderWidth: 1.5,
-    borderColor: "rgba(255,211,106,0.2)",
-    // Enhanced shadow for depth
+    borderColor: theme.warningBg,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.5,
@@ -303,7 +301,6 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
 
-  // Balance Section (Top) - Horizontal layout
   balanceSection: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -311,13 +308,12 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   balanceLabel: {
-    color: "rgba(255,255,255,0.4)",
+    color: theme.textMuted,
     fontSize: 14,
     fontWeight: "400",
     letterSpacing: 0.3,
     flex: 1,
   },
-  // Nested dark card for balance amount only
   balanceInnerCard: {
     backgroundColor: "rgba(0,0,0,0.5)",
     borderRadius: 18,
@@ -340,14 +336,12 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
 
-  // Divider
   cardDivider: {
     height: 1,
     backgroundColor: "rgba(255,255,255,0.1)",
     marginVertical: 18,
   },
 
-  // Spending Section (Bottom)
   spendingSection: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -357,7 +351,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   spendingLabel: {
-    color: "rgba(255,255,255,0.55)",
+    color: theme.textMuted,
     fontSize: 11,
     fontWeight: "500",
     textTransform: "uppercase",
@@ -365,7 +359,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   spendingAmount: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 24,
     fontWeight: "800",
     letterSpacing: -0.5,
@@ -380,12 +374,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   percentageText: {
-    color: "#FFD36A",
+    color: theme.warning,
     fontSize: 12,
     fontWeight: "700",
   },
   percentageLabel: {
-    color: "rgba(255,255,255,0.4)",
+    color: theme.textMuted,
     fontSize: 10,
   },
   waveContainer: {
@@ -401,12 +395,9 @@ const styles = StyleSheet.create({
   waveSegment: {
     width: 8,
     borderRadius: 2,
-    backgroundColor: "#FF9650",
+    backgroundColor: theme.accentWarm,
   },
 
-  // ═══════════════════════════════════════════════════════════════
-  // SECTION HEADER
-  // ═══════════════════════════════════════════════════════════════
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -414,7 +405,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sectionTitle: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -422,14 +413,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: theme.card,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  // ═══════════════════════════════════════════════════════════════
-  // TRANSACTION LIST
-  // ═══════════════════════════════════════════════════════════════
   transactionList: {
     gap: 10,
     marginBottom: 24,
@@ -440,7 +428,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 14,
     borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   txLeft: {
     flexDirection: "row",
@@ -451,15 +441,15 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: theme.border,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: theme.border,
   },
   txIconCircleCredit: {
-    backgroundColor: "rgba(255, 211, 106, 0.15)",
+    backgroundColor: theme.warningBg,
     borderColor: "rgba(255, 211, 106, 0.3)",
   },
   txIconEmoji: {
@@ -469,12 +459,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   txType: {
-    color: "rgba(255,255,255,0.5)",
+    color: theme.textMuted,
     fontSize: 11,
     marginBottom: 2,
   },
   txName: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -483,10 +473,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   txAmountPos: {
-    color: "#7CFF9B",
+    color: theme.success,
   },
   txAmountNeg: {
-    color: "#FF8A8A",
+    color: theme.danger,
   },
 
   emptyState: {
@@ -498,7 +488,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emptyText: {
-    color: "rgba(255,255,255,0.45)",
+    color: theme.textMuted,
     fontSize: 14,
   },
 });

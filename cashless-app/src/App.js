@@ -1,62 +1,79 @@
 // App.js
 import React, { useEffect, useContext, useRef } from "react";
-import { AppState, DeviceEventEmitter, Alert } from "react-native";
-import { NavigationContainer, CommonActions } from "@react-navigation/native";
+import { AppState, DeviceEventEmitter, Alert, StatusBar as RNStatusBar } from "react-native";
+import { NavigationContainer, CommonActions, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 
 import AppNavigator from "./navigation/AppNavigator";
 import { AppLockProvider, AppLockContext } from "./context/AppLockContext";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
+import { UserProvider } from "./context/UserContext";
 import { supabase } from "./api/supabase";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 
 function AppWithLock() {
   const { setLocked } = useContext(AppLockContext);
+  const { isDarkMode, theme } = useTheme();
   const appState = useRef(AppState.currentState);
-  const navigationRef = useRef(null);
+  // Track if we're just showing a system dialog (permission prompt, etc)
+  // On iOS, system dialogs set state to 'inactive' but NOT 'background'.
+  // We should ONLY lock when the app truly goes to background.
+  const lockTimerRef = useRef(null);
 
   // 📱 Register push notifications (safe, never blocks or crashes)
   usePushNotifications();
 
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", async (nextState) => {
-      // Only lock when moving from active -> background/inactive
-      if (
-        appState.current === "active" &&
-        (nextState === "background" || nextState === "inactive")
-      ) {
-        try {
-          const { data } = await supabase.auth.getSession();
-          const session = data?.session;
+  const triggerLock = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const session = data?.session;
+      if (!session?.user?.id) return;
 
-          if (session?.user?.id) {
-            const userId = session.user.id;
+      const userId = session.user.id;
 
-            // Check if user has completed registration (profile exists)
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("id")
-              .eq("id", userId)
-              .maybeSingle();
+      // Check if user has completed registration (profile exists)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", userId)
+        .maybeSingle();
 
-            if (profile?.id) {
-              // Check if pin is set (only lock if pin is set)
-              const { data: acc } = await supabase
-                .from("commuter_accounts")
-                .select("pin_set")
-                .eq("commuter_id", userId)
-                .maybeSingle();
+      if (profile?.id) {
+        const { data: acc } = await supabase
+          .from("commuter_accounts")
+          .select("pin_set")
+          .eq("commuter_id", userId)
+          .maybeSingle();
 
-              if (acc?.pin_set) {
-                setLocked(true);
-              }
-            }
-          }
-        } catch (error) {
-          console.log("Error checking lock status:", error);
+        if (acc?.pin_set) {
+          setLocked(true);
         }
       }
+    } catch (error) {
+      console.log("Error checking lock status:", error);
+    }
+  };
 
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      const prev = appState.current;
       appState.current = nextState;
+
+      // ✅ ONLY lock when going fully to background (not inactive).
+      // "inactive" happens when system dialogs (camera permission, calls, etc)
+      // are shown — we must NOT lock in that case or the camera screen breaks.
+      if (prev === "active" && nextState === "background") {
+        // 10-second grace period for fast app-switches (e.g. copy-paste)
+        lockTimerRef.current = setTimeout(() => {
+          triggerLock();
+        }, 10000);
+      }
+
+      // If user comes back before timer fires, cancel the lock
+      if (nextState === "active" && lockTimerRef.current) {
+        clearTimeout(lockTimerRef.current);
+        lockTimerRef.current = null;
+      }
     });
 
     // ✅ Listen for session_expired (logged in on another device)
@@ -77,23 +94,43 @@ function AppWithLock() {
     return () => {
       sub.remove();
       sessionSub.remove();
+      if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setLocked]);
+
+  const navigationTheme = {
+    ...(isDarkMode ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDarkMode ? DarkTheme.colors : DefaultTheme.colors),
+      background: theme.background,
+    },
+  };
+
+
+  // Imperatively force the status bar style to fix Android cold-start timing issues
+  useEffect(() => {
+    RNStatusBar.setBarStyle(isDarkMode ? "light-content" : "dark-content", true);
+  }, [isDarkMode]);
 
   return (
     <>
-      <StatusBar style="light" />
-      <AppNavigator />
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
+      <NavigationContainer theme={navigationTheme}>
+        <AppNavigator />
+      </NavigationContainer>
     </>
   );
 }
 
 export default function App() {
   return (
-    <AppLockProvider>
-      <NavigationContainer>
-        <AppWithLock />
-      </NavigationContainer>
-    </AppLockProvider>
+    <ThemeProvider>
+      <UserProvider>
+        <AppLockProvider>
+          <AppWithLock />
+        </AppLockProvider>
+      </UserProvider>
+    </ThemeProvider>
   );
 }

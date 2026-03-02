@@ -1,34 +1,35 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-
-const YELLOW = "#FFD36A";
-const BG = "#0B0E14";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { Home01Icon, WalletAdd01Icon, InvoiceIcon, UserIcon, QrCodeIcon } from "@hugeicons/core-free-icons";
+import { useTheme } from "../context/ThemeContext";
 
 export default function BottomNav({
   navigation,
   active = "Home",
   centerRoute = "MyQR",
 }) {
+  const { theme } = useTheme();
+
   const go = (route) => {
     if (!navigation || !route) return;
     navigation.navigate(route);
   };
 
   const tabs = [
-    { key: "Home", label: "Home", icon: "home-outline", route: "Home" },
-    { key: "Wallet", label: "Wallet", icon: "wallet-outline", route: "Balance" },
-    { key: "History", label: "History", icon: "receipt-outline", route: "Transactions" },
-    { key: "Profile", label: "Profile", icon: "person-outline", route: "Profile" },
+    { key: "Home", label: "Home", icon: Home01Icon, route: "Home" },
+    { key: "Wallet", label: "Wallet", icon: WalletAdd01Icon, route: "Balance" },
+    { key: "History", label: "History", icon: InvoiceIcon, route: "Transactions" },
+    { key: "Profile", label: "Profile", icon: UserIcon, route: "Profile" },
   ];
 
   return (
     <View style={styles.wrap} pointerEvents="box-none">
-      <View style={styles.bar}>
+      <View style={[styles.bar, { backgroundColor: theme.bottomNavBg, borderColor: theme.border }]}>
         {/* Left 2 */}
         <View style={[styles.side, { left: 10 }]}>
-          <TabItem item={tabs[0]} active={active} onPress={() => go(tabs[0].route)} />
-          <TabItem item={tabs[1]} active={active} onPress={() => go(tabs[1].route)} />
+          <TabItem item={tabs[0]} active={active} theme={theme} onPress={() => go(tabs[0].route)} />
+          <TabItem item={tabs[1]} active={active} theme={theme} onPress={() => go(tabs[1].route)} />
         </View>
 
         {/* Center Spacer (reserve space for FAB so tabs don't squeeze) */}
@@ -36,35 +37,53 @@ export default function BottomNav({
 
         {/* Right 2 */}
         <View style={[styles.side, { right: 10 }]}>
-          <TabItem item={tabs[2]} active={active} onPress={() => go(tabs[2].route)} />
-          <TabItem item={tabs[3]} active={active} onPress={() => go(tabs[3].route)} />
+          <TabItem item={tabs[2]} active={active} theme={theme} onPress={() => go(tabs[2].route)} />
+          <TabItem item={tabs[3]} active={active} theme={theme} onPress={() => go(tabs[3].route)} />
         </View>
 
         {/* Floating FAB */}
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => go(centerRoute)}
-          style={styles.fab}
+          style={[styles.fab, { backgroundColor: theme.accent }]}
         >
-          <Ionicons name="qr-code-outline" size={24} color={BG} />
+          <HugeiconsIcon icon={QrCodeIcon} size={24} color={theme.isDark ? '#0B0E14' : '#1A1A1A'} />
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-function TabItem({ item, active, onPress }) {
+function TabItem({ item, active, onPress, theme }) {
   const isActive = active === item.key;
-  const color = isActive ? YELLOW : "rgba(255,255,255,0.70)";
+
+  // Icon and Box colors:
+  // Active: Yellow background with dark icon (matches reference image)
+  // Inactive: Subtle grey background with muted icon
+  const boxBg = isActive ? theme.accent : "rgba(150,150,150,0.1)";
+  const iconColor = isActive ? "#0B0E14" : theme.textSecondary;
+
+  // Text color:
+  // Active: Darker Yellow/Gold in light mode for readability, Accent in dark mode
+  const activeTextColor = theme.isDark ? theme.accent : "#827100";
+  const textColor = isActive ? activeTextColor : theme.textMuted;
 
   return (
     <TouchableOpacity style={styles.tab} onPress={onPress} activeOpacity={0.85}>
-      <View style={[styles.iconBox, isActive && styles.iconBoxActive]}>
-        <Ionicons name={item.icon} size={18} color={color} />
+      <View style={[
+        styles.iconBox,
+        {
+          backgroundColor: isActive ? "rgba(247, 227, 83, 0.85)" : "rgba(150,150,150,0.1)",
+          borderWidth: isActive ? 1 : 0,
+          borderColor: isActive ? "rgba(255, 255, 255, 0.4)" : "transparent"
+        },
+        isActive && { elevation: 8, shadowColor: "#F7E353", shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } }
+      ]}>
+        <HugeiconsIcon icon={isActive ? item.icon : item.icon} size={20} color={iconColor} strokeWidth={isActive ? 2 : 1.5} />
       </View>
 
       <Text
-        style={[styles.tabText, isActive && styles.tabTextActive]}
+        style={[styles.tabText, { color: textColor }]}
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.75}
@@ -90,9 +109,7 @@ const styles = StyleSheet.create({
   bar: {
     height: 74,
     borderRadius: 24,
-    backgroundColor: "rgba(11,14,20,0.96)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 14,
@@ -120,27 +137,19 @@ const styles = StyleSheet.create({
   },
 
   iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.07)",
+    width: 50,
+    height: 44,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 6,
-  },
-
-  iconBoxActive: {
-    backgroundColor: "rgba(255, 211, 106, 0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 211, 106, 0.35)",
+    marginBottom: 4,
   },
 
   tabText: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 11,
-    fontWeight: "800",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.2,
   },
-  tabTextActive: { color: YELLOW },
 
   fab: {
     position: "absolute",
@@ -149,7 +158,6 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 20,
-    backgroundColor: YELLOW,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,

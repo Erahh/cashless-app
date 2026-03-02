@@ -1,18 +1,28 @@
 import React, { useEffect, useState, useMemo, useContext } from "react";
 import { AppLockContext } from "../context/AppLockContext";
+import { useTheme } from "../context/ThemeContext";
 import {
   View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  Switch,
   Alert,
   SafeAreaView,
   StyleSheet,
   Image,
+  Linking,
 } from "react-native";
 import { supabase } from "../api/supabase";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  ArrowLeft01Icon, Camera01Icon, PencilEdit01Icon, CheckmarkCircle01Icon,
+  Clock01Icon, Shield01Icon, CheckmarkBadge01Icon, ArrowRight01Icon,
+  SmartPhone01Icon, Logout01Icon, UserIcon, AlertCircleIcon,
+  Mail01Icon, CallIcon, Calendar01Icon, Location01Icon, Building01Icon,
+  Home01Icon, MapPinIcon, LockIcon, DarkModeIcon, Clock02Icon
+} from "@hugeicons/core-free-icons";
 import * as ImagePicker from "expo-image-picker";
 import { renderApiRequest } from "../api/apiHelper";
 
@@ -22,6 +32,8 @@ export default function ProfileScreen({ navigation }) {
   const [account, setAccount] = useState(null);
   const [uploading, setUploading] = useState(false);
   const { setLocked } = useContext(AppLockContext);
+  const { theme, isDarkMode, toggleTheme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   const computed = useMemo(() => {
     const name = profile?.full_name || "—";
@@ -117,27 +129,47 @@ export default function ProfileScreen({ navigation }) {
       let result;
 
       if (choice === "camera") {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== "granted") {
+          if (!canAskAgain) {
+            return Alert.alert(
+              "Camera Access Denied",
+              "Camera access was denied. Please enable it in Settings.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Open Settings", onPress: () => Linking.openSettings() },
+              ]
+            );
+          }
           return Alert.alert("Permission Required", "Camera access is needed to take a photo.");
         }
         result = await ImagePicker.launchCameraAsync({
           mediaTypes: ["images"],
           allowsEditing: true,
           aspect: [1, 1],
-          quality: 0.5, // Reduced to prevent 413 errors
+          quality: 0.5,
           base64: true,
         });
       } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
+          if (!canAskAgain) {
+            return Alert.alert(
+              "Photo Library Access Denied",
+              "Photo library access was denied. Please enable it in Settings.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Open Settings", onPress: () => Linking.openSettings() },
+              ]
+            );
+          }
           return Alert.alert("Permission Required", "Photo library access is needed.");
         }
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ["images"],
           allowsEditing: true,
           aspect: [1, 1],
-          quality: 0.5, // Reduced to prevent 413 errors
+          quality: 0.5,
           base64: true,
         });
       }
@@ -220,7 +252,7 @@ export default function ProfileScreen({ navigation }) {
             style={styles.backBtn}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color={theme.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile</Text>
           <View style={{ width: 44 }} />
@@ -249,7 +281,7 @@ export default function ProfileScreen({ navigation }) {
               {uploading ? (
                 <ActivityIndicator size={12} color="#000" />
               ) : (
-                <Ionicons name="camera" size={14} color="#000" />
+                <HugeiconsIcon icon={Camera01Icon} size={14} color="#000" />
               )}
             </View>
           </TouchableOpacity>
@@ -270,7 +302,7 @@ export default function ProfileScreen({ navigation }) {
               })}
               activeOpacity={0.8}
             >
-              <Ionicons name="create-outline" size={18} color="#0B0E14" />
+              <HugeiconsIcon icon={PencilEdit01Icon} size={18} color={theme.isDark ? "#0B0E14" : "#FFFFFF"} />
               <Text style={styles.editProfileText}>Edit Profile</Text>
             </TouchableOpacity>
 
@@ -287,18 +319,14 @@ export default function ProfileScreen({ navigation }) {
               activeOpacity={computed.verLabel === "Verified" || computed.verLabel === "Pending" ? 1 : 0.8}
               disabled={computed.verLabel === "Verified" || computed.verLabel === "Pending"}
             >
-              <Ionicons
-                name={
-                  computed.verLabel === "Verified" ? "checkmark-circle" :
-                    computed.verLabel === "Pending" ? "time-outline" :
-                      "shield-checkmark-outline"
+              <HugeiconsIcon
+                icon={
+                  computed.verLabel === "Verified" ? CheckmarkBadge01Icon :
+                    computed.verLabel === "Pending" ? Clock01Icon :
+                      Shield01Icon
                 }
                 size={18}
-                color={
-                  computed.verLabel === "Verified" ? "#0B0E14" :
-                    computed.verLabel === "Pending" ? "#0B0E14" :
-                      "#0B0E14"
-                }
+                color={"#0B0E14"}
               />
               <Text style={styles.verifyBtnText}>
                 {computed.verLabel === "Verified" ? "Verified ✓" :
@@ -317,8 +345,8 @@ export default function ProfileScreen({ navigation }) {
             computed.discountActive ? styles.discountActive : styles.discountInactive
           ]}>
             <View style={styles.discountLeft}>
-              <Ionicons
-                name={computed.discountActive ? "checkmark-circle" : "alert-circle"}
+              <HugeiconsIcon
+                icon={computed.discountActive ? CheckmarkCircle01Icon : AlertCircleIcon}
                 size={24}
                 color={computed.discountActive ? "#7CFF9B" : "#FFD36A"}
               />
@@ -342,7 +370,7 @@ export default function ProfileScreen({ navigation }) {
                 onPress={() => navigation.navigate("PassengerType")}
                 activeOpacity={0.8}
               >
-                <Ionicons name="arrow-forward" size={20} color="#0B0E14" />
+                <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.isDark ? "#0B0E14" : "#FFFFFF"} />
               </TouchableOpacity>
             )}
           </View>
@@ -352,10 +380,10 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
           <View style={styles.infoCard}>
-            <InfoRow icon="person-outline" label="Full Name" value={profile?.full_name} />
-            <InfoRow icon="mail-outline" label="Email" value={profile?.email || "—"} />
-            <InfoRow icon="call-outline" label="Phone" value={profile?.phone || "—"} />
-            <InfoRow icon="calendar-outline" label="Birthdate" value={profile?.birthdate || "—"} />
+            <InfoRow icon={UserIcon} label="Full Name" value={profile?.full_name} />
+            <InfoRow icon={Mail01Icon} label="Email" value={profile?.email || "—"} />
+            <InfoRow icon={CallIcon} label="Phone" value={profile?.phone || "—"} />
+            <InfoRow icon={Calendar01Icon} label="Birthdate" value={profile?.birthdate || "—"} />
           </View>
         </View>
 
@@ -363,11 +391,11 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Address</Text>
           <View style={styles.infoCard}>
-            <InfoRow icon="location-outline" label="Province" value={profile?.province || "—"} />
-            <InfoRow icon="business-outline" label="City/Municipality" value={profile?.city || "—"} />
-            <InfoRow icon="home-outline" label="Barangay" value={profile?.barangay || "—"} />
-            <InfoRow icon="mail-outline" label="ZIP Code" value={profile?.zip_code || "—"} />
-            <InfoRow icon="navigate-outline" label="Street Address" value={profile?.address_line || "—"} />
+            <InfoRow icon={Location01Icon} label="Province" value={profile?.province || "—"} />
+            <InfoRow icon={Building01Icon} label="City/Municipality" value={profile?.city || "—"} />
+            <InfoRow icon={Home01Icon} label="Barangay" value={profile?.barangay || "—"} />
+            <InfoRow icon={Mail01Icon} label="ZIP Code" value={profile?.zip_code || "—"} />
+            <InfoRow icon={MapPinIcon} label="Street Address" value={profile?.address_line || "—"} />
           </View>
         </View>
 
@@ -376,24 +404,24 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.sectionTitle}>Account Details</Text>
           <View style={styles.infoCard}>
             <InfoRow
-              icon="shield-checkmark-outline"
+              icon={Shield01Icon}
               label="Account Status"
               value={account?.account_active ? "ACTIVE" : "INACTIVE"}
               valueColor={account?.account_active ? "#7CFF9B" : "#FF7A7A"}
             />
             <InfoRow
-              icon="key-outline"
+              icon={LockIcon}
               label="MPIN Status"
               value={account?.pin_set ? "SET" : "NOT SET"}
               valueColor={account?.pin_set ? "#7CFF9B" : "#FFD36A"}
             />
             <InfoRow
-              icon="person-outline"
+              icon={UserIcon}
               label="Passenger Type"
               value={(account?.passenger_type || "casual").toUpperCase()}
             />
             <InfoRow
-              icon="checkmark-done-outline"
+              icon={CheckmarkBadge01Icon}
               label="Verification"
               value={(account?.verification_status || "unverified").toUpperCase()}
               valueColor={
@@ -403,7 +431,7 @@ export default function ProfileScreen({ navigation }) {
             />
             {account?.verified_at && (
               <InfoRow
-                icon="time-outline"
+                icon={Clock02Icon}
                 label="Verified At"
                 value={new Date(account.verified_at).toLocaleDateString()}
               />
@@ -412,23 +440,22 @@ export default function ProfileScreen({ navigation }) {
         </View>
 
         {/* Settings Menu */}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
           <View style={styles.menuCard}>
             <MenuItem
-              icon="language-outline"
-              title="Language"
-              onPress={() => Alert.alert("Language", "Language settings coming soon!")}
-            />
-            <MenuItem
-              icon="color-palette-outline"
-              title="Appearance"
-              onPress={() => Alert.alert("Appearance", "Theme settings coming soon!")}
-            />
-            <MenuItem
-              icon="shield-checkmark-outline"
-              title="Security"
-              onPress={() => Alert.alert("Security", "Security settings coming soon!")}
+              icon={DarkModeIcon}
+              title="Darkmode"
+              onPress={toggleTheme}
+              rightComponent={
+                <Switch
+                  value={isDarkMode}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: theme.border, true: theme.accent }}
+                  thumbColor={theme.isDark ? "#ffffff" : "#f4f3f4"}
+                />
+              }
             />
           </View>
         </View>
@@ -448,15 +475,15 @@ export default function ProfileScreen({ navigation }) {
             activeOpacity={0.8}
           >
             <View style={styles.actionLeft}>
-              <View style={[styles.actionIcon, { backgroundColor: "rgba(255,211,106,0.15)" }]}>
-                <Ionicons name="phone-portrait-outline" size={20} color="#FFD36A" />
+              <View style={[styles.actionIcon, { backgroundColor: theme.warningBg }]}>
+                <HugeiconsIcon icon={SmartPhone01Icon} size={20} color="#FFD36A" />
               </View>
               <View style={styles.actionContent}>
                 <Text style={styles.actionTitle}>Use different number</Text>
                 <Text style={styles.actionSub}>Switch to another phone number</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
+            {<HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.textMuted} />}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -470,15 +497,15 @@ export default function ProfileScreen({ navigation }) {
             activeOpacity={0.8}
           >
             <View style={styles.actionLeft}>
-              <View style={[styles.actionIcon, { backgroundColor: "rgba(255,122,122,0.15)" }]}>
-                <Ionicons name="log-out-outline" size={20} color="#FF7A7A" />
+              <View style={[styles.actionIcon, { backgroundColor: theme.dangerBg }]}>
+                <HugeiconsIcon icon={Logout01Icon} size={20} color="#FF7A7A" />
               </View>
               <View style={styles.actionContent}>
-                <Text style={[styles.actionTitle, { color: "#FF7A7A" }]}>Logout</Text>
+                <Text style={[styles.actionTitle, { color: theme.danger }]}>Logout</Text>
                 <Text style={styles.actionSub}>Sign out from your account</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
+            {<HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.textMuted} />}
           </TouchableOpacity>
         </View>
 
@@ -490,10 +517,12 @@ export default function ProfileScreen({ navigation }) {
 }
 
 function InfoRow({ icon, label, value, valueColor }) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoLeft}>
-        <Ionicons name={icon} size={18} color="rgba(255,255,255,0.5)" />
+        <HugeiconsIcon icon={icon || UserIcon} size={18} color={theme.textMuted} />
         <Text style={styles.infoLabel}>{label}</Text>
       </View>
       <Text style={[styles.infoValue, valueColor && { color: valueColor }]}>
@@ -503,7 +532,9 @@ function InfoRow({ icon, label, value, valueColor }) {
   );
 }
 
-function MenuItem({ icon, title, onPress }) {
+function MenuItem({ icon, title, onPress, rightComponent }) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   return (
     <TouchableOpacity
       style={styles.menuItem}
@@ -511,18 +542,18 @@ function MenuItem({ icon, title, onPress }) {
       activeOpacity={0.7}
     >
       <View style={styles.menuLeft}>
-        <Ionicons name={icon} size={20} color="#fff" />
+        <HugeiconsIcon icon={icon || UserIcon} size={20} color={theme.text} />
         <Text style={styles.menuTitle}>{title}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
+      {rightComponent || <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.textMuted} />}
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#0B0E14",
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
@@ -530,7 +561,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
-    color: "rgba(255,255,255,0.65)",
+    color: theme.textSecondary,
     marginTop: 12,
     fontSize: 14,
   },
@@ -551,24 +582,24 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: theme.card,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 18,
     fontWeight: "900",
   },
 
   // Profile Card
   profileCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.card,
     borderRadius: 24,
     padding: 24,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: theme.border,
     marginBottom: 20,
   },
   avatarContainer: {
@@ -579,14 +610,14 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "rgba(124,255,155,0.15)",
+    backgroundColor: theme.successBg,
     borderWidth: 3,
-    borderColor: "#7CFF9B",
+    borderColor: theme.success,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    color: "#7CFF9B",
+    color: theme.success,
     fontSize: 28,
     fontWeight: "900",
   },
@@ -595,7 +626,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 3,
-    borderColor: "#7CFF9B",
+    borderColor: theme.success,
   },
   cameraBadge: {
     position: "absolute",
@@ -604,20 +635,20 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#7CFF9B",
+    backgroundColor: theme.success,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "rgba(30,30,30,0.9)",
   },
   profileName: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 22,
     fontWeight: "900",
     marginBottom: 6,
   },
   profileEmail: {
-    color: "rgba(255,255,255,0.65)",
+    color: theme.textSecondary,
     fontSize: 14,
     marginBottom: 16,
   },
@@ -628,18 +659,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   badgeText: {
-    color: "#0B0E14",
+    color: theme.isDark ? "#0B0E14" : "#fff",
     fontWeight: "900",
     fontSize: 12,
   },
   badge_good: {
-    backgroundColor: "#7CFF9B",
+    backgroundColor: theme.success,
   },
   badge_warn: {
-    backgroundColor: "#FFD36A",
+    backgroundColor: theme.warning,
   },
   badge_bad: {
-    backgroundColor: "#FF7A7A",
+    backgroundColor: theme.danger,
   },
   editProfileBtn: {
     flex: 1,
@@ -647,13 +678,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#7CFF9B",
+    backgroundColor: theme.success,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
   },
   editProfileText: {
-    color: "#0B0E14",
+    color: theme.isDark ? "#0B0E14" : "#fff",
     fontSize: 15,
     fontWeight: "900",
   },
@@ -668,21 +699,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#FFD36A",
+    backgroundColor: theme.warning,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
   },
   verifyBtnVerified: {
-    backgroundColor: "#7CFF9B",
+    backgroundColor: theme.success,
     opacity: 0.7,
   },
   verifyBtnPending: {
-    backgroundColor: "#FFD36A",
+    backgroundColor: theme.warning,
     opacity: 0.7,
   },
   verifyBtnText: {
-    color: "#0B0E14",
+    color: theme.isDark ? "#0B0E14" : "#fff",
     fontSize: 15,
     fontWeight: "900",
   },
@@ -699,12 +730,12 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   discountActive: {
-    backgroundColor: "rgba(124,255,155,0.10)",
-    borderColor: "#7CFF9B",
+    backgroundColor: theme.successBg,
+    borderColor: theme.success,
   },
   discountInactive: {
-    backgroundColor: "rgba(255,211,106,0.10)",
-    borderColor: "#FFD36A",
+    backgroundColor: theme.warningBg,
+    borderColor: theme.warning,
   },
   discountLeft: {
     flexDirection: "row",
@@ -716,13 +747,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   discountTitle: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 15,
     fontWeight: "900",
     marginBottom: 4,
   },
   discountText: {
-    color: "rgba(255,255,255,0.75)",
+    color: theme.textSecondary,
     fontSize: 12,
     lineHeight: 16,
   },
@@ -730,7 +761,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#FFD36A",
+    backgroundColor: theme.warning,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -740,7 +771,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    color: "rgba(255,255,255,0.65)",
+    color: theme.textSecondary,
     fontSize: 13,
     fontWeight: "700",
     marginBottom: 12,
@@ -750,10 +781,10 @@ const styles = StyleSheet.create({
 
   // Info Card
   infoCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.card,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: theme.border,
     overflow: "hidden",
   },
   infoRow: {
@@ -762,7 +793,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
+    borderBottomColor: theme.border,
   },
   infoLeft: {
     flexDirection: "row",
@@ -771,21 +802,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoLabel: {
-    color: "rgba(255,255,255,0.65)",
+    color: theme.textSecondary,
     fontSize: 14,
   },
   infoValue: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 14,
     fontWeight: "700",
   },
 
   // Menu Card
   menuCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.card,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: theme.border,
     overflow: "hidden",
   },
   menuItem: {
@@ -794,7 +825,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
+    borderBottomColor: theme.border,
   },
   menuLeft: {
     flexDirection: "row",
@@ -802,7 +833,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   menuTitle: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -812,16 +843,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: theme.border,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
   },
   actionCardDanger: {
-    backgroundColor: "rgba(255,122,122,0.08)",
-    borderColor: "rgba(255,122,122,0.20)",
+    backgroundColor: theme.dangerBg,
+    borderColor: theme.dangerBg,
   },
   actionLeft: {
     flexDirection: "row",
@@ -840,19 +871,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionTitle: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 15,
     fontWeight: "800",
     marginBottom: 4,
   },
   actionSub: {
-    color: "rgba(255,255,255,0.55)",
+    color: theme.textSecondary,
     fontSize: 12,
   },
 
   // Version
   versionText: {
-    color: "rgba(255,255,255,0.35)",
+    color: theme.textMuted,
     fontSize: 12,
     textAlign: "center",
     marginTop: 12,

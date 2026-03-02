@@ -11,7 +11,8 @@ import {
     ScrollView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, Camera01Icon, Image01Icon, CheckmarkCircle01Icon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
 
@@ -160,7 +161,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
                         onPress={() => navigation.goBack()}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="arrow-back" size={24} color="#fff" />
+                        <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color="#fff" />
                     </TouchableOpacity>
                 </View>
 
@@ -183,7 +184,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
                 {/* Front ID Preview (Small) */}
                 <View style={styles.frontPreview}>
                     <View style={styles.frontPreviewHeader}>
-                        <Ionicons name="checkmark-circle" size={18} color="#7CFF9B" />
+                        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} color="#7CFF9B" />
                         <Text style={styles.frontPreviewText}>Front ID uploaded</Text>
                     </View>
                     {frontImage && (
@@ -197,7 +198,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
                         <View style={styles.imagePreviewContainer}>
                             <Image source={{ uri: backImage }} style={styles.imagePreview} />
                             <View style={styles.checkmarkOverlay}>
-                                <Ionicons name="checkmark-circle" size={48} color="#7CFF9B" />
+                                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={48} color="#7CFF9B" />
                             </View>
                             <View style={styles.actionButtons}>
                                 <TouchableOpacity
@@ -205,7 +206,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
                                     onPress={takePhoto}
                                     activeOpacity={0.8}
                                 >
-                                    <Ionicons name="camera" size={18} color="#fff" />
+                                    <HugeiconsIcon icon={Camera01Icon} size={18} color="#fff" />
                                     <Text style={styles.actionBtnText}>Retake</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
@@ -213,7 +214,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
                                     onPress={pickImage}
                                     activeOpacity={0.8}
                                 >
-                                    <Ionicons name="images" size={18} color="#fff" />
+                                    <HugeiconsIcon icon={Image01Icon} size={18} color="#fff" />
                                     <Text style={styles.actionBtnText}>Choose Another</Text>
                                 </TouchableOpacity>
                             </View>
@@ -227,7 +228,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
                                 activeOpacity={0.8}
                             >
                                 <View style={styles.fileCardIcon}>
-                                    <Ionicons name="image-outline" size={40} color="rgba(255,255,255,0.4)" />
+                                    <HugeiconsIcon icon={Image01Icon} size={40} color="rgba(255,255,255,0.4)" />
                                 </View>
                                 <Text style={styles.fileCardText}>Select file</Text>
                             </TouchableOpacity>
@@ -245,7 +246,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
                                 onPress={takePhoto}
                                 activeOpacity={0.9}
                             >
-                                <Ionicons name="camera" size={20} color="#fff" />
+                                <HugeiconsIcon icon={Camera01Icon} size={20} color="#fff" />
                                 <Text style={styles.cameraButtonText}>Take Photo</Text>
                             </TouchableOpacity>
                         </>
@@ -254,7 +255,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
 
                 {/* Security Info */}
                 <View style={styles.securityCard}>
-                    <Ionicons name="shield-checkmark" size={20} color="#7CFF9B" />
+                    <HugeiconsIcon icon={ShieldCheckIcon} size={20} color="#7CFF9B" />
                     <Text style={styles.securityText}>
                         Your documents are encrypted and stored securely. Only admins can review them for verification.
                     </Text>
@@ -275,7 +276,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
                     ) : (
                         <>
                             <Text style={styles.submitBtnText}>Submit for Verification</Text>
-                            <Ionicons name="checkmark-circle" size={20} color="#0B0E14" />
+                            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={20} color="#0B0E14" />
                         </>
                     )}
                 </TouchableOpacity>

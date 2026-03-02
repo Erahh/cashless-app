@@ -9,14 +9,19 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, RefreshIcon, ScanIcon, WalletAdd01Icon, FlashIcon, Wifi01Icon } from "@hugeicons/core-free-icons";
 import QRCode from "react-native-qrcode-svg";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
 import QuickActions from "../components/QuickActions";
 import BottomNav from "../components/BottomNav";
+import { useTheme } from "../context/ThemeContext";
 
 export default function MyQRScreen({ navigation }) {
+  const { theme, isDarkMode } = useTheme();
+  const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
+
   const [loading, setLoading] = useState(true);
   const [credential, setCredential] = useState(null);
 
@@ -63,7 +68,7 @@ export default function MyQRScreen({ navigation }) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
-          <ActivityIndicator />
+          <ActivityIndicator color={theme.textSecondary} />
           <Text style={styles.dim}>Loading your QR...</Text>
         </View>
       </SafeAreaView>
@@ -75,15 +80,20 @@ export default function MyQRScreen({ navigation }) {
       {/* Header */}
       <View style={styles.topRow}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color="#fff" />
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My QR</Text>
         <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
-          <Ionicons name="refresh" size={18} color="#fff" />
+          <HugeiconsIcon icon={RefreshIcon} size={18} color={theme.text} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+      >
         {/* QR Code Card - Centered and Minimal */}
         <View style={styles.qrCard}>
           <Text style={styles.title}>My Payment QR</Text>
@@ -106,37 +116,39 @@ export default function MyQRScreen({ navigation }) {
             activeOpacity={0.85}
             onPress={() => navigation.navigate("CommuterScan")}
           >
-            <Ionicons name="scan-outline" size={18} color="rgba(255,255,255,0.8)" />
+            <HugeiconsIcon icon={ScanIcon} size={18} color={theme.textSecondary} />
             <Text style={styles.scanCardText}>Scan Card</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Quick Actions */}
-        <QuickActions
-          items={[
-            {
-              key: "topup",
-              icon: "💳",
-              title: "Top Up",
-              sub: "GCash",
-              onPress: () => navigation.navigate("SendLoad")
-            },
-            {
-              key: "send_load",
-              icon: "💸",
-              title: "Send Load",
-              sub: "Transfer",
-              onPress: () => Alert.alert("Send Load", "Coming soon!")
-            },
-            {
-              key: "register_rfid",
-              icon: "📡",
-              title: "Register RFID",
-              sub: "NFC Card",
-              onPress: () => navigation.navigate("RegisterRFID")
-            },
-          ]}
-        />
+        {/* Quick Actions container without alignment to fix hitboxes */}
+        <View style={styles.quickActionsContainer}>
+          <QuickActions
+            items={[
+              {
+                key: "topup",
+                icon: WalletAdd01Icon,
+                title: "Top Up",
+                sub: "GCash",
+                onPress: () => navigation.navigate("TopUp")
+              },
+              {
+                key: "send_load",
+                icon: FlashIcon,
+                title: "Send Load",
+                sub: "Transfer",
+                onPress: () => navigation.navigate("SendLoad")
+              },
+              {
+                key: "register_rfid",
+                icon: Wifi01Icon,
+                title: "Register RFID",
+                sub: "NFC Card",
+                onPress: () => navigation.navigate("RegisterRFID")
+              },
+            ]}
+          />
+        </View>
 
         <View style={{ height: 140 }} />
       </ScrollView>
@@ -146,16 +158,16 @@ export default function MyQRScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0B0E14" },
+const createStyles = (theme, isDarkMode) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.background },
   content: {
     padding: 20,
     paddingTop: 20,
-    alignItems: "center",
+    // explicitly NOT alignItems: "center" here to fix horizontal scrollview touch intercept issue
   },
 
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  dim: { color: "rgba(255,255,255,0.65)", marginTop: 10 },
+  dim: { color: theme.textMuted, marginTop: 10 },
 
   // Header
   topRow: {
@@ -170,12 +182,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 18,
     fontWeight: "700",
   },
@@ -183,7 +195,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -191,17 +203,23 @@ const styles = StyleSheet.create({
   qrCard: {
     width: "100%",
     maxWidth: 400,
+    alignSelf: "center", // localized alignment
     borderRadius: 28,
     padding: 32,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: isDarkMode ? "rgba(255,255,255,0.08)" : theme.card,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: isDarkMode ? "rgba(255,255,255,0.12)" : theme.border,
     alignItems: "center",
     marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDarkMode ? 0 : 0.05,
+    shadowRadius: 10,
+    elevation: isDarkMode ? 0 : 2,
   },
 
   title: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 24,
     fontWeight: "800",
     marginBottom: 24,
@@ -216,13 +234,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
   },
 
   instruction: {
-    color: "rgba(255,255,255,0.65)",
+    color: theme.textMuted,
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,
@@ -238,13 +256,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor: isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.05)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: isDarkMode ? "rgba(255,255,255,0.15)" : theme.border,
   },
   scanCardText: {
-    color: "rgba(255,255,255,0.85)",
+    color: theme.text,
     fontSize: 15,
     fontWeight: "700",
   },
+
+  quickActionsContainer: {
+    width: "100%",
+  }
 });

@@ -1,0 +1,100 @@
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useColorScheme } from 'react-native';
+
+export const ThemeContext = createContext();
+
+const THEME_STORAGE_KEY = '@app_theme_preference';
+
+export const lightTheme = {
+    isDark: false,
+    background: '#F6F4F0', // Warm off-white based on the mockup
+    card: '#EFEBE2', // Slightly darker for cards
+    cardAlt: '#FFFFFF', // Clean white option
+    border: 'rgba(0, 0, 0, 0.08)',
+    text: '#1A1A1A',
+    textSecondary: 'rgba(26, 26, 26, 0.65)',
+    textMuted: 'rgba(26, 26, 26, 0.45)',
+    accent: '#F7E353', // Vibrant Yellow
+    accentWarm: '#FFB800',
+    primary: '#0B0E14',
+    success: '#4CAF50',
+    successBg: 'rgba(76, 175, 80, 0.1)',
+    danger: '#FF4C4C',
+    dangerBg: 'rgba(255, 76, 76, 0.1)',
+    warning: '#F7E353',
+    warningBg: 'rgba(247, 227, 83, 0.1)',
+    bottomNavBg: 'rgba(255, 255, 255, 0.95)',
+    iconUnfocused: 'rgba(0, 0, 0, 0.4)',
+};
+
+export const darkTheme = {
+    isDark: true,
+    background: '#0B0E14',
+    card: 'rgba(255,255,255,0.06)',
+    cardAlt: '#2D2519', // Used for wallet card
+    border: 'rgba(255,255,255,0.10)',
+    text: '#FFFFFF',
+    textSecondary: 'rgba(255,255,255,0.65)',
+    textMuted: 'rgba(255,255,255,0.45)',
+    accent: '#F7E353', // Vibrant Yellow
+    accentWarm: '#FF9650',
+    primary: '#FFFFFF',
+    success: '#7CFF9B',
+    successBg: 'rgba(124,255,155,0.15)',
+    danger: '#FF7A7A',
+    dangerBg: 'rgba(255,122,122,0.15)',
+    warning: '#F7E353',
+    warningBg: 'rgba(247, 227, 83, 0.15)',
+    bottomNavBg: 'rgba(11,14,20,0.96)',
+    iconUnfocused: 'rgba(255,255,255,0.70)',
+};
+
+export const ThemeProvider = ({ children }) => {
+    const systemColorScheme = useColorScheme();
+    const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark as per existing app
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    useEffect(() => {
+        // Load saved theme preference
+        const loadTheme = async () => {
+            try {
+                const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+                if (savedTheme !== null) {
+                    setIsDarkMode(savedTheme === 'dark');
+                } else {
+                    // If no preference is saved, use dark mode for existing users
+                    setIsDarkMode(true);
+                }
+            } catch (error) {
+                console.error('Failed to load theme preference:', error);
+            } finally {
+                setIsLoaded(true);
+            }
+        };
+
+        loadTheme();
+    }, []);
+
+    const toggleTheme = async () => {
+        const newTheme = !isDarkMode;
+        setIsDarkMode(newTheme);
+        try {
+            await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme ? 'dark' : 'light');
+        } catch (error) {
+            console.error('Failed to save theme preference:', error);
+        }
+    };
+
+    const theme = isDarkMode ? darkTheme : lightTheme;
+
+    if (!isLoaded) return null; // Prevent UI flicker while loading preference
+
+    return (
+        <ThemeContext.Provider value={{ isDarkMode, theme, toggleTheme }}>
+            {children}
+        </ThemeContext.Provider>
+    );
+};
+
+export const useTheme = () => useContext(ThemeContext);

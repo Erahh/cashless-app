@@ -14,7 +14,8 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, Camera01Icon, CheckmarkCircle01Icon, Shield01Icon } from "@hugeicons/core-free-icons";
 
 const { width } = Dimensions.get("window");
 
@@ -169,7 +170,7 @@ export default function UploadVerificationScreen({ navigation, route }) {
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -208,14 +209,14 @@ export default function UploadVerificationScreen({ navigation, route }) {
                   resizeMode="cover"
                 />
                 <View style={styles.imageOverlay}>
-                  <Ionicons name="checkmark-circle" size={32} color="#7CFF9B" />
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={32} color="#7CFF9B" />
                   <Text style={styles.imageOverlayText}>Front ID Uploaded</Text>
                 </View>
               </View>
             ) : (
               <View style={styles.uploadPlaceholder}>
                 <View style={styles.iconCircle}>
-                  <Ionicons name="camera-outline" size={32} color="#7CFF9B" />
+                  <HugeiconsIcon icon={Camera01Icon} size={32} color="#7CFF9B" />
                 </View>
                 <Text style={styles.uploadLabel}>Select file</Text>
                 <Text style={styles.uploadHint}>Tap to upload front of your ID</Text>
@@ -236,7 +237,7 @@ export default function UploadVerificationScreen({ navigation, route }) {
             onPress={() => Alert.alert("Camera", "Camera feature coming soon!")}
             activeOpacity={0.8}
           >
-            <Ionicons name="camera" size={20} color="#7CFF9B" />
+            <HugeiconsIcon icon={Camera01Icon} size={20} color="#7CFF9B" />
             <Text style={styles.cameraBtnText}>Open Camera & Take Photo</Text>
           </TouchableOpacity>
 
@@ -256,14 +257,14 @@ export default function UploadVerificationScreen({ navigation, route }) {
                   resizeMode="cover"
                 />
                 <View style={styles.imageOverlay}>
-                  <Ionicons name="checkmark-circle" size={32} color="#7CFF9B" />
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={32} color="#7CFF9B" />
                   <Text style={styles.imageOverlayText}>Back ID Uploaded</Text>
                 </View>
               </View>
             ) : (
               <View style={styles.uploadPlaceholder}>
                 <View style={styles.iconCircle}>
-                  <Ionicons name="camera-outline" size={32} color="#7CFF9B" />
+                  <HugeiconsIcon icon={Camera01Icon} size={32} color="#7CFF9B" />
                 </View>
                 <Text style={styles.uploadLabel}>Select file</Text>
                 <Text style={styles.uploadHint}>Tap to upload back of your ID</Text>
@@ -284,14 +285,14 @@ export default function UploadVerificationScreen({ navigation, route }) {
             onPress={() => Alert.alert("Camera", "Camera feature coming soon!")}
             activeOpacity={0.8}
           >
-            <Ionicons name="camera" size={20} color="#7CFF9B" />
+            <HugeiconsIcon icon={Camera01Icon} size={20} color="#7CFF9B" />
             <Text style={styles.cameraBtnText}>Open Camera & Take Photo</Text>
           </TouchableOpacity>
         </View>
 
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <Ionicons name="shield-checkmark" size={20} color="#7CFF9B" />
+          <HugeiconsIcon icon={ShieldCheckIcon} size={20} color="#7CFF9B" />
           <Text style={styles.infoText}>
             Your documents are encrypted and stored securely. Only admins can review them for verification.
           </Text>

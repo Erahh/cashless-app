@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 export function Screen({ title, subtitle, rightSlot, onBack, children }) {
   return (
@@ -8,7 +9,7 @@ export function Screen({ title, subtitle, rightSlot, onBack, children }) {
       <View style={styles.header}>
         {onBack && (
           <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={24} color="#F4EEE6" />
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color="#F4EEE6" />
           </TouchableOpacity>
         )}
         <View style={{ flex: 1 }}>
@@ -69,8 +70,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
-    padding: 4,
   },
   title: {
     fontSize: 26,

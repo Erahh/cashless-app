@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useState, useRef } from "react";
 import { fetchNotifications } from "../api/notificationsApi";
+import { useTheme } from "../context/ThemeContext";
 import {
   View,
   Text,
@@ -14,6 +15,9 @@ import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
 import QuickActions from "../components/QuickActions";
 import BottomNav from "../components/BottomNav";
+import MiniMapCard from "../components/MiniMapCard";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { Notification01Icon, ScanIcon, WalletAdd01Icon, FlashIcon, SmartphoneWifiIcon, QrCodeIcon, Coins01Icon, InvoiceIcon, CheckmarkCircle01Icon, Bus01Icon, MoneySend01Icon } from "@hugeicons/core-free-icons";
 
 
 
@@ -30,6 +34,8 @@ async function fetchWithTimeout(url, options = {}, ms = 35000) {
 }
 
 export default function HomeScreen({ navigation, route }) {
+  const { theme, isDarkMode } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null);
   const [netMsg, setNetMsg] = useState("");
@@ -199,7 +205,7 @@ export default function HomeScreen({ navigation, route }) {
       <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <ActivityIndicator />
-          <Text style={{ color: "rgba(255,255,255,0.7)", marginTop: 10 }}>
+          <Text style={{ color: theme.textSecondary, marginTop: 10 }}>
             Loading dashboard...
           </Text>
         </View>
@@ -220,7 +226,7 @@ export default function HomeScreen({ navigation, route }) {
             <Text style={styles.smallLabel}>Available Balance</Text>
             <Text style={styles.balance}>₱{computed.balanceText}</Text>
             {lastUpdated ? (
-              <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.45)", fontSize: 12 }}>
+              <Text style={{ marginTop: 6, color: theme.textMuted, fontSize: 12 }}>
                 Last updated: {new Date(lastUpdated).toLocaleTimeString()}
               </Text>
             ) : null}
@@ -239,14 +245,10 @@ export default function HomeScreen({ navigation, route }) {
               navigation.navigate("Notifications");
             }}
           >
-            <Text style={styles.notifIcon}>🔔</Text>
-            {notifCount > 0 && (
-              <View style={styles.notifDot}>
-                <Text style={styles.notifDotText}>
-                  {notifCount > 99 ? "99+" : notifCount}
-                </Text>
-              </View>
-            )}
+            <View style={styles.notifBack}>
+              <HugeiconsIcon icon={Notification01Icon} size={22} color={theme.text} />
+              {notifCount > 0 && <View style={styles.notifDot} />}
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -256,13 +258,13 @@ export default function HomeScreen({ navigation, route }) {
               marginTop: 12,
               padding: 12,
               borderRadius: 14,
-              backgroundColor: "rgba(255, 211, 106, 0.10)",
+              backgroundColor: theme.warningBg,
               borderWidth: 1,
-              borderColor: "rgba(255, 211, 106, 0.25)",
+              borderColor: theme.warningBg,
             }}
           >
-            <Text style={{ color: "#FFD36A", fontWeight: "900" }}>Connection</Text>
-            <Text style={{ marginTop: 6, color: "rgba(255,255,255,0.75)", lineHeight: 18 }}>
+            <Text style={{ color: theme.warning, fontWeight: "900" }}>Connection</Text>
+            <Text style={{ marginTop: 6, color: theme.textSecondary, lineHeight: 18 }}>
               {netMsg}
             </Text>
           </View>
@@ -314,53 +316,28 @@ export default function HomeScreen({ navigation, route }) {
         {/* Quick Actions */}
         <QuickActions
           items={[
-            { key: "commuter_scan", icon: "📷", title: "Scan", sub: "Pay fare", onPress: () => navigation.navigate("CommuterScan"), show: computed.isCommuter },
-            { key: "topup", icon: "💳", title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("TopUp"), show: computed.isCommuter },
-            { key: "sendload", icon: "💸", title: "Send Load", sub: "P2P", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
-            { key: "tap_pay", icon: "📳", title: "Tap to Pay", sub: "NFC (Demo)", onPress: () => navigation.navigate("NFCTapPay"), show: computed.isCommuter },
+            { key: "commuter_scan", icon: ScanIcon, title: "Scan", sub: "Pay fare", onPress: () => navigation.navigate("CommuterScan"), show: computed.isCommuter },
+            { key: "topup", icon: WalletAdd01Icon, title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("TopUp"), show: computed.isCommuter },
+            { key: "sendload", icon: FlashIcon, title: "Send Load", sub: "P2P", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
+            { key: "tap_pay", icon: SmartphoneWifiIcon, title: "Tap to Pay", sub: "NFC (Demo)", onPress: () => navigation.navigate("NFCTapPay"), show: computed.isCommuter },
 
-            { key: "op_qr", icon: "📲", title: "My QR", sub: "Receive Pay", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorMyQR" }), show: computed.isOperator },
-            { key: "earn", icon: "💰", title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorEarnings" }), show: computed.isOperator },
-            { key: "hist", icon: "🧾", title: "History", sub: "Transactions", onPress: () => navigation.navigate("Transactions"), show: computed.isOperator }, // Also Operator History
+            { key: "op_qr", icon: QrCodeIcon, title: "My QR", sub: "Receive Pay", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorMyQR" }), show: computed.isOperator },
+            { key: "earn", icon: Coins01Icon, title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorEarnings" }), show: computed.isOperator },
+            { key: "hist", icon: InvoiceIcon, title: "History", sub: "Transactions", onPress: () => navigation.navigate("Transactions"), show: computed.isOperator },
 
-            { key: "ver", icon: "✅", title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminApp", { screen: "AdminVerification" }), show: computed.isAdmin },
-            { key: "create_op", icon: "🚌", title: "New Op", sub: "Create Operator", onPress: () => navigation.navigate("AdminApp", { screen: "AdminCreateOperator" }), show: computed.isAdmin },
-            { key: "set", icon: "💸", title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminApp", { screen: "AdminSettlements" }), show: computed.isAdmin },
+            { key: "ver", icon: CheckmarkCircle01Icon, title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminApp", { screen: "AdminVerification" }), show: computed.isAdmin },
+            { key: "create_op", icon: Bus01Icon, title: "New Op", sub: "Create Operator", onPress: () => navigation.navigate("AdminApp", { screen: "AdminCreateOperator" }), show: computed.isAdmin },
+            { key: "set", icon: MoneySend01Icon, title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminApp", { screen: "AdminSettlements" }), show: computed.isAdmin },
 
-            // Commuter history fallback if not one of above (or just always show history at bottom list, but user requested specific QuickActions)
-            { key: "commuter_hist", icon: "🧾", title: "History", sub: "Transactions", onPress: () => navigation.navigate("Transactions"), show: false },
+            { key: "commuter_hist", icon: InvoiceIcon, title: "History", sub: "Transactions", onPress: () => navigation.navigate("Transactions"), show: false },
           ].filter(a => a.show)}
         />
 
         {/* Role-aware Mid Cards */}
         {computed.isCommuter ? (
           <View style={styles.midCardsRow}>
-            {/* RFID Registration Card */}
-            <TouchableOpacity
-              style={styles.midCardHalf}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate("RegisterRFID")}
-            >
-              <View style={styles.midCardIcon}>
-                <Text style={styles.midCardIconText}>📡</Text>
-              </View>
-              <Text style={styles.midCardTitle}>Register RFID</Text>
-              <Text style={styles.midCardHint}>NFC Card</Text>
-            </TouchableOpacity>
-
-            {/* Friends Map Card - Real-Time Location */}
-            <TouchableOpacity
-              style={[styles.midCardHalf, styles.friendsMapCard]}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate("FriendsMap")}
-            >
-              <View style={[styles.midCardIcon, styles.friendsMapIcon]}>
-                <Text style={styles.midCardIconText}>🗺️</Text>
-                <View style={styles.onlinePulse} />
-              </View>
-              <Text style={styles.midCardTitle}>Friends Map</Text>
-              <Text style={styles.midCardHint}>Live Location 🟢</Text>
-            </TouchableOpacity>
+            {/* Live Mini-Map Component */}
+            <MiniMapCard onPress={() => navigation.navigate("FriendsMap")} />
           </View>
         ) : (
           <TouchableOpacity
@@ -388,21 +365,25 @@ export default function HomeScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
+
+
         {/* Verification Callout (only if not verified) */}
-        {computed.showCallout ? (
-          <View style={styles.callout}>
-            <Text style={styles.calloutTitle}>Discount not active yet</Text>
-            <Text style={styles.calloutText}>
-              Upload your ID and wait for admin approval to activate student/senior fare.
-            </Text>
-            <TouchableOpacity
-              style={styles.calloutBtn}
-              onPress={() => navigation.navigate("PassengerType")}
-            >
-              <Text style={styles.calloutBtnText}>Apply for Verification</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
+        {
+          computed.showCallout ? (
+            <View style={styles.callout}>
+              <Text style={styles.calloutTitle}>Discount not active yet</Text>
+              <Text style={styles.calloutText}>
+                Upload your ID and wait for admin approval to activate student/senior fare.
+              </Text>
+              <TouchableOpacity
+                style={styles.calloutBtn}
+                onPress={() => navigation.navigate("PassengerType")}
+              >
+                <Text style={styles.calloutBtnText}>Apply for Verification</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
 
         {/* Recent Transactions */}
         <View style={styles.sectionRow}>
@@ -467,7 +448,7 @@ export default function HomeScreen({ navigation, route }) {
           })}
 
           {!loading && recent.length === 0 ? (
-            <Text style={{ color: "rgba(255,255,255,0.55)", marginTop: 10 }}>
+            <Text style={{ color: theme.textMuted, marginTop: 10 }}>
               No transactions yet.
             </Text>
           ) : null}
@@ -480,25 +461,27 @@ export default function HomeScreen({ navigation, route }) {
             padding: 12,
             borderRadius: 14,
             borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.12)",
+            borderColor: theme.border,
             alignItems: "center",
           }}
           onPress={async () => {
             await loadStatus({ silent: false });
           }}
         >
-          <Text style={{ color: "rgba(255,255,255,0.85)", fontWeight: "800" }}>
+          <Text style={{ color: theme.text, fontWeight: "800" }}>
             Refresh
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </ScrollView >
 
       <BottomNav navigation={navigation} active="Home" />
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 
 function ActionCard({ icon, title, subtitle, onPress }) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   return (
     <TouchableOpacity style={styles.actionCard} activeOpacity={0.9} onPress={onPress}>
       <View style={styles.actionIcon}>
@@ -512,8 +495,8 @@ function ActionCard({ icon, title, subtitle, onPress }) {
 
 
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0B0E14" },
+const createStyles = (theme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.background },
   scroll: { flex: 1 },
   content: { padding: 18, paddingBottom: 160 },
 
@@ -523,8 +506,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginTop: 6,
   },
-  smallLabel: { color: "rgba(255,255,255,0.65)", fontSize: 12 },
-  balance: { color: "#fff", fontSize: 32, fontWeight: "800", marginTop: 6 },
+  smallLabel: { color: theme.textSecondary, fontSize: 12 },
+  balance: { color: theme.text, fontSize: 32, fontWeight: "800", marginTop: 6 },
 
   badge: {
     alignSelf: "flex-start",
@@ -533,46 +516,41 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
   },
-  badgeText: { color: "#0B0E14", fontWeight: "800", fontSize: 12 },
-  badge_neutral: { backgroundColor: "rgba(255,255,255,0.8)" },
-  badge_good: { backgroundColor: "#7CFF9B" },
-  badge_warn: { backgroundColor: "#FFD36A" },
-  badge_bad: { backgroundColor: "#FF7A7A" },
+  badgeText: { color: theme.isDark ? "#0B0E14" : "#ffffff", fontWeight: "800", fontSize: 12 },
+  badge_neutral: { backgroundColor: theme.isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.15)" },
+  badge_good: { backgroundColor: theme.success },
+  badge_warn: { backgroundColor: theme.warning },
+  badge_bad: { backgroundColor: theme.danger },
 
   notifBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.07)",
+    padding: 8,
+    marginTop: 4,
+  },
+  notifBack: {
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
   },
-  notifIcon: { fontSize: 18 },
   notifDot: {
     position: "absolute",
-    top: 4,
-    right: 2,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: "#FF5E5E",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: "#0B0E14",
+    borderWidth: 1.5,
+    borderColor: theme.background,
   },
-  notifDotText: { color: "#fff", fontSize: 10, fontWeight: "900" },
 
   // ═══════ UNIFIED WALLET CARD ═══════
   walletCard: {
     marginTop: 18,
     borderRadius: 28,
     padding: 20,
-    backgroundColor: "#2D2519",
+    backgroundColor: theme.cardAlt,
     borderWidth: 1.5,
-    borderColor: "rgba(255,211,106,0.2)",
+    borderColor: theme.warningBg,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.5,
@@ -583,7 +561,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   walletBalanceInner: {
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: theme.isDark ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.08)",
     borderRadius: 18,
     paddingVertical: 16,
     paddingHorizontal: 22,
@@ -597,20 +575,20 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   walletBalanceLabel: {
-    color: "rgba(255,255,255,0.45)",
+    color: theme.textMuted,
     fontSize: 13,
     fontWeight: "500",
     letterSpacing: 0.3,
   },
   walletBalanceAmount: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 24,
     fontWeight: "900",
     letterSpacing: -1,
   },
   walletDivider: {
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
     marginBottom: 18,
   },
   walletSpendingSection: {
@@ -622,14 +600,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   walletSpendingLabel: {
-    color: "rgba(255,255,255,0.55)",
+    color: theme.textMuted,
     fontSize: 11,
     fontWeight: "600",
     letterSpacing: 0.5,
     marginBottom: 6,
   },
   walletSpendingHint: {
-    color: "rgba(255,255,255,0.35)",
+    color: theme.textMuted,
     fontSize: 12,
   },
   walletSpendingRight: {
@@ -642,12 +620,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   walletPercentText: {
-    color: "#FFD36A",
+    color: theme.warning,
     fontSize: 13,
     fontWeight: "800",
   },
   walletPercentLabel: {
-    color: "rgba(255,255,255,0.4)",
+    color: theme.textMuted,
     fontSize: 10,
   },
   walletWaveRow: {
@@ -658,47 +636,50 @@ const styles = StyleSheet.create({
   walletWaveBar: {
     width: 8,
     borderRadius: 2,
-    backgroundColor: "#FF9650",
+    backgroundColor: theme.accentWarm,
   },
 
-  sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "800", marginTop: 18 },
+  sectionTitle: { color: theme.text, fontSize: 16, fontWeight: "800", marginTop: 18 },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
-  link: { color: "rgba(255,255,255,0.75)", textDecorationLine: "underline" },
+  link: { color: theme.textSecondary, textDecorationLine: "underline" },
 
   actionsRow: { flexDirection: "row", marginTop: 12 },
   actionCard: {
     flex: 1,
     padding: 14,
     borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: theme.border,
   },
   actionIcon: {
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor: theme.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
   },
   actionIconText: { fontSize: 16 },
-  actionTitle: { color: "#fff", fontWeight: "800" },
-  actionSub: { color: "rgba(255,255,255,0.55)", marginTop: 4, fontSize: 12 },
+  actionTitle: { color: theme.text, fontWeight: "800" },
+  actionSub: { color: theme.textMuted, marginTop: 4, fontSize: 12 },
 
   midCard: {
     marginTop: 14,
     borderRadius: 18,
     padding: 16,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: theme.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  arrow: { color: "rgba(255,255,255,0.7)", fontSize: 26, marginLeft: 10 },
+  arrow: { color: theme.textSecondary, fontSize: 26, marginLeft: 10 },
+  cardLabel: { color: theme.textMuted, fontSize: 12, fontWeight: "600", marginBottom: 4 },
+  cardValue: { color: theme.text, fontSize: 16, fontWeight: "800", marginBottom: 4 },
+  cardHint: { color: theme.textMuted, fontSize: 12 },
 
   // Two-card layout for commuters
   midCardsRow: {
@@ -710,16 +691,16 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 18,
     padding: 18,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: theme.border,
     alignItems: "center",
   },
   midCardIcon: {
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor: theme.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -728,14 +709,14 @@ const styles = StyleSheet.create({
     fontSize: 28,
   },
   midCardTitle: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 14,
     fontWeight: "800",
     textAlign: "center",
     marginBottom: 4,
   },
   midCardHint: {
-    color: "rgba(255,255,255,0.55)",
+    color: theme.textMuted,
     fontSize: 12,
     textAlign: "center",
   },
@@ -744,28 +725,28 @@ const styles = StyleSheet.create({
     marginTop: 14,
     borderRadius: 18,
     padding: 16,
-    backgroundColor: "rgba(255, 211, 106, 0.12)",
+    backgroundColor: theme.warningBg,
     borderWidth: 1,
-    borderColor: "rgba(255, 211, 106, 0.28)",
+    borderColor: "rgba(255, 152, 0, 0.28)",
   },
-  calloutTitle: { color: "#FFD36A", fontSize: 14, fontWeight: "900" },
-  calloutText: { color: "rgba(255,255,255,0.75)", marginTop: 8, lineHeight: 18 },
+  calloutTitle: { color: theme.warning, fontSize: 14, fontWeight: "900" },
+  calloutText: { color: theme.textSecondary, marginTop: 8, lineHeight: 18 },
   calloutBtn: {
     marginTop: 12,
-    backgroundColor: "#FFD36A",
+    backgroundColor: theme.warning,
     paddingVertical: 12,
     borderRadius: 14,
     alignItems: "center",
   },
-  calloutBtnText: { color: "#0B0E14", fontWeight: "900" },
+  calloutBtnText: { color: theme.isDark ? "#0B0E14" : "#ffffff", fontWeight: "900" },
 
   list: { marginTop: 12 },
   txRow: {
     padding: 14,
     borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: theme.border,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -776,42 +757,17 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor: theme.border,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
   },
   txIconText: { fontSize: 16 },
-  txTitle: { color: "#fff", fontWeight: "800" },
-  txMeta: { color: "rgba(255,255,255,0.65)", marginTop: 3, fontSize: 12, fontWeight: "600" },
-  txTime: { color: "rgba(255,255,255,0.45)", marginTop: 2, fontSize: 11 },
+  txTitle: { color: theme.text, fontWeight: "800" },
+  txMeta: { color: theme.textSecondary, marginTop: 3, fontSize: 12, fontWeight: "600" },
+  txTime: { color: theme.textMuted, marginTop: 2, fontSize: 11 },
 
   txAmount: { fontWeight: "900", fontSize: 16 },
-  txNeg: { color: "#FF8A8A" },
-  txPos: { color: "#7CFF9B" },
-
-  // Friends Map Card - Futuristic styling
-  friendsMapCard: {
-    backgroundColor: "rgba(76, 175, 80, 0.08)",
-    borderColor: "rgba(76, 175, 80, 0.25)",
-    borderWidth: 1.5,
-  },
-  friendsMapIcon: {
-    backgroundColor: "rgba(76, 175, 80, 0.15)",
-    position: "relative",
-  },
-  onlinePulse: {
-    position: "absolute",
-    bottom: 4,
-    right: 4,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#4CAF50",
-    shadowColor: "#4CAF50",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 4,
-  },
+  txNeg: { color: theme.danger },
+  txPos: { color: theme.success },
 });

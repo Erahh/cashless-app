@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 
 export default function GlassInput({
     label,
@@ -33,7 +34,7 @@ export default function GlassInput({
 
                 {secureTextEntry ? (
                     <TouchableOpacity onPress={() => setHide(!hide)} style={styles.eyeBtn} activeOpacity={0.8}>
-                        <Ionicons name={hide ? "eye-off" : "eye"} size={20} color="rgba(255,255,255,0.7)" />
+                        <HugeiconsIcon icon={hide ? ViewOffIcon : ViewIcon} size={20} color="rgba(255,255,255,0.7)" />
                     </TouchableOpacity>
                 ) : null}
             </View>

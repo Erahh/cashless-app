@@ -8,7 +8,8 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, ArrowRight01Icon, CheckmarkCircle01Icon, Shield01Icon, Clock01Icon, NoteIcon } from "@hugeicons/core-free-icons";
 
 export default function DiscountInfoScreen({ navigation, route }) {
   const passenger_type = route?.params?.passenger_type; // "student" | "senior"
@@ -42,7 +43,7 @@ export default function DiscountInfoScreen({ navigation, route }) {
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -57,19 +58,19 @@ export default function DiscountInfoScreen({ navigation, route }) {
         {/* Card: What you need */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="document-text-outline" size={22} color="#7CFF9B" />
+            <HugeiconsIcon icon={NoteIcon} size={22} color="#7CFF9B" />
             <Text style={styles.cardTitle}>What you need</Text>
           </View>
           <View style={styles.listItem}>
-            <Ionicons name="checkmark-circle" size={18} color="#7CFF9B" />
+            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} color="#7CFF9B" />
             <Text style={styles.cardText}>Upload a valid ID (front and back)</Text>
           </View>
           <View style={styles.listItem}>
-            <Ionicons name="checkmark-circle" size={18} color="#7CFF9B" />
+            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} color="#7CFF9B" />
             <Text style={styles.cardText}>Make sure details are clear and readable</Text>
           </View>
           <View style={styles.listItem}>
-            <Ionicons name="checkmark-circle" size={18} color="#7CFF9B" />
+            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} color="#7CFF9B" />
             <Text style={styles.cardText}>Admin approval activates discount automatically</Text>
           </View>
         </View>
@@ -77,7 +78,7 @@ export default function DiscountInfoScreen({ navigation, route }) {
         {/* Card: While waiting */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="time-outline" size={22} color="#FFD36A" />
+            <HugeiconsIcon icon={Clock01Icon} size={22} color="#FFD36A" />
             <Text style={styles.cardTitle}>While waiting</Text>
           </View>
           <Text style={styles.cardText}>
@@ -87,7 +88,7 @@ export default function DiscountInfoScreen({ navigation, route }) {
 
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <Ionicons name="shield-checkmark" size={20} color="#7CFF9B" />
+          <HugeiconsIcon icon={Shield01Icon} size={20} color="#7CFF9B" />
           <Text style={styles.infoText}>
             Your documents are encrypted and stored securely. Only admins can review them.
           </Text>
@@ -97,7 +98,7 @@ export default function DiscountInfoScreen({ navigation, route }) {
         <View style={styles.actions}>
           <TouchableOpacity style={styles.primaryBtn} onPress={goUpload} activeOpacity={0.9}>
             <Text style={styles.primaryBtnText}>Upload ID Now</Text>
-            <Ionicons name="arrow-forward" size={20} color="#0B0E14" />
+            <HugeiconsIcon icon={ArrowRight01Icon} size={20} color="#0B0E14" />
           </TouchableOpacity>
 
           <TouchableOpacity

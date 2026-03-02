@@ -13,7 +13,8 @@ import {
     StyleSheet,
     ActivityIndicator,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { FlashIcon, CallIcon, CheckmarkCircle01Icon, BubbleChatIcon } from "@hugeicons/core-free-icons";
 import { Screen, Card, PrimaryButton, GhostButton, Pill } from "../components/ui";
 import { sendLoad } from "../api/walletApi";
 import { renderApiRequest } from "../api/apiHelper";
@@ -166,7 +167,7 @@ export default function SendLoadScreen({ navigation }) {
                         {showQuickPicks && (
                             <Card style={styles.quickPickCard}>
                                 <View style={styles.quickPickHeader}>
-                                    <Ionicons name="flash" size={16} color="#F2E94E" />
+                                    <HugeiconsIcon icon={FlashIcon} size={16} color="#F2E94E" />
                                     <Text style={styles.quickPickTitle}>Quick Pick</Text>
                                 </View>
 
@@ -230,7 +231,7 @@ export default function SendLoadScreen({ navigation }) {
 
                             <Text style={styles.label}>Receiver Phone Number</Text>
                             <View style={styles.inputWrapper}>
-                                <Ionicons name="call-outline" size={20} color="rgba(244,238,230,0.5)" style={styles.inputIcon} />
+                                <HugeiconsIcon icon={CallIcon} size={20} color="rgba(244,238,230,0.5)" style={styles.inputIcon} />
                                 <TextInput
                                     value={phone}
                                     onChangeText={handlePhoneChange}
@@ -242,7 +243,7 @@ export default function SendLoadScreen({ navigation }) {
                                 />
                                 {phone.length === 11 && (
                                     <View style={styles.checkMark}>
-                                        <Ionicons name="checkmark-circle" size={22} color="#7CFF9B" />
+                                        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={22} color="#7CFF9B" />
                                     </View>
                                 )}
                             </View>
@@ -293,7 +294,7 @@ export default function SendLoadScreen({ navigation }) {
 
                             <Text style={styles.label}>Message (Optional)</Text>
                             <View style={styles.inputWrapper}>
-                                <Ionicons name="chatbubble-outline" size={20} color="rgba(244,238,230,0.5)" style={styles.inputIcon} />
+                                <HugeiconsIcon icon={BubbleChatIcon} size={20} color="rgba(244,238,230,0.5)" style={styles.inputIcon} />
                                 <TextInput
                                     value={notes}
                                     onChangeText={setNotes}

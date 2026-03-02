@@ -11,7 +11,8 @@ import {
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, UserIcon, Cancel01Icon, Delete01Icon, UserAdd01Icon, UserGroup02Icon } from "@hugeicons/core-free-icons";
 import { api } from '../api/apiHelper';
 
 export default function AddFriendScreen({ navigation }) {
@@ -118,7 +119,7 @@ export default function AddFriendScreen({ navigation }) {
         return (
             <View style={styles.friendItem}>
                 <View style={styles.friendAvatar}>
-                    <Ionicons name="person" size={24} color="#FFD36A" />
+                    <HugeiconsIcon icon={UserIcon} size={24} color="#FFD36A" />
                 </View>
 
                 <View style={styles.friendInfo}>
@@ -145,8 +146,8 @@ export default function AddFriendScreen({ navigation }) {
                         style={styles.removeButton}
                         onPress={() => removeFriend(item.connection_id, item.friend_name, isPending && !isIncoming)}
                     >
-                        <Ionicons
-                            name={isPending && !isIncoming ? "close-circle" : "trash-outline"}
+                        <HugeiconsIcon
+                            icon={isPending && !isIncoming ? Cancel01Icon : Delete01Icon}
                             size={24}
                             color="#F44336"
                         />
@@ -167,7 +168,7 @@ export default function AddFriendScreen({ navigation }) {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color="#FFF" />
+                    <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color="#FFF" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Friends</Text>
                 <View style={{ width: 24 }} />
@@ -194,7 +195,7 @@ export default function AddFriendScreen({ navigation }) {
                         {searching ? (
                             <ActivityIndicator color="#000" />
                         ) : (
-                            <Ionicons name="person-add" size={24} color="#000" />
+                            <HugeiconsIcon icon={UserAdd01Icon} size={24} color="#000" />
                         )}
                     </TouchableOpacity>
                 </View>
@@ -222,7 +223,7 @@ export default function AddFriendScreen({ navigation }) {
                     )}
                     ListEmptyComponent={() => (
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="people-outline" size={64} color="#888" />
+                            <HugeiconsIcon icon={UserGroup02Icon} size={64} color="#888" />
                             <Text style={styles.emptyText}>No friends yet</Text>
                             <Text style={styles.emptySubtext}>Add friends to see their locations on the map</Text>
                         </View>

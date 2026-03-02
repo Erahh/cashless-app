@@ -11,9 +11,12 @@ import {
   Modal,
   TouchableWithoutFeedback,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, RefreshIcon, ArrowRight01Icon, MoreVerticalCircle01Icon, Notification03Icon } from "@hugeicons/core-free-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchNotifications, deleteNotification, clearNotifications } from "../api/notificationsApi";
 import BottomNav from "../components/BottomNav";
+import { useTheme } from "../context/ThemeContext";
 
 function normalizePayload(payload) {
   const p = payload && typeof payload === "object" ? payload : {};
@@ -25,10 +28,13 @@ function normalizePayload(payload) {
 }
 
 export default function NotificationsScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [menuPos, setMenuPos] = useState({ top: 0 });
   const [isClearing, setIsClearing] = useState(false);
   const [isFullList, setIsFullList] = useState(false);
 
@@ -90,8 +96,10 @@ export default function NotificationsScreen({ navigation }) {
     );
   };
 
-  const openMenu = (id) => {
+  const openMenu = (id, event) => {
+    const { pageY } = event.nativeEvent;
     setSelectedId(id);
+    setMenuPos({ top: pageY - 20 }); // Position box near the tap
     setMenuVisible(true);
   };
 
@@ -129,10 +137,18 @@ export default function NotificationsScreen({ navigation }) {
   };
 
   const RenderIcon = ({ name, color, lib }) => {
-    if (lib === "MaterialCommunityIcons") {
-      return <MaterialCommunityIcons name={name} size={22} color="#000" />;
-    }
-    return <Ionicons name={name} size={22} color="#000" />;
+    // New Style: Outlined circular icons with soft inner background
+    return (
+      <View style={[styles.iconWrapper, { borderColor: color + '50' }]}>
+        <View style={[styles.iconInner, { backgroundColor: color + '15' }]}>
+          {lib === "MaterialCommunityIcons" ? (
+            <MaterialCommunityIcons name={name} size={20} color={color} />
+          ) : (
+            <HugeiconsIcon icon={Notification03Icon} size={20} color={color} />
+          )}
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -140,11 +156,11 @@ export default function NotificationsScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notification</Text>
         <TouchableOpacity onPress={load} style={styles.headerRefresh}>
-          <Ionicons name="refresh" size={20} color="rgba(255,255,255,0.4)" />
+          <HugeiconsIcon icon={RefreshIcon} size={20} color={theme.textMuted} />
         </TouchableOpacity>
       </View>
 
@@ -160,11 +176,11 @@ export default function NotificationsScreen({ navigation }) {
 
         {loading || isClearing ? (
           <View style={styles.center}>
-            <ActivityIndicator color="#F7E353" />
+            <ActivityIndicator color={theme.accent} />
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off-outline" size={60} color="rgba(255,255,255,0.1)" />
+            <HugeiconsIcon icon={Notification03Icon} size={60} color={theme.textMuted} />
             <Text style={styles.emptyText}>Nothing here yet</Text>
           </View>
         ) : (
@@ -173,56 +189,36 @@ export default function NotificationsScreen({ navigation }) {
               const p = normalizePayload(n.payload);
               const { icon, color, lib } = getIconInfo(p.title, p.type);
 
-              // Formatting time like "12:45 am"
               const date = new Date(n.created_at);
-              const hours = date.getHours();
-              const mins = date.getMinutes().toString().padStart(2, "0");
-              const ampm = hours >= 12 ? "pm" : "am";
-              const displayTime = `${hours % 12 || 12}:${mins} ${ampm}`;
+              const now = new Date();
+              const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+              const displayTime = diffDays === 0 ? "Today" : diffDays === 1 ? "Yesterday" : `${diffDays} days ago`;
 
               return (
-                <TouchableOpacity
-                  key={n.id}
-                  activeOpacity={0.9}
-                  onLongPress={() => openMenu(n.id)}
-                  style={styles.card}
-                >
-                  <View style={styles.cardRow}>
-                    {/* Circular Icon */}
-                    <View style={[styles.iconContainer, { backgroundColor: color }]}>
-                      <RenderIcon name={icon} color={color} lib={lib} />
-                    </View>
+                <View key={n.id} style={styles.notificationItem}>
+                  <View style={styles.itemRow}>
+                    <RenderIcon name={icon} color={color} lib={lib} />
 
-                    {/* Content */}
-                    <View style={styles.cardMain}>
-                      <View style={styles.cardTopRow}>
-                        <Text style={styles.cardTitle}>{p.title}</Text>
-                        <Text style={styles.cardTime}>{displayTime}</Text>
-                      </View>
-
-                      <Text style={styles.cardBody} numberOfLines={2}>
-                        {p.body || "System notification received."}
+                    <View style={styles.itemContent}>
+                      <Text style={styles.itemTitle}>{p.title}</Text>
+                      <Text style={styles.itemBody} numberOfLines={2}>
+                        {p.body || "Notification details..."}
                       </Text>
-
-                      {/* Status Dot */}
-                      <View style={styles.cardBottomRow}>
-                        <View style={styles.unreadDot} />
-                      </View>
+                      <Text style={styles.itemTime}>{displayTime}</Text>
                     </View>
 
-                    {/* Options Trigger (Mini) */}
-                    <TouchableOpacity onPress={() => openMenu(n.id)} style={styles.miniMoreBtn}>
-                      <Ionicons name="ellipsis-vertical" size={14} color="rgba(255,255,255,0.2)" />
+                    <TouchableOpacity onPress={(e) => openMenu(n.id, e)} style={styles.itemMenuBtn}>
+                      <HugeiconsIcon icon={MoreVerticalCircle01Icon} size={20} color={theme.textMuted} />
                     </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
+                </View>
               );
             })}
 
             {!isFullList && items.length === 10 && (
               <TouchableOpacity style={styles.seeAllBtn} onPress={handleSeeAll}>
                 <Text style={styles.seeAllText}>See All Notifications</Text>
-                <Ionicons name="chevron-forward" size={16} color="#F7E353" />
+                <HugeiconsIcon icon={ArrowRight01Icon} size={16} color={theme.accent} />
               </TouchableOpacity>
             )}
           </View>
@@ -231,19 +227,24 @@ export default function NotificationsScreen({ navigation }) {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Action Sheet Modal */}
+      {/* Floating Popover Menu */}
       <Modal visible={menuVisible} transparent animationType="fade">
         <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHandle} />
-              <TouchableOpacity style={styles.modalOption} onPress={() => handleDelete(selectedId)}>
-                <Ionicons name="trash-outline" size={22} color="#FF5C5C" />
-                <Text style={styles.modalOptionText}>Delete this notification</Text>
+          <View style={styles.popoverOverlay}>
+            <View style={[styles.popoverMenu, { top: menuPos.top }]}>
+              {/* Pointer Arrow */}
+              <View style={styles.popoverPointer} />
+
+              <TouchableOpacity style={styles.popoverOption} onPress={() => setMenuVisible(false)}>
+                <MaterialCommunityIcons name="eye-check-outline" size={18} color="rgba(255,255,255,0.6)" />
+                <Text style={styles.popoverOptionText}>Mark as read</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalOption, { borderBottomWidth: 0 }]} onPress={() => setMenuVisible(false)}>
-                <Ionicons name="close-circle-outline" size={22} color="#fff" />
-                <Text style={styles.modalOptionText}>Cancel</Text>
+
+              <View style={styles.popoverDivider} />
+
+              <TouchableOpacity style={styles.popoverOption} onPress={() => handleDelete(selectedId)}>
+                <MaterialCommunityIcons name="trash-can-outline" size={18} color="#FF5C5C" />
+                <Text style={[styles.popoverOptionText, { color: "#FF5C5C" }]}>Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -255,8 +256,8 @@ export default function NotificationsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#12100E" }, // Warm Dark
+const createStyles = (theme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -266,83 +267,110 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   backBtn: { width: 40, height: 40, justifyContent: "center" },
-  headerTitle: { color: "#fff", fontSize: 22, fontWeight: "600", letterSpacing: 0.5 },
+  headerTitle: { color: theme.text, fontSize: 24, fontWeight: "700", letterSpacing: 0.5 },
   headerRefresh: { width: 40, height: 40, alignItems: "flex-end", justifyContent: "center" },
 
   scrollContent: { paddingHorizontal: 20 },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 },
-  sectionTitle: { color: "rgba(255,255,255,0.4)", fontSize: 18, fontWeight: "500" },
-  clearAllText: { color: "#FF5C5C", fontSize: 13, fontWeight: "600" },
+  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 25 },
+  sectionTitle: { color: theme.textSecondary, fontSize: 18, fontWeight: "600" },
+  clearAllText: { color: theme.danger, fontSize: 13, fontWeight: "600" },
 
-  list: { gap: 12 },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 24,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+  list: { gap: 10 },
+
+  notificationItem: {
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
   },
-  cardRow: { flexDirection: "row", gap: 14 },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  itemRow: { flexDirection: "row", alignItems: "flex-start", gap: 16 },
+
+  iconWrapper: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
-  cardMain: { flex: 1 },
-  cardTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  cardTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  cardTime: { color: "rgba(255,255,255,0.3)", fontSize: 11 },
-  cardBody: { color: "rgba(255,255,255,0.5)", fontSize: 13, lineHeight: 18, paddingRight: 20 },
-  cardBottomRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 2 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#F7E353" }, // Match image yellow
+  iconInner: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-  miniMoreBtn: { position: "absolute", right: -5, top: 25 },
+  itemContent: { flex: 1, gap: 4 },
+  itemTitle: { color: theme.text, fontSize: 17, fontWeight: "700" },
+  itemBody: { color: theme.textSecondary, fontSize: 14, lineHeight: 20 },
+  itemTime: { color: theme.textMuted, fontSize: 12, marginTop: 4 },
+
+  itemMenuBtn: { padding: 4, marginRight: -4 },
 
   center: { marginTop: 50, alignItems: "center" },
   emptyContainer: { marginTop: 100, alignItems: "center", opacity: 0.5 },
-  emptyText: { color: "#fff", marginTop: 10, fontSize: 14 },
+  emptyText: { color: theme.text, marginTop: 10, fontSize: 14 },
 
   seeAllBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 15,
-    marginTop: 10,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    paddingVertical: 16,
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: theme.border,
     borderRadius: 16,
     gap: 8,
   },
-  seeAllText: {
-    color: "#F7E353",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  seeAllText: { color: theme.accent, fontSize: 14, fontWeight: "700" },
 
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
-  modalContent: {
-    backgroundColor: "#1C1C1E",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 24,
-    paddingBottom: 40,
+  popoverOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 20,
+  popoverMenu: {
+    position: "absolute",
+    right: 20,
+    backgroundColor: theme.isDark ? "rgba(35, 35, 40, 0.98)" : "rgba(255, 255, 255, 0.98)",
+    borderRadius: 14,
+    width: 170,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: theme.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
+    elevation: 15,
   },
-  modalOption: {
+  popoverPointer: {
+    position: "absolute",
+    top: -8,
+    right: 18,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 8,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: theme.isDark ? "rgba(35, 35, 40, 0.98)" : "rgba(255, 255, 255, 0.98)",
+  },
+  popoverOption: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.05)",
-    gap: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
   },
-  modalOptionText: { color: "#fff", fontSize: 16, fontWeight: "500" },
+  popoverOptionText: {
+    color: theme.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  popoverDivider: {
+    height: 1,
+    backgroundColor: theme.border,
+    marginHorizontal: 12,
+  },
 });

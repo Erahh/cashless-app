@@ -11,7 +11,8 @@ import {
     ScrollView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, ArrowRight01Icon, Camera01Icon, Image01Icon, CheckmarkCircle01Icon, IdeaIcon } from "@hugeicons/core-free-icons";
 
 export default function UploadFrontIDScreen({ navigation, route }) {
     const { passenger_type } = route.params || {};
@@ -80,7 +81,7 @@ export default function UploadFrontIDScreen({ navigation, route }) {
                         onPress={() => navigation.goBack()}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="arrow-back" size={24} color="#fff" />
+                        <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color="#fff" />
                     </TouchableOpacity>
                 </View>
 
@@ -106,7 +107,7 @@ export default function UploadFrontIDScreen({ navigation, route }) {
                         <View style={styles.imagePreviewContainer}>
                             <Image source={{ uri: frontImage }} style={styles.imagePreview} />
                             <View style={styles.checkmarkOverlay}>
-                                <Ionicons name="checkmark-circle" size={48} color="#7CFF9B" />
+                                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={48} color="#7CFF9B" />
                             </View>
                             <View style={styles.actionButtons}>
                                 <TouchableOpacity
@@ -114,7 +115,7 @@ export default function UploadFrontIDScreen({ navigation, route }) {
                                     onPress={takePhoto}
                                     activeOpacity={0.8}
                                 >
-                                    <Ionicons name="camera" size={18} color="#fff" />
+                                    <HugeiconsIcon icon={Camera01Icon} size={18} color="#fff" />
                                     <Text style={styles.actionBtnText}>Retake</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
@@ -122,7 +123,7 @@ export default function UploadFrontIDScreen({ navigation, route }) {
                                     onPress={pickImage}
                                     activeOpacity={0.8}
                                 >
-                                    <Ionicons name="images" size={18} color="#fff" />
+                                    <HugeiconsIcon icon={Image01Icon} size={18} color="#fff" />
                                     <Text style={styles.actionBtnText}>Choose Another</Text>
                                 </TouchableOpacity>
                             </View>
@@ -136,7 +137,7 @@ export default function UploadFrontIDScreen({ navigation, route }) {
                                 activeOpacity={0.8}
                             >
                                 <View style={styles.fileCardIcon}>
-                                    <Ionicons name="image-outline" size={40} color="rgba(255,255,255,0.4)" />
+                                    <HugeiconsIcon icon={Image01Icon} size={40} color="rgba(255,255,255,0.4)" />
                                 </View>
                                 <Text style={styles.fileCardText}>Select file</Text>
                             </TouchableOpacity>
@@ -154,7 +155,7 @@ export default function UploadFrontIDScreen({ navigation, route }) {
                                 onPress={takePhoto}
                                 activeOpacity={0.9}
                             >
-                                <Ionicons name="camera" size={20} color="#fff" />
+                                <HugeiconsIcon icon={Camera01Icon} size={20} color="#fff" />
                                 <Text style={styles.cameraButtonText}>Take Photo</Text>
                             </TouchableOpacity>
                         </>
@@ -164,19 +165,19 @@ export default function UploadFrontIDScreen({ navigation, route }) {
                 {/* Tips Card */}
                 <View style={styles.tipsCard}>
                     <View style={styles.tipsHeader}>
-                        <Ionicons name="bulb" size={20} color="#FFD36A" />
+                        <HugeiconsIcon icon={IdeaIcon} size={20} color="#FFD36A" />
                         <Text style={styles.tipsTitle}>Tips for a clear photo</Text>
                     </View>
                     <View style={styles.tipItem}>
-                        <Ionicons name="checkmark-circle" size={16} color="#7CFF9B" />
+                        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} color="#7CFF9B" />
                         <Text style={styles.tipText}>Make sure all text is readable</Text>
                     </View>
                     <View style={styles.tipItem}>
-                        <Ionicons name="checkmark-circle" size={16} color="#7CFF9B" />
+                        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} color="#7CFF9B" />
                         <Text style={styles.tipText}>Avoid glare and shadows</Text>
                     </View>
                     <View style={styles.tipItem}>
-                        <Ionicons name="checkmark-circle" size={16} color="#7CFF9B" />
+                        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} color="#7CFF9B" />
                         <Text style={styles.tipText}>Place ID on a flat surface</Text>
                     </View>
                 </View>
@@ -196,7 +197,7 @@ export default function UploadFrontIDScreen({ navigation, route }) {
                     ) : (
                         <>
                             <Text style={styles.continueBtnText}>Continue to Back ID</Text>
-                            <Ionicons name="arrow-forward" size={20} color="#0B0E14" />
+                            <HugeiconsIcon icon={ArrowRight01Icon} size={20} color="#0B0E14" />
                         </>
                     )}
                 </TouchableOpacity>

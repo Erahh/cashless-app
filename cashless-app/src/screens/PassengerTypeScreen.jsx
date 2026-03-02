@@ -12,7 +12,8 @@ import {
   Platform
 } from "react-native";
 import { savePassengerProfile } from "../api/passengerLocal";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, ArrowRight01Icon, InformationCircleIcon, CheckmarkCircle01Icon, GraduateMaleIcon, WheelchairIcon } from "@hugeicons/core-free-icons";
 
 export default function PassengerTypeScreen({ navigation }) {
   const [type, setType] = useState("student");
@@ -54,7 +55,7 @@ export default function PassengerTypeScreen({ navigation }) {
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
             >
-              <Ionicons name="arrow-back" size={24} color="#fff" />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color="#fff" />
             </TouchableOpacity>
           </View>
 
@@ -107,7 +108,7 @@ export default function PassengerTypeScreen({ navigation }) {
 
           {/* Info Card */}
           <View style={styles.infoCard}>
-            <Ionicons name="information-circle" size={20} color="#7CFF9B" />
+            <HugeiconsIcon icon={InformationCircleIcon} size={20} color="#7CFF9B" />
             <Text style={styles.infoText}>
               {type === "student"
                 ? "After entering your school name, you'll upload your student ID for verification to unlock discounted fares."
@@ -127,7 +128,7 @@ export default function PassengerTypeScreen({ navigation }) {
             activeOpacity={0.9}
           >
             <Text style={styles.nextBtnText}>Next</Text>
-            <Ionicons name="arrow-forward" size={20} color="#0B0E14" />
+            <HugeiconsIcon icon={ArrowRight01Icon} size={20} color="#0B0E14" />
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -150,8 +151,8 @@ function PassengerCard({ icon, value, label, description, selected, onPress }) {
           styles.iconCircle,
           selected && styles.iconCircleSelected
         ]}>
-          <Ionicons
-            name={icon}
+          <HugeiconsIcon
+            icon={value === "student" ? GraduateMaleIcon : WheelchairIcon}
             size={24}
             color={selected ? "#0B0E14" : "#7CFF9B"}
           />
@@ -164,7 +165,7 @@ function PassengerCard({ icon, value, label, description, selected, onPress }) {
 
       {selected && (
         <View style={styles.checkmark}>
-          <Ionicons name="checkmark-circle" size={24} color="#7CFF9B" />
+          <HugeiconsIcon icon={CheckmarkCircle01Icon} size={24} color="#7CFF9B" />
         </View>
       )}
     </TouchableOpacity>

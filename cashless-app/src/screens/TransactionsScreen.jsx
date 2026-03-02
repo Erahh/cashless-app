@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, RefreshControl, Alert, SafeAreaView, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, RefreshIcon } from "@hugeicons/core-free-icons";
 import { Card, Pill } from "../components/ui";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
+import { useTheme } from "../context/ThemeContext";
 
 function formatPHP(n) {
   const num = Number(n || 0);
@@ -39,6 +41,8 @@ function badgeFor(item) {
 }
 
 export default function TransactionsScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState([]);
@@ -86,11 +90,11 @@ export default function TransactionsScreen({ navigation }) {
       {/* Fixed Header - Outside ScrollView */}
       <View style={styles.topRow}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color="#fff" />
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Transactions</Text>
         <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
-          <Ionicons name="refresh" size={18} color="#fff" />
+          <HugeiconsIcon icon={RefreshIcon} size={18} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -118,37 +122,30 @@ export default function TransactionsScreen({ navigation }) {
               return (
                 <View
                   key={it.id}
-                  style={{
-                    padding: 14,
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.10)",
-                    backgroundColor: "rgba(0,0,0,0.18)",
-                    marginBottom: 10,
-                  }}
+                  style={styles.txRow}
                 >
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={{ color: "#F4EEE6", fontWeight: "900" }}>
+                    <Text style={styles.txTitle}>
                       {titleFor(it)}
                     </Text>
 
-                    <Text style={{ color: isDebit ? "#FF8A8A" : "#7CFF9B", fontWeight: "900" }}>
+                    <Text style={[styles.txAmount, { color: isDebit ? theme.danger : theme.success }]}>
                       {amountText}
                     </Text>
                   </View>
 
                   <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
-                    <Text style={{ color: "rgba(244,238,230,0.55)", fontSize: 12 }}>
+                    <Text style={styles.txDate}>
                       {new Date(it.created_at).toLocaleString()}
                     </Text>
 
-                    <Text style={{ color: "rgba(244,238,230,0.75)", fontSize: 12, fontWeight: "800" }}>
+                    <Text style={styles.txBadge}>
                       {badgeFor(it)}
                     </Text>
                   </View>
 
                   {it.meta ? (
-                    <Text style={{ marginTop: 8, color: "rgba(244,238,230,0.5)", fontSize: 12 }}>
+                    <Text style={styles.txMeta}>
                       {it.meta}
                     </Text>
                   ) : null}
@@ -157,7 +154,7 @@ export default function TransactionsScreen({ navigation }) {
             })}
 
             {!loading && items.length === 0 ? (
-              <Text style={{ color: "rgba(244,238,230,0.65)", marginTop: 10 }}>
+              <Text style={styles.emptyText}>
                 No transactions yet.
               </Text>
             ) : null}
@@ -170,15 +167,14 @@ export default function TransactionsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#1A1D24",
+    backgroundColor: theme.background,
   },
   content: {
     padding: 18,
   },
-  // Header (fixed outside ScrollView)
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -191,12 +187,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: theme.card,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
-    color: "#fff",
+    color: theme.text,
     fontSize: 18,
     fontWeight: "700",
   },
@@ -204,8 +200,22 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: theme.card,
     alignItems: "center",
     justifyContent: "center",
   },
+  txRow: {
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    backgroundColor: theme.card,
+    marginBottom: 10,
+  },
+  txTitle: { color: theme.text, fontWeight: "900" },
+  txAmount: { fontWeight: "900" },
+  txDate: { color: theme.textMuted, fontSize: 12 },
+  txBadge: { color: theme.textSecondary, fontSize: 12, fontWeight: "800" },
+  txMeta: { marginTop: 8, color: theme.textMuted, fontSize: 12 },
+  emptyText: { color: theme.textMuted, marginTop: 10 },
 });

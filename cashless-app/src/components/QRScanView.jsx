@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Linking, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 
 /**
@@ -21,15 +21,47 @@ export default function QRScanView({
 }) {
     const [permission, requestPermission] = useCameraPermissions();
     const [busy, setBusy] = useState(false);
+    const [requesting, setRequesting] = useState(false);
 
-    // Debounce so same QR doesn’t fire repeatedly
+    // Debounce so same QR doesn't fire repeatedly
     const lastValueRef = useRef("");
     const lastAtRef = useRef(0);
 
+    // ✅ Auto-request permission on mount (so first-time users get the OS dialog immediately)
     useEffect(() => {
         if (!managedPermission) return;
-        if (!permission) requestPermission();
-    }, [permission, requestPermission, managedPermission]);
+        if (permission === null) {
+            // permission is still loading
+            return;
+        }
+        if (!permission.granted && permission.canAskAgain) {
+            requestPermission();
+        }
+    }, [permission?.status, managedPermission]);
+
+    const handleAllowCamera = async () => {
+        if (!permission) return;
+
+        if (permission.canAskAgain) {
+            // OS dialog hasn't been permanently dismissed yet — ask normally
+            setRequesting(true);
+            await requestPermission();
+            setRequesting(false);
+        } else {
+            // Permission is permanently denied — must open device Settings
+            Alert.alert(
+                "Camera Access Required",
+                "Camera access was denied. Please enable it in your device Settings to scan QR codes.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Open Settings",
+                        onPress: () => Linking.openSettings(),
+                    },
+                ]
+            );
+        }
+    };
 
     const handleBarcodeScanned = ({ data }) => {
         if (!enabled) return;
@@ -46,7 +78,7 @@ export default function QRScanView({
 
         setBusy(true);
         try {
-            onScanned?.({ data: value }); // ✅ IMPORTANT: match expo callback signature
+            onScanned?.({ data: value });
         } finally {
             setTimeout(() => setBusy(false), 800);
         }
@@ -67,23 +99,40 @@ export default function QRScanView({
         );
     }
 
-    // Managed permission mode (for other screens)
-    if (!permission) {
+    // Still loading permission info
+    if (permission === null) {
         return (
             <View style={[styles.center, style]}>
-                <ActivityIndicator />
+                <ActivityIndicator color="#FFD36A" />
                 <Text style={styles.dim}>Checking camera permission…</Text>
             </View>
         );
     }
 
+    // Permission not granted yet
     if (!permission.granted) {
+        const isPermanentlyDenied = !permission.canAskAgain;
         return (
             <View style={[styles.center, style]}>
                 <Text style={styles.title}>{label}</Text>
-                <Text style={styles.dim}>Camera permission is required.</Text>
-                <TouchableOpacity style={styles.btn} onPress={requestPermission} activeOpacity={0.9}>
-                    <Text style={styles.btnText}>Allow Camera</Text>
+                <Text style={styles.dim}>
+                    {isPermanentlyDenied
+                        ? "Camera access was denied. Open Settings to enable it."
+                        : "Camera permission is required to scan QR codes."}
+                </Text>
+                <TouchableOpacity
+                    style={styles.btn}
+                    onPress={handleAllowCamera}
+                    activeOpacity={0.9}
+                    disabled={requesting}
+                >
+                    {requesting ? (
+                        <ActivityIndicator size="small" color="#0B0E14" />
+                    ) : (
+                        <Text style={styles.btnText}>
+                            {isPermanentlyDenied ? "Open Settings" : "Allow Camera"}
+                        </Text>
+                    )}
                 </TouchableOpacity>
             </View>
         );
@@ -137,15 +186,17 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(0,0,0,0.05)",
     },
 
-    center: { alignItems: "center", justifyContent: "center", padding: 18 },
-    title: { color: "#fff", fontWeight: "900", fontSize: 18 },
-    dim: { color: "rgba(255,255,255,0.65)", marginTop: 10, textAlign: "center" },
+    center: { alignItems: "center", justifyContent: "center", padding: 24, minHeight: 200 },
+    title: { color: "#fff", fontWeight: "900", fontSize: 18, textAlign: "center" },
+    dim: { color: "rgba(255,255,255,0.65)", marginTop: 10, textAlign: "center", lineHeight: 18 },
     btn: {
-        marginTop: 14,
+        marginTop: 18,
         backgroundColor: "#FFD36A",
-        paddingVertical: 12,
-        paddingHorizontal: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 28,
         borderRadius: 14,
+        minWidth: 160,
+        alignItems: "center",
     },
-    btnText: { color: "#0B0E14", fontWeight: "900" },
+    btnText: { color: "#0B0E14", fontWeight: "900", fontSize: 15 },
 });

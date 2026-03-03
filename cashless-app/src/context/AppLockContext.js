@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
 import { supabase } from "../api/supabase";
+import { hasMpin } from "../api/mpinLocal";
 
 export const AppLockContext = createContext();
 
@@ -20,16 +21,10 @@ export function AppLockProvider({ children }) {
           return;
         }
 
-        const userId = session.user.id;
+        // ✅ Lock based on SecureStore local check - instantaneous and works offline
+        const isPinSet = await hasMpin();
 
-        // ✅ Lock only if pin_set is true in DB
-        const { data: acc } = await supabase
-          .from("commuter_accounts")
-          .select("pin_set")
-          .eq("commuter_id", userId)
-          .maybeSingle();
-
-        if (alive) setLocked(!!acc?.pin_set);
+        if (alive) setLocked(isPinSet);
       } catch (e) {
         if (alive) setLocked(false);
       }

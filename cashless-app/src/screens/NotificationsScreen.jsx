@@ -155,12 +155,12 @@ export default function NotificationsScreen({ navigation }) {
     <SafeAreaView style={styles.safe}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color={theme.text} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: theme.card }]}>
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notification</Text>
-        <TouchableOpacity onPress={load} style={styles.headerRefresh}>
-          <HugeiconsIcon icon={RefreshIcon} size={20} color={theme.textMuted} />
+        <TouchableOpacity onPress={load} style={[styles.headerRefresh, { backgroundColor: theme.card }]}>
+          <HugeiconsIcon icon={RefreshIcon} size={20} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -266,9 +266,25 @@ const createStyles = (theme) => StyleSheet.create({
     paddingTop: 15,
     paddingBottom: 20,
   },
-  backBtn: { width: 40, height: 40, justifyContent: "center" },
-  headerTitle: { color: theme.text, fontSize: 24, fontWeight: "700", letterSpacing: 0.5 },
-  headerRefresh: { width: 40, height: 40, alignItems: "flex-end", justifyContent: "center" },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    color: theme.text,
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  headerRefresh: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   scrollContent: { paddingHorizontal: 20 },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 25 },

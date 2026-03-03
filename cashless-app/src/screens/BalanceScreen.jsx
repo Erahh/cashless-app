@@ -308,7 +308,7 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 18,
   },
   balanceLabel: {
-    color: theme.textMuted,
+    color: "rgba(255, 255, 255, 0.7)",
     fontSize: 14,
     fontWeight: "400",
     letterSpacing: 0.3,

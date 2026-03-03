@@ -1,26 +1,31 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform, SafeAreaView } from "react-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
-export function Screen({ title, subtitle, rightSlot, onBack, children }) {
+export function Screen({ title, subtitle, rightSlot, onBack, children, theme }) {
+  const isDark = theme?.isDark ?? true;
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={[styles.root, theme && { backgroundColor: theme.background }]}>
       <View style={styles.header}>
         {onBack && (
-          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color="#F4EEE6" />
-          </TouchableOpacity>
+          <View style={styles.leftSlot}>
+            <TouchableOpacity onPress={onBack} style={[styles.backBtn, theme && { backgroundColor: theme.card }]} activeOpacity={0.7}>
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme ? theme.text : "#F4EEE6"} />
+            </TouchableOpacity>
+          </View>
         )}
-        <View style={{ flex: 1 }}>
-          {title ? <Text style={styles.title}>{title}</Text> : null}
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        <View style={styles.centerSlot}>
+          {title ? <Text style={[styles.title, theme && { color: theme.text }]} numberOfLines={1}>{title}</Text> : null}
+          {subtitle ? <Text style={[styles.subtitle, theme && { color: theme.textSecondary }]} numberOfLines={1}>{subtitle}</Text> : null}
         </View>
-        {rightSlot ? <View>{rightSlot}</View> : null}
+        <View style={styles.rightSlot}>
+          {rightSlot ? rightSlot : null}
+        </View>
       </View>
 
       <View style={styles.content}>{children}</View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -28,31 +33,31 @@ export function Card({ children, style }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
-export function PrimaryButton({ label, onPress, disabled }) {
+export function PrimaryButton({ label, onPress, disabled, theme }) {
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.85}
       disabled={disabled}
-      style={[styles.primaryBtn, disabled && { opacity: 0.6 }]}
+      style={[styles.primaryBtn, theme && { backgroundColor: theme.accent }, disabled && { opacity: 0.6 }]}
     >
-      <Text style={styles.primaryBtnText}>{label}</Text>
+      <Text style={[styles.primaryBtnText, theme && { color: theme.primary }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-export function GhostButton({ label, onPress }) {
+export function GhostButton({ label, onPress, theme }) {
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.ghostBtn}>
-      <Text style={styles.ghostBtnText}>{label}</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[styles.ghostBtn, theme && { borderColor: theme.border, backgroundColor: theme.card }]}>
+      <Text style={[styles.ghostBtnText, theme && { color: theme.text }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-export function Pill({ text }) {
+export function Pill({ text, theme }) {
   return (
-    <View style={styles.pill}>
-      <Text style={styles.pillText}>{text}</Text>
+    <View style={[styles.pill, theme && { backgroundColor: theme.warningBg, borderColor: theme.warning }]}>
+      <Text style={[styles.pillText, theme && { color: theme.accentWarm }]}>{text}</Text>
     </View>
   );
 }
@@ -61,37 +66,54 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#1b140f", // deep coffee
-    paddingTop: Platform.OS === "ios" ? 58 : 42,
-    paddingHorizontal: 18,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 14,
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 10,
+    marginBottom: 6,
+  },
+  leftSlot: {
+    width: 44, // reserve static width
+    alignItems: "flex-start",
+  },
+  rightSlot: {
+    width: 44, // mirror left slot exactly for perfect centering
+    alignItems: "flex-end",
+  },
+  centerSlot: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 8,
   },
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.08)",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
   },
   title: {
-    fontSize: 26,
-    fontWeight: "800",
+    fontSize: 18,
+    fontWeight: "700",
     color: "#F4EEE6",
     letterSpacing: 0.2,
+    textAlign: "center",
   },
   subtitle: {
-    marginTop: 6,
-    fontSize: 13.5,
+    marginTop: 4,
+    fontSize: 12,
     color: "rgba(244,238,230,0.65)",
-    lineHeight: 18,
+    lineHeight: 16,
+    textAlign: "center",
   },
   content: {
     flex: 1,
+    paddingHorizontal: 18,
   },
   card: {
     backgroundColor: "rgba(255,255,255,0.06)",

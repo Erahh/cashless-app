@@ -13,6 +13,7 @@ import {
     StyleSheet,
     ActivityIndicator,
 } from "react-native";
+import { useTheme } from "../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { FlashIcon, CallIcon, CheckmarkCircle01Icon, BubbleChatIcon } from "@hugeicons/core-free-icons";
 import { Screen, Card, PrimaryButton, GhostButton, Pill } from "../components/ui";
@@ -21,6 +22,7 @@ import { renderApiRequest } from "../api/apiHelper";
 import { useRoute } from "@react-navigation/native";
 
 export default function SendLoadScreen({ navigation }) {
+    const { theme } = useTheme();
     const route = useRoute();
     const [phone, setPhone] = useState(route.params?.phone || "");
     const [amount, setAmount] = useState("");
@@ -155,8 +157,8 @@ export default function SendLoadScreen({ navigation }) {
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <Screen
                     title="Send Load"
-                    subtitle="Transfer balance instantly to any ERA user by phone number."
                     onBack={() => navigation.goBack()}
+                    theme={theme}
                 >
                     <ScrollView
                         contentContainerStyle={{ flexGrow: 1 }}
@@ -165,16 +167,16 @@ export default function SendLoadScreen({ navigation }) {
                     >
                         {/* ✅ Quick Pick Section */}
                         {showQuickPicks && (
-                            <Card style={styles.quickPickCard}>
+                            <Card style={[styles.quickPickCard, { backgroundColor: theme.warningBg, borderColor: theme.warningBg }]}>
                                 <View style={styles.quickPickHeader}>
-                                    <HugeiconsIcon icon={FlashIcon} size={16} color="#F2E94E" />
-                                    <Text style={styles.quickPickTitle}>Quick Pick</Text>
+                                    <HugeiconsIcon icon={FlashIcon} size={16} color={theme.accentWarm} />
+                                    <Text style={[styles.quickPickTitle, { color: theme.accentWarm }]}>Quick Pick</Text>
                                 </View>
 
                                 {/* Recent Recipients */}
                                 {recentRecipients.length > 0 && (
                                     <>
-                                        <Text style={styles.quickPickSubtitle}>Recent</Text>
+                                        <Text style={[styles.quickPickSubtitle, { color: theme.textSecondary }]}>Recent</Text>
                                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
                                             {recentRecipients.map((r, i) => (
                                                 <TouchableOpacity
@@ -186,10 +188,10 @@ export default function SendLoadScreen({ navigation }) {
                                                         Alert.alert("Recent", `${r.name}\n\nTo send to this person again, enter their phone number.`);
                                                     }}
                                                 >
-                                                    <View style={styles.chipAvatar}>
-                                                        <Text style={styles.chipAvatarText}>{getInitials(r.name)}</Text>
+                                                    <View style={[styles.chipAvatar, { backgroundColor: theme.successBg, borderColor: theme.successBg }]}>
+                                                        <Text style={[styles.chipAvatarText, { color: theme.text }]}>{getInitials(r.name)}</Text>
                                                     </View>
-                                                    <Text style={styles.chipName} numberOfLines={1}>{r.name}</Text>
+                                                    <Text style={[styles.chipName, { color: theme.text }]} numberOfLines={1}>{r.name}</Text>
                                                 </TouchableOpacity>
                                             ))}
                                         </ScrollView>
@@ -199,7 +201,7 @@ export default function SendLoadScreen({ navigation }) {
                                 {/* Friends */}
                                 {friends.length > 0 && (
                                     <>
-                                        <Text style={styles.quickPickSubtitle}>Friends</Text>
+                                        <Text style={[styles.quickPickSubtitle, { color: theme.textSecondary }]}>Friends</Text>
                                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
                                             {friends.map((f) => (
                                                 <TouchableOpacity
@@ -208,10 +210,10 @@ export default function SendLoadScreen({ navigation }) {
                                                     activeOpacity={0.7}
                                                     onPress={() => pickContact(f.friend_phone)}
                                                 >
-                                                    <View style={[styles.chipAvatar, styles.chipAvatarFriend]}>
-                                                        <Text style={styles.chipAvatarText}>{getInitials(f.friend_name)}</Text>
+                                                    <View style={[styles.chipAvatar, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}>
+                                                        <Text style={[styles.chipAvatarText, { color: theme.text }]}>{getInitials(f.friend_name)}</Text>
                                                     </View>
-                                                    <Text style={styles.chipName} numberOfLines={1}>{f.friend_name}</Text>
+                                                    <Text style={[styles.chipName, { color: theme.text }]} numberOfLines={1}>{f.friend_name}</Text>
                                                 </TouchableOpacity>
                                             ))}
                                         </ScrollView>
@@ -219,27 +221,27 @@ export default function SendLoadScreen({ navigation }) {
                                 )}
 
                                 {loadingPicks && (
-                                    <ActivityIndicator size="small" color="rgba(244,238,230,0.4)" style={{ marginTop: 8 }} />
+                                    <ActivityIndicator size="small" color={theme.accent} style={{ marginTop: 8 }} />
                                 )}
                             </Card>
                         )}
 
-                        <Card style={styles.mainCard}>
+                        <Card style={[styles.mainCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
                             <View style={styles.pillContainer}>
-                                <Pill text="P2P Transfer" />
+                                <Pill text="P2P Transfer" theme={theme} />
                             </View>
 
-                            <Text style={styles.label}>Receiver Phone Number</Text>
-                            <View style={styles.inputWrapper}>
-                                <HugeiconsIcon icon={CallIcon} size={20} color="rgba(244,238,230,0.5)" style={styles.inputIcon} />
+                            <Text style={[styles.label, { color: theme.textSecondary }]}>Receiver Phone Number</Text>
+                            <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                                <HugeiconsIcon icon={CallIcon} size={20} color={theme.textMuted} style={styles.inputIcon} />
                                 <TextInput
                                     value={phone}
                                     onChangeText={handlePhoneChange}
                                     keyboardType="phone-pad"
                                     maxLength={11}
                                     placeholder="09XX XXX XXXX"
-                                    placeholderTextColor="rgba(244,238,230,0.3)"
-                                    style={styles.input}
+                                    placeholderTextColor={theme.textMuted}
+                                    style={[styles.input, { color: theme.text }]}
                                 />
                                 {phone.length === 11 && (
                                     <View style={styles.checkMark}>
@@ -248,22 +250,22 @@ export default function SendLoadScreen({ navigation }) {
                                 )}
                             </View>
                             {phone.length > 0 && phone.length < 11 && (
-                                <Text style={styles.phoneHint}>
+                                <Text style={[styles.phoneHint, { color: theme.textMuted }]}>
                                     {11 - phone.length} digits remaining
                                 </Text>
                             )}
 
-                            <Text style={styles.label}>Amount (PHP)</Text>
-                            <View style={styles.inputWrapper}>
-                                <Text style={styles.currencyPrefix}>₱</Text>
+                            <Text style={[styles.label, { color: theme.textSecondary }]}>Amount (PHP)</Text>
+                            <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                                <Text style={{ color: theme.text, fontSize: 22, fontWeight: "900", marginRight: 8, marginTop: 4 }}>₱</Text>
                                 <TextInput
                                     value={amount}
                                     onChangeText={handleAmountChange}
                                     keyboardType="decimal-pad"
                                     maxLength={8}
                                     placeholder="0.00"
-                                    placeholderTextColor="rgba(244,238,230,0.3)"
-                                    style={[styles.input, { fontSize: 24, fontWeight: "900" }]}
+                                    placeholderTextColor={theme.textMuted}
+                                    style={[styles.input, { color: theme.text, fontSize: 26, fontWeight: "900" }]}
                                 />
                             </View>
 
@@ -273,16 +275,16 @@ export default function SendLoadScreen({ navigation }) {
                                     <TouchableOpacity
                                         key={val}
                                         style={[
-                                            styles.presetBtn,
-                                            Number(amount) === val && styles.presetBtnActive,
+                                            styles.presetBtn, { backgroundColor: theme.card, borderColor: theme.border },
+                                            Number(amount) === val && { backgroundColor: theme.warningBg, borderColor: theme.warning },
                                         ]}
                                         activeOpacity={0.8}
                                         onPress={() => setAmount(String(val))}
                                     >
                                         <Text
                                             style={[
-                                                styles.presetText,
-                                                Number(amount) === val && styles.presetTextActive,
+                                                styles.presetText, { color: theme.textSecondary },
+                                                Number(amount) === val && { color: theme.warning },
                                             ]}
                                         >
                                             ₱{val}
@@ -290,40 +292,40 @@ export default function SendLoadScreen({ navigation }) {
                                     </TouchableOpacity>
                                 ))}
                             </View>
-                            <Text style={styles.hint}>Minimum ₱10.00</Text>
+                            <Text style={[styles.hint, { color: theme.textMuted }]}>Minimum ₱10.00</Text>
 
-                            <Text style={styles.label}>Message (Optional)</Text>
-                            <View style={styles.inputWrapper}>
-                                <HugeiconsIcon icon={BubbleChatIcon} size={20} color="rgba(244,238,230,0.5)" style={styles.inputIcon} />
+                            <Text style={[styles.label, { color: theme.textSecondary }]}>Message (Optional)</Text>
+                            <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                                <HugeiconsIcon icon={BubbleChatIcon} size={20} color={theme.textMuted} style={styles.inputIcon} />
                                 <TextInput
                                     value={notes}
                                     onChangeText={setNotes}
                                     multiline
                                     placeholder="What's this for?"
-                                    placeholderTextColor="rgba(244,238,230,0.3)"
-                                    style={[styles.input, { height: 60, paddingTop: 12 }]}
+                                    placeholderTextColor={theme.textMuted}
+                                    style={[styles.input, { color: theme.text, height: 60, paddingTop: 12 }]}
                                 />
                             </View>
                         </Card>
 
                         {/* Summary before sending */}
                         {phone.length === 11 && Number(amount) >= 10 && (
-                            <Card style={styles.summaryCard}>
-                                <Text style={styles.summaryTitle}>Transfer Summary</Text>
-                                <View style={styles.summaryRow}>
-                                    <Text style={styles.summaryLabel}>To</Text>
-                                    <Text style={styles.summaryValue}>{formattedPhone}</Text>
+                            <Card style={[styles.summaryCard, { backgroundColor: theme.warningBg, borderColor: theme.warningBg }]}>
+                                <Text style={[styles.summaryTitle, { color: theme.accentWarm }]}>Transfer Summary</Text>
+                                <View style={[styles.summaryRow, { borderTopColor: theme.border }]}>
+                                    <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>To</Text>
+                                    <Text style={[styles.summaryValue, { color: theme.text }]}>{formattedPhone}</Text>
                                 </View>
-                                <View style={styles.summaryRow}>
-                                    <Text style={styles.summaryLabel}>Amount</Text>
-                                    <Text style={[styles.summaryValue, { color: "#F2E94E", fontWeight: "900" }]}>
+                                <View style={[styles.summaryRow, { borderTopColor: theme.border }]}>
+                                    <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Amount</Text>
+                                    <Text style={[styles.summaryValue, { color: theme.text, fontWeight: "900", fontSize: 16 }]}>
                                         ₱{Number(amount).toFixed(2)}
                                     </Text>
                                 </View>
                                 {notes ? (
-                                    <View style={styles.summaryRow}>
-                                        <Text style={styles.summaryLabel}>Note</Text>
-                                        <Text style={styles.summaryValue} numberOfLines={1}>{notes}</Text>
+                                    <View style={[styles.summaryRow, { borderTopColor: theme.border }]}>
+                                        <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Note</Text>
+                                        <Text style={[styles.summaryValue, { color: theme.text }]} numberOfLines={1}>{notes}</Text>
                                     </View>
                                 ) : null}
                             </Card>
@@ -332,8 +334,8 @@ export default function SendLoadScreen({ navigation }) {
                         <View style={styles.footer}>
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <ActivityIndicator color="#F2E94E" size="large" />
-                                    <Text style={styles.loadingText}>Processing Transfer...</Text>
+                                    <ActivityIndicator color={theme.accent} size="large" />
+                                    <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Processing Transfer...</Text>
                                 </View>
                             ) : (
                                 <>
@@ -341,8 +343,9 @@ export default function SendLoadScreen({ navigation }) {
                                         label="Send Load Now"
                                         onPress={handleSend}
                                         disabled={phone.length < 11 || !amount || Number(amount) < 10}
+                                        theme={theme}
                                     />
-                                    <GhostButton label="Back to Home" onPress={() => navigation.navigate("Home")} />
+                                    <GhostButton label="Back to Home" onPress={() => navigation.navigate("Home")} theme={theme} />
                                 </>
                             )}
                         </View>

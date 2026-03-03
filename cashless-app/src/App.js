@@ -9,6 +9,7 @@ import { AppLockProvider, AppLockContext } from "./context/AppLockContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { UserProvider } from "./context/UserContext";
 import { supabase } from "./api/supabase";
+import { hasMpin } from "./api/mpinLocal";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 
 function AppWithLock() {
@@ -18,7 +19,7 @@ function AppWithLock() {
   // Track if we're just showing a system dialog (permission prompt, etc)
   // On iOS, system dialogs set state to 'inactive' but NOT 'background'.
   // We should ONLY lock when the app truly goes to background.
-  const lockTimerRef = useRef(null);
+  const backgroundTimestampRef = useRef(null);
 
   // 📱 Register push notifications (safe, never blocks or crashes)
   usePushNotifications();
@@ -29,25 +30,9 @@ function AppWithLock() {
       const session = data?.session;
       if (!session?.user?.id) return;
 
-      const userId = session.user.id;
-
-      // Check if user has completed registration (profile exists)
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (profile?.id) {
-        const { data: acc } = await supabase
-          .from("commuter_accounts")
-          .select("pin_set")
-          .eq("commuter_id", userId)
-          .maybeSingle();
-
-        if (acc?.pin_set) {
-          setLocked(true);
-        }
+      const isPinSet = await hasMpin();
+      if (isPinSet) {
+        setLocked(true);
       }
     } catch (error) {
       console.log("Error checking lock status:", error);
@@ -56,23 +41,24 @@ function AppWithLock() {
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (nextState) => {
-      const prev = appState.current;
       appState.current = nextState;
 
-      // ✅ ONLY lock when going fully to background (not inactive).
-      // "inactive" happens when system dialogs (camera permission, calls, etc)
-      // are shown — we must NOT lock in that case or the camera screen breaks.
-      if (prev === "active" && nextState === "background") {
-        // 10-second grace period for fast app-switches (e.g. copy-paste)
-        lockTimerRef.current = setTimeout(() => {
-          triggerLock();
-        }, 10000);
+      // ✅ Record timestamp when fully going to background.
+      if (nextState === "background") {
+        backgroundTimestampRef.current = Date.now();
       }
 
-      // If user comes back before timer fires, cancel the lock
-      if (nextState === "active" && lockTimerRef.current) {
-        clearTimeout(lockTimerRef.current);
-        lockTimerRef.current = null;
+      // ✅ Check elapsed time when coming back to active
+      if (nextState === "active") {
+        if (backgroundTimestampRef.current) {
+          const elapsed = Date.now() - backgroundTimestampRef.current;
+          // Trigger lock if it's been more than 10 seconds
+          if (elapsed >= 10000) {
+            triggerLock();
+          }
+        }
+        // Always reset so active state doesn't keep triggering
+        backgroundTimestampRef.current = null;
       }
     });
 
@@ -94,7 +80,6 @@ function AppWithLock() {
     return () => {
       sub.remove();
       sessionSub.remove();
-      if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setLocked]);

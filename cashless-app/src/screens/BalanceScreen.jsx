@@ -14,6 +14,7 @@ import { ArrowLeft01Icon, RefreshIcon, AnalyticsUpIcon, ArrowRight01Icon, Wallet
 import { fetchWallet } from "../api/walletApi";
 import BottomNav from "../components/BottomNav";
 import QuickActions from "../components/QuickActions";
+import TxIcon from "../components/TxIcon";
 import { useTheme } from "../context/ThemeContext";
 
 export default function BalanceScreen({ navigation }) {
@@ -148,33 +149,27 @@ export default function BalanceScreen({ navigation }) {
                 });
 
                 // Transaction identity based on kind
-                let txIcon = "🚌";
                 let txType = "Transfer";
                 let txName = "Transaction";
 
                 switch (x.kind) {
                   case "topup_credit":
-                    txIcon = "💳";
                     txType = "Receive";
                     txName = "PayMongo Top Up";
                     break;
                   case "fare_debit":
-                    txIcon = "🚌";
                     txType = "Payment";
                     txName = "Ride Fare";
                     break;
                   case "load_transfer_debit":
-                    txIcon = "💸";
                     txType = "Sent";
                     txName = x.description || "Send Load";
                     break;
                   case "load_transfer_credit":
-                    txIcon = "📥";
                     txType = "Received";
                     txName = x.description || "Received Load";
                     break;
                   default:
-                    txIcon = isCredit ? "💳" : "🚌";
                     txType = isCredit ? "Receive" : "Transfer";
                     txName = x.description || x.kind || "Transaction";
                 }
@@ -182,10 +177,8 @@ export default function BalanceScreen({ navigation }) {
                 return (
                   <View key={x.id} style={styles.txCard}>
                     <View style={styles.txLeft}>
-                      <View style={[styles.txIconCircle, isCredit && styles.txIconCircleCredit]}>
-                        <Text style={styles.txIconEmoji}>
-                          {txIcon}
-                        </Text>
+                      <View style={{ marginRight: 12 }}>
+                        <TxIcon title={txName} type={x.kind} source="ledger" />
                       </View>
                       <View style={styles.txInfo}>
                         <Text style={styles.txType}>
@@ -220,21 +213,18 @@ export default function BalanceScreen({ navigation }) {
                   key: "topup",
                   icon: WalletAdd01Icon,
                   title: "Top Up",
-                  sub: "GCash",
                   onPress: () => navigation.navigate("SendLoad")
                 },
                 {
                   key: "send_load",
                   icon: FlashIcon,
                   title: "Send Load",
-                  sub: "Transfer",
                   onPress: () => Alert.alert("Send Load", "Coming soon!")
                 },
                 {
                   key: "my_qr",
                   icon: QrCodeIcon,
                   title: "My QR",
-                  sub: "Show Code",
                   onPress: () => navigation.navigate("MyQR")
                 },
               ]}
@@ -436,24 +426,6 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-  },
-  txIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: theme.border,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  txIconCircleCredit: {
-    backgroundColor: theme.warningBg,
-    borderColor: "rgba(255, 211, 106, 0.3)",
-  },
-  txIconEmoji: {
-    fontSize: 18,
   },
   txInfo: {
     flex: 1,

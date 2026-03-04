@@ -13,7 +13,7 @@ const Stack = createNativeStackNavigator();
 
 export default function OperatorNavigator() {
     return (
-        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="OperatorScan">
+        <Stack.Navigator screenOptions={{ headerShown: false, animation: "slide_from_right" }} initialRouteName="OperatorScan">
             {/* Main Operator Flow */}
             <Stack.Screen name="OperatorScan" component={OperatorScanScreen} />
             <Stack.Screen name="OperatorSetup" component={OperatorSetupScreen} />

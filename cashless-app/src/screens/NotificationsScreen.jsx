@@ -103,33 +103,50 @@ export default function NotificationsScreen({ navigation }) {
     setMenuVisible(true);
   };
 
-  // Icon mapping helper based on title/type (Upgraded Icons)
   const getIconInfo = (title = "", type = "") => {
+    const isDark = theme?.isDark ?? true;
+    const yellowColor = isDark ? "#F7E353" : "#C69C00";
+
     const lowerTitle = title.toLowerCase();
     const lowerType = type.toLowerCase();
 
-    // 1) Ride / Travel Related
-    if (lowerTitle.includes("ride") || lowerTitle.includes("scanned") || lowerType === "ride" || lowerTitle.includes("fare")) {
+    // 1) Top-Up / Cash-in
+    if (lowerTitle.includes("top-up") || lowerTitle.includes("top up") || lowerType === "topup" || lowerTitle.includes("cash")) {
+      return { icon: "wallet-plus-outline", color: yellowColor, lib: "MaterialCommunityIcons" };
+    }
+
+    // 2) IC Card / RFID / Tap Payments
+    if (lowerTitle.includes("rfid") || lowerTitle.includes("ic card") || lowerTitle.includes("card") || lowerTitle.includes("nfc") || lowerTitle.includes("tap")) {
+      return { icon: "credit-card-wireless-outline", color: "#a259ff", lib: "MaterialCommunityIcons" };
+    }
+
+    // 3) Ride / Travel Related
+    if (lowerTitle.includes("ride") || lowerTitle.includes("scanned") || lowerType === "ride" || lowerTitle.includes("fare") || lowerTitle.includes("transit") || lowerTitle.includes("jeep")) {
       return { icon: "bus-clock", color: "#FF9F43", lib: "MaterialCommunityIcons" };
     }
-    // 2) Transfers / Sent
-    if (lowerTitle.includes("transfer") || lowerTitle.includes("send") || lowerType === "transfer") {
-      return { icon: "bank-transfer", color: "#3B99FF", lib: "MaterialCommunityIcons" };
+
+    // 4) Transfers / Send Load
+    if (lowerTitle.includes("transfer") || lowerTitle.includes("send") || lowerTitle.includes("load") || lowerTitle.includes("received") || lowerType === "transfer") {
+      return { icon: "swap-horizontal-circle-outline", color: "#3B99FF", lib: "MaterialCommunityIcons" };
     }
-    // 3) Wallet / Payments
-    if (lowerTitle.includes("payment") || lowerTitle.includes("receive") || lowerType === "payment" || lowerTitle.includes("wallet")) {
-      return { icon: "wallet-outline", color: "#F7E353", lib: "MaterialCommunityIcons" };
+
+    // 5) Wallet / General Payments
+    if (lowerTitle.includes("payment") || lowerTitle.includes("pay") || lowerType === "payment" || lowerTitle.includes("wallet")) {
+      return { icon: "wallet-outline", color: yellowColor, lib: "MaterialCommunityIcons" };
     }
-    // 4) Success / Verified / Identity
-    if (lowerTitle.includes("verified") || lowerTitle.includes("approved") || lowerTitle.includes("identity")) {
-      return { icon: "check-decagram", color: "#28C76F", lib: "MaterialCommunityIcons" };
+
+    // 6) Success / Verified / Identity
+    if (lowerTitle.includes("verified") || lowerTitle.includes("approved") || lowerTitle.includes("identity") || lowerTitle.includes("success")) {
+      return { icon: "check-decagram-outline", color: "#28C76F", lib: "MaterialCommunityIcons" };
     }
-    // 5) Account / Profile
+
+    // 7) Account / Profile
     if (lowerTitle.includes("account") || lowerTitle.includes("profile") || lowerTitle.includes("mpin")) {
-      return { icon: "account-edit-outline", color: "#A0A0A0", lib: "MaterialCommunityIcons" };
+      return { icon: "account-cog-outline", color: "#A0A0A0", lib: "MaterialCommunityIcons" };
     }
-    // 6) Security / Alerts
-    if (lowerTitle.includes("security") || lowerTitle.includes("logged") || lowerTitle.includes("device") || lowerTitle.includes("failed")) {
+
+    // 8) Security / Alerts
+    if (lowerTitle.includes("security") || lowerTitle.includes("logged") || lowerTitle.includes("device") || lowerTitle.includes("failed") || lowerTitle.includes("declined")) {
       return { icon: "shield-alert-outline", color: "#FF5C5C", lib: "MaterialCommunityIcons" };
     }
 

@@ -34,12 +34,6 @@ export default function QuickActions({ items = [] }) {
             <Text style={styles.label} numberOfLines={2}>
               {it.title}
             </Text>
-
-            {!!it.sub && (
-              <Text style={styles.sub} numberOfLines={1}>
-                {it.sub}
-              </Text>
-            )}
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -59,16 +53,16 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
 
   // ✅ slightly wider + consistent height
   card: {
-    width: 108,
-    height: 124,
+    width: 104, // Slightly adjusted from 108
+    height: 104, // Square-ish look now that sub is gone
     borderRadius: 22,
     backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : theme.cardAlt || "#ffffff",
     borderWidth: 1,
     borderColor: isDarkMode ? "rgba(255,255,255,0.10)" : theme.border,
-    paddingTop: 12,
-    paddingHorizontal: 10,
-    marginRight: 12, // ✅ spacing instead of gap
+    paddingHorizontal: 8,
+    marginRight: 12,
     alignItems: "center",
+    justifyContent: "center", // Center vertically
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: isDarkMode ? 0 : 0.05,
@@ -89,20 +83,12 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
 
   // ✅ 2 lines = looks like reference + prevents ugly wrap
   label: {
-    marginTop: 10,
+    marginTop: 8,
     color: theme.text,
     fontSize: 12,
     fontWeight: "900",
     textAlign: "center",
     lineHeight: 14,
     height: 28, // ✅ reserve 2 lines space
-  },
-
-  sub: {
-    marginTop: 4,
-    color: theme.textMuted,
-    fontSize: 10.5,
-    fontWeight: "800",
-    textAlign: "center",
   },
 });

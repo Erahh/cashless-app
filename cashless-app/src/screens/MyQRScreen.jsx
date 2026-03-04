@@ -129,21 +129,18 @@ export default function MyQRScreen({ navigation }) {
                 key: "topup",
                 icon: WalletAdd01Icon,
                 title: "Top Up",
-                sub: "GCash",
                 onPress: () => navigation.navigate("TopUp")
               },
               {
                 key: "send_load",
                 icon: FlashIcon,
                 title: "Send Load",
-                sub: "Transfer",
                 onPress: () => navigation.navigate("SendLoad")
               },
               {
                 key: "register_rfid",
                 icon: Wifi01Icon,
                 title: "Register RFID",
-                sub: "NFC Card",
                 onPress: () => navigation.navigate("RegisterRFID")
               },
             ]}

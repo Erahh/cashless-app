@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from "react-native";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
@@ -18,9 +19,7 @@ import BottomNav from "../components/BottomNav";
 import MiniMapCard from "../components/MiniMapCard";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { Notification01Icon, ScanIcon, WalletAdd01Icon, FlashIcon, SmartphoneWifiIcon, QrCodeIcon, Coins01Icon, InvoiceIcon, CheckmarkCircle01Icon, Bus01Icon, MoneySend01Icon } from "@hugeicons/core-free-icons";
-
-
-
+import TxIcon from "../components/TxIcon";
 
 // ✅ Helper for timeout logic (increased to 35s for Render cold starts)
 async function fetchWithTimeout(url, options = {}, ms = 35000) {
@@ -42,7 +41,14 @@ export default function HomeScreen({ navigation, route }) {
   const [recent, setRecent] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [notifCount, setNotifCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const lastSeenNotif = useRef(null);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await loadStatus({ silent: true, canRetry: false });
+    setRefreshing(false);
+  }, []);
 
   const loadStatus = async ({ silent = false, canRetry = true } = {}) => {
     try {
@@ -219,6 +225,14 @@ export default function HomeScreen({ navigation, route }) {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.textSecondary}
+            colors={[theme.warning]} // warning is the yellow accent color
+          />
+        }
       >
         {/* Header */}
         <View style={styles.headerRow}>
@@ -316,20 +330,20 @@ export default function HomeScreen({ navigation, route }) {
         {/* Quick Actions */}
         <QuickActions
           items={[
-            { key: "commuter_scan", icon: ScanIcon, title: "Scan", sub: "Pay fare", onPress: () => navigation.navigate("CommuterScan"), show: computed.isCommuter },
-            { key: "topup", icon: WalletAdd01Icon, title: "Top Up", sub: "GCash", onPress: () => navigation.navigate("TopUp"), show: computed.isCommuter },
-            { key: "sendload", icon: FlashIcon, title: "Send Load", sub: "P2P", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
-            { key: "tap_pay", icon: SmartphoneWifiIcon, title: "Tap to Pay", sub: "NFC (Demo)", onPress: () => navigation.navigate("NFCTapPay"), show: computed.isCommuter },
+            { key: "commuter_scan", icon: ScanIcon, title: "Scan", onPress: () => navigation.navigate("CommuterScan"), show: computed.isCommuter },
+            { key: "topup", icon: WalletAdd01Icon, title: "Top Up", onPress: () => navigation.navigate("TopUp"), show: computed.isCommuter },
+            { key: "sendload", icon: FlashIcon, title: "Send Load", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
+            { key: "tap_pay", icon: SmartphoneWifiIcon, title: "Tap to Pay", onPress: () => navigation.navigate("NFCTapPay"), show: computed.isCommuter },
 
-            { key: "op_qr", icon: QrCodeIcon, title: "My QR", sub: "Receive Pay", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorMyQR" }), show: computed.isOperator },
-            { key: "earn", icon: Coins01Icon, title: "Earnings", sub: "Payout summary", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorEarnings" }), show: computed.isOperator },
-            { key: "hist", icon: InvoiceIcon, title: "History", sub: "Transactions", onPress: () => navigation.navigate("Transactions"), show: computed.isOperator },
+            { key: "op_qr", icon: QrCodeIcon, title: "My QR", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorMyQR" }), show: computed.isOperator },
+            { key: "earn", icon: Coins01Icon, title: "Earnings", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorEarnings" }), show: computed.isOperator },
+            { key: "hist", icon: InvoiceIcon, title: "History", onPress: () => navigation.navigate("Transactions"), show: computed.isOperator },
 
-            { key: "ver", icon: CheckmarkCircle01Icon, title: "Verifications", sub: "Approve users", onPress: () => navigation.navigate("AdminApp", { screen: "AdminVerification" }), show: computed.isAdmin },
-            { key: "create_op", icon: Bus01Icon, title: "New Op", sub: "Create Operator", onPress: () => navigation.navigate("AdminApp", { screen: "AdminCreateOperator" }), show: computed.isAdmin },
-            { key: "set", icon: MoneySend01Icon, title: "Settlements", sub: "Mark paid", onPress: () => navigation.navigate("AdminApp", { screen: "AdminSettlements" }), show: computed.isAdmin },
+            { key: "ver", icon: CheckmarkCircle01Icon, title: "Verifications", onPress: () => navigation.navigate("AdminApp", { screen: "AdminVerification" }), show: computed.isAdmin },
+            { key: "create_op", icon: Bus01Icon, title: "New Op", onPress: () => navigation.navigate("AdminApp", { screen: "AdminCreateOperator" }), show: computed.isAdmin },
+            { key: "set", icon: MoneySend01Icon, title: "Settlements", onPress: () => navigation.navigate("AdminApp", { screen: "AdminSettlements" }), show: computed.isAdmin },
 
-            { key: "commuter_hist", icon: InvoiceIcon, title: "History", sub: "Transactions", onPress: () => navigation.navigate("Transactions"), show: false },
+            { key: "commuter_hist", icon: InvoiceIcon, title: "History", onPress: () => navigation.navigate("Transactions"), show: false },
           ].filter(a => a.show)}
         />
 
@@ -430,8 +444,8 @@ export default function HomeScreen({ navigation, route }) {
             return (
               <View key={tx.id} style={styles.txRow}>
                 <View style={styles.txLeft}>
-                  <View style={styles.txIcon}>
-                    <Text style={styles.txIconText}>{tx.source === "topup" ? "💳" : "🚌"}</Text>
+                  <View style={{ marginRight: 12 }}>
+                    <TxIcon title={title} type={tx.kind} source={tx.source} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.txTitle}>{title}</Text>
@@ -453,25 +467,6 @@ export default function HomeScreen({ navigation, route }) {
             </Text>
           ) : null}
         </View>
-
-        {/* Refresh button (optional) */}
-        <TouchableOpacity
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: theme.border,
-            alignItems: "center",
-          }}
-          onPress={async () => {
-            await loadStatus({ silent: false });
-          }}
-        >
-          <Text style={{ color: theme.text, fontWeight: "800" }}>
-            Refresh
-          </Text>
-        </TouchableOpacity>
       </ScrollView >
 
       <BottomNav navigation={navigation} active="Home" />
@@ -753,16 +748,6 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 10,
   },
   txLeft: { flexDirection: "row", alignItems: "center", flex: 1, marginRight: 12 },
-  txIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
-    backgroundColor: theme.border,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  txIconText: { fontSize: 16 },
   txTitle: { color: theme.text, fontWeight: "800" },
   txMeta: { color: theme.textSecondary, marginTop: 3, fontSize: 12, fontWeight: "600" },
   txTime: { color: theme.textMuted, marginTop: 2, fontSize: 11 },

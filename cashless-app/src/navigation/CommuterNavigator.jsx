@@ -32,19 +32,19 @@ const Stack = createNativeStackNavigator();
 
 export default function CommuterNavigator() {
     return (
-        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Home">
+        <Stack.Navigator screenOptions={{ headerShown: false, animation: "slide_from_right" }} initialRouteName="Home">
             {/* Main */}
-            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Home" component={HomeScreen} options={{ animation: "fade" }} />
 
             {/* Wallet */}
-            <Stack.Screen name="Balance" component={BalanceScreen} />
-            <Stack.Screen name="Transactions" component={TransactionsScreen} />
+            <Stack.Screen name="Balance" component={BalanceScreen} options={{ animation: "fade" }} />
+            <Stack.Screen name="Transactions" component={TransactionsScreen} options={{ animation: "fade" }} />
             <Stack.Screen name="SendLoad" component={SendLoadScreen} />
             <Stack.Screen name="TopUp" component={TopUpScreen} />
             <Stack.Screen name="TopUpCheckout" component={TopUpCheckoutScreen} />
 
             {/* QR + Pay */}
-            <Stack.Screen name="MyQR" component={MyQRScreen} />
+            <Stack.Screen name="MyQR" component={MyQRScreen} options={{ animation: "fade" }} />
             <Stack.Screen name="CommuterScan" component={CommuterScanScreen} />
             <Stack.Screen name="PayConfirm" component={PayConfirmScreen} />
             <Stack.Screen name="NFCTapPay" component={NFCTapPayScreen} />
@@ -66,7 +66,7 @@ export default function CommuterNavigator() {
             <Stack.Screen name="AddFriend" component={AddFriendScreen} />
 
             {/* Profile */}
-            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ animation: "fade" }} />
             <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
         </Stack.Navigator>

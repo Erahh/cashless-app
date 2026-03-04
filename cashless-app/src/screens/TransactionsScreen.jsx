@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, RefreshControl, Alert, SafeAreaView, TouchableOpacity, StyleSheet } from "react-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { ArrowLeft01Icon, RefreshIcon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, RefreshIcon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Card, Pill } from "../components/ui";
+import TxIcon from "../components/TxIcon";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
 import { useTheme } from "../context/ThemeContext";
@@ -37,7 +39,6 @@ function badgeFor(item) {
     if (s === "PENDING") return "PENDING";
     return s || "TOPUP";
   }
-  return "POSTED";
 }
 
 export default function TransactionsScreen({ navigation }) {
@@ -46,8 +47,9 @@ export default function TransactionsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState([]);
+  const [isFullList, setIsFullList] = useState(false);
 
-  const load = async () => {
+  const load = async (limit = 10) => {
     try {
       setLoading(true);
 
@@ -55,7 +57,7 @@ export default function TransactionsScreen({ navigation }) {
       const token = s?.session?.access_token;
       if (!token) throw new Error("No session. Please login again.");
 
-      const res = await fetch(`${API_BASE_URL}/wallet/transactions?limit=60`, {
+      const res = await fetch(`${API_BASE_URL}/wallet/transactions?limit=${limit}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -65,6 +67,7 @@ export default function TransactionsScreen({ navigation }) {
       if (!res.ok) throw new Error(json?.error || `Failed (HTTP ${res.status})`);
 
       setItems(json?.items || []);
+      setIsFullList(limit > 10);
     } catch (e) {
       Alert.alert("Transactions", e.message);
     } finally {
@@ -74,15 +77,15 @@ export default function TransactionsScreen({ navigation }) {
   };
 
   useEffect(() => {
-    const unsub = navigation?.addListener?.("focus", load);
-    load();
+    const unsub = navigation?.addListener?.("focus", () => load(10));
+    load(10);
     return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    load();
+    load(10);
   };
 
   return (
@@ -118,37 +121,37 @@ export default function TransactionsScreen({ navigation }) {
                 (String(it.kind).includes("debit") || String(it.kind).includes("fare"));
 
               const amountText = (isDebit ? "-" : "+") + formatPHP(it.amount);
+              const tString = titleFor(it);
+
+              const dateDate = new Date(it.created_at);
+              const timeString = dateDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const dateString = dateDate.toLocaleDateString();
 
               return (
                 <View
                   key={it.id}
                   style={styles.txRow}
                 >
-                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={styles.txTitle}>
-                      {titleFor(it)}
-                    </Text>
+                  <View style={styles.itemRow}>
+                    <TxIcon title={tString} type={it.kind} source={it.source} />
 
-                    <Text style={[styles.txAmount, { color: isDebit ? theme.danger : theme.success }]}>
-                      {amountText}
-                    </Text>
+                    <View style={styles.itemContent}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <Text style={styles.txTitle} numberOfLines={1}>{tString}</Text>
+                        <Text style={[styles.txAmount, { color: isDebit ? theme.danger : theme.success }]}>{amountText}</Text>
+                      </View>
+
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 6 }}>
+                        <View>
+                          <Text style={styles.txDate}>{dateString} • {timeString}</Text>
+                          {it.meta ? (
+                            <Text style={styles.txMeta}>{it.meta}</Text>
+                          ) : null}
+                        </View>
+                        <Text style={styles.txBadge}>{badgeFor(it)}</Text>
+                      </View>
+                    </View>
                   </View>
-
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
-                    <Text style={styles.txDate}>
-                      {new Date(it.created_at).toLocaleString()}
-                    </Text>
-
-                    <Text style={styles.txBadge}>
-                      {badgeFor(it)}
-                    </Text>
-                  </View>
-
-                  {it.meta ? (
-                    <Text style={styles.txMeta}>
-                      {it.meta}
-                    </Text>
-                  ) : null}
                 </View>
               );
             })}
@@ -158,6 +161,13 @@ export default function TransactionsScreen({ navigation }) {
                 No transactions yet.
               </Text>
             ) : null}
+
+            {!isFullList && items.length === 10 && (
+              <TouchableOpacity style={styles.seeAllBtn} onPress={() => load(60)}>
+                <Text style={styles.seeAllText}>See All Transactions</Text>
+                <HugeiconsIcon icon={ArrowRight01Icon} size={16} color={theme.text} />
+              </TouchableOpacity>
+            )}
 
             <View style={{ height: 24 }} />
           </ScrollView>
@@ -205,17 +215,28 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: "center",
   },
   txRow: {
-    padding: 14,
-    borderRadius: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  itemRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  itemContent: { flex: 1 },
+  txTitle: { color: theme.text, fontSize: 16, fontWeight: "700", flex: 1, paddingRight: 8 },
+  txAmount: { fontSize: 16, fontWeight: "900" },
+  txDate: { color: theme.textMuted, fontSize: 12 },
+  txBadge: { color: theme.textSecondary, fontSize: 11, fontWeight: "800", opacity: 0.8 },
+  txMeta: { marginTop: 2, color: theme.textSecondary, fontSize: 12, fontStyle: "italic" },
+  emptyText: { color: theme.textMuted, marginTop: 10 },
+  seeAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    marginTop: 15,
     borderWidth: 1,
     borderColor: theme.border,
-    backgroundColor: theme.card,
-    marginBottom: 10,
+    borderRadius: 16,
+    gap: 8,
   },
-  txTitle: { color: theme.text, fontWeight: "900" },
-  txAmount: { fontWeight: "900" },
-  txDate: { color: theme.textMuted, fontSize: 12 },
-  txBadge: { color: theme.textSecondary, fontSize: 12, fontWeight: "800" },
-  txMeta: { marginTop: 8, color: theme.textMuted, fontSize: 12 },
-  emptyText: { color: theme.textMuted, marginTop: 10 },
+  seeAllText: { color: theme.text, fontSize: 14, fontWeight: "700" },
 });

@@ -24,7 +24,7 @@ export default function AppNavigator() {
   return (
     <Stack.Navigator
       key={locked ? "locked" : "unlocked"}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, animation: "slide_from_right" }}
       initialRouteName={locked ? "MPINUnlock" : "AuthGate"}
     >
       {locked ? (

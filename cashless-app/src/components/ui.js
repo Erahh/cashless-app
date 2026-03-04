@@ -57,7 +57,7 @@ export function GhostButton({ label, onPress, theme }) {
 export function Pill({ text, theme }) {
   return (
     <View style={[styles.pill, theme && { backgroundColor: theme.warningBg, borderColor: theme.warning }]}>
-      <Text style={[styles.pillText, theme && { color: theme.accentWarm }]}>{text}</Text>
+      <Text style={[styles.pillText, theme && { color: "#0B0E14" }]}>{text}</Text>
     </View>
   );
 }

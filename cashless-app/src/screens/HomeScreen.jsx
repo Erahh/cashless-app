@@ -19,7 +19,9 @@ import BottomNav from "../components/BottomNav";
 import MiniMapCard from "../components/MiniMapCard";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { Notification01Icon, ScanIcon, WalletAdd01Icon, FlashIcon, SmartphoneWifiIcon, QrCodeIcon, Coins01Icon, InvoiceIcon, CheckmarkCircle01Icon, Bus01Icon, MoneySend01Icon } from "@hugeicons/core-free-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import TxIcon from "../components/TxIcon";
+import { useAppStore } from "../store/appStore";
 
 // ✅ Helper for timeout logic (increased to 35s for Render cold starts)
 async function fetchWithTimeout(url, options = {}, ms = 35000) {
@@ -42,6 +44,7 @@ export default function HomeScreen({ navigation, route }) {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [notifCount, setNotifCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const { hideBalance, toggleHideBalance } = useAppStore();
   const lastSeenNotif = useRef(null);
 
   const onRefresh = React.useCallback(async () => {
@@ -238,7 +241,16 @@ export default function HomeScreen({ navigation, route }) {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.smallLabel}>Available Balance</Text>
-            <Text style={styles.balance}>₱{computed.balanceText}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Text style={styles.balance}>₱{hideBalance ? "••••" : computed.balanceText}</Text>
+              <TouchableOpacity onPress={toggleHideBalance} activeOpacity={0.7} style={{ padding: 4 }}>
+                <MaterialCommunityIcons
+                  name={hideBalance ? "eye-off-outline" : "eye-outline"}
+                  size={24}
+                  color={theme.textMuted}
+                />
+              </TouchableOpacity>
+            </View>
             {lastUpdated ? (
               <Text style={{ marginTop: 6, color: theme.textMuted, fontSize: 12 }}>
                 Last updated: {new Date(lastUpdated).toLocaleTimeString()}
@@ -294,7 +306,7 @@ export default function HomeScreen({ navigation, route }) {
           <View style={styles.walletBalanceSection}>
             <View style={styles.walletBalanceInner}>
               <Text style={styles.walletBalanceLabel}>{"Available\nBalance"}</Text>
-              <Text style={styles.walletBalanceAmount}>₱{computed.balanceText}</Text>
+              <Text style={styles.walletBalanceAmount}>₱{hideBalance ? "••••" : computed.balanceText}</Text>
             </View>
           </View>
 

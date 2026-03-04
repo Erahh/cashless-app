@@ -11,17 +11,20 @@ import {
 } from "react-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, RefreshIcon, AnalyticsUpIcon, ArrowRight01Icon, WalletAdd01Icon, FlashIcon, QrCodeIcon } from "@hugeicons/core-free-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchWallet } from "../api/walletApi";
 import BottomNav from "../components/BottomNav";
 import QuickActions from "../components/QuickActions";
 import TxIcon from "../components/TxIcon";
 import { useTheme } from "../context/ThemeContext";
+import { useAppStore } from "../store/appStore";
 
 export default function BalanceScreen({ navigation }) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [wallet, setWallet] = useState(null);
+  const hideBalance = useAppStore((state) => state.hideBalance);
 
   const load = async () => {
     try {
@@ -87,7 +90,7 @@ export default function BalanceScreen({ navigation }) {
               <View style={styles.balanceSection}>
                 <View style={styles.balanceInnerCard}>
                   <Text style={styles.balanceLabel}>Available Balance</Text>
-                  <Text style={styles.balanceAmount}>₱{balanceText}</Text>
+                  <Text style={styles.balanceAmount}>₱{hideBalance ? "••••" : balanceText}</Text>
                 </View>
               </View>
 

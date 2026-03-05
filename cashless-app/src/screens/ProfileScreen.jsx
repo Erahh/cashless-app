@@ -789,9 +789,11 @@ const createStyles = (theme) => StyleSheet.create({
   },
   infoRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 52,
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
   },
@@ -799,7 +801,8 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    flex: 1,
+    flexShrink: 0,
+    paddingTop: 1,
   },
   infoLabel: {
     color: theme.textSecondary,
@@ -809,6 +812,10 @@ const createStyles = (theme) => StyleSheet.create({
     color: theme.text,
     fontSize: 14,
     fontWeight: "700",
+    flex: 1,
+    textAlign: "right",
+    flexWrap: "wrap",
+    paddingLeft: 12,
   },
 
   // Menu Card

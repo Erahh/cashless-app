@@ -8,28 +8,18 @@ import {
   Platform,
   Modal,
   StyleSheet,
+  TextInput,
+  SafeAreaView,
+  StatusBar,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { supabase } from "../api/supabase";
+import { useTheme } from "../context/ThemeContext";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
-// New UI Components
-import AuthBackground from "../components/AuthBackground";
-import GlassInput from "../components/GlassInput";
-import { GoldButton } from "../components/AuthButtons";
-
-/**
- * ✅ What this version gives you:
- * - Birthdate DATE PICKER (no typing YYYY-MM-DD)
- * - Province + City/Municipality + Barangay PICKERS (cascading)
- * - Keeps your dark UI style
- * - Saves birthdate as "YYYY-MM-DD" to Supabase
- *
- * 📦 Install:
- *   npm i @react-native-community/datetimepicker @react-native-picker/picker
- */
-
-// ------- Sample address data (replace with your real PH dataset) -------
+// ------- Sample address data -------
 const ADDRESS_DATA = [
   {
     province: "Bukidnon",
@@ -64,7 +54,6 @@ function toISODateOnly(dateObj) {
 
 function formatNiceDate(dateObj) {
   if (!dateObj) return "";
-  // friendly display (e.g., Jan 2, 2004)
   try {
     return dateObj.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
   } catch {
@@ -72,47 +61,33 @@ function formatNiceDate(dateObj) {
   }
 }
 
-function clampMaxDate(d) {
-  // optional: users must be at least 5 years old? (remove if you want)
-  return d;
-}
-
 function getPhoneFromUserOrSession(user, sessionUser) {
   return user?.phone || sessionUser?.phone || "";
 }
 
-// ------- Reusable Picker Modal -------
-function PickerModal({
-  visible,
-  title,
-  value,
-  items,
-  onChange,
-  onClose,
-  placeholder = "Select",
-}) {
+// ------- Themed Picker Modal -------
+function PickerModal({ visible, title, value, items, onChange, onClose, placeholder = "Select", theme }) {
+  const s = useMemo(() => pickerModalStyles(theme), [theme]);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={pmStyles.backdrop}>
-        <View style={pmStyles.card}>
-          <Text style={pmStyles.title}>{title}</Text>
-
-          <View style={pmStyles.pickerWrap}>
+      <View style={s.backdrop}>
+        <View style={s.card}>
+          <Text style={s.title}>{title}</Text>
+          <View style={s.pickerWrap}>
             <Picker
               selectedValue={value}
               onValueChange={(v) => onChange(v)}
-              dropdownIconColor="#fff"
-              style={pmStyles.picker}
+              dropdownIconColor={theme.text}
+              style={s.picker}
             >
-              <Picker.Item label={placeholder} value="" />
+              <Picker.Item label={placeholder} value="" color={theme.textMuted} />
               {items.map((it) => (
-                <Picker.Item key={it.value} label={it.label} value={it.value} />
+                <Picker.Item key={it.value} label={it.label} value={it.value} color={theme.text} />
               ))}
             </Picker>
           </View>
-
-          <TouchableOpacity style={pmStyles.doneBtn} onPress={onClose} activeOpacity={0.9}>
-            <Text style={pmStyles.doneText}>Done</Text>
+          <TouchableOpacity style={s.doneBtn} onPress={onClose} activeOpacity={0.9}>
+            <Text style={s.doneText}>Done</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -120,12 +95,53 @@ function PickerModal({
   );
 }
 
+// ------- Themed Text Input Field -------
+function Field({ label, value, onChangeText, placeholder, keyboardType, autoCapitalize, theme }) {
+  const s = useMemo(() => fieldStyles(theme), [theme]);
+  return (
+    <View style={s.wrap}>
+      {!!label && <Text style={s.label}>{label}</Text>}
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={theme.textMuted}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize ?? "none"}
+        style={s.input}
+      />
+    </View>
+  );
+}
+
+// ------- Themed Select Field (Touchable dropdown) -------
+function SelectField({ label, value, placeholder, onPress, disabled, theme }) {
+  const s = useMemo(() => fieldStyles(theme), [theme]);
+  return (
+    <View style={[s.wrap, disabled && { opacity: 0.5 }]}>
+      {!!label && <Text style={s.label}>{label}</Text>}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={onPress}
+        disabled={disabled}
+        style={s.selectInput}
+      >
+        <Text style={[s.selectText, !value && s.selectPlaceholder]}>
+          {value || placeholder}
+        </Text>
+        <Text style={s.chevron}>›</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export default function PersonalInfoScreen({ navigation, route }) {
-  // Edit mode: pre-populate from existing profile
+  const { theme, isDarkMode } = useTheme();
+  const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
+
   const editMode = route?.params?.editMode === true;
   const existingProfile = route?.params?.profile || null;
 
-  // Parse full_name into parts for edit mode
   const nameParts = (existingProfile?.full_name || "").split(" ").filter(Boolean);
   const initFirst = editMode ? (existingProfile?.first_name || nameParts[0] || "") : "";
   const initMiddle = editMode ? (existingProfile?.middle_name || (nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : "")) : "";
@@ -135,7 +151,6 @@ export default function PersonalInfoScreen({ navigation, route }) {
   const [middleName, setMiddleName] = useState(initMiddle);
   const [lastName, setLastName] = useState(initLast);
 
-  // ✅ Date picker state (store Date object)
   const initBirthdate = editMode && existingProfile?.birthdate
     ? new Date(existingProfile.birthdate + "T00:00:00")
     : null;
@@ -144,43 +159,30 @@ export default function PersonalInfoScreen({ navigation, route }) {
 
   const [email, setEmail] = useState(editMode ? (existingProfile?.email || "") : "");
 
-  // ✅ Pickers (cascading)
   const [province, setProvince] = useState(editMode ? (existingProfile?.province || "") : "");
   const [city, setCity] = useState(editMode ? (existingProfile?.city || "") : "");
   const [barangay, setBarangay] = useState(editMode ? (existingProfile?.barangay || "") : "");
-
   const [zipCode, setZipCode] = useState(editMode ? (existingProfile?.zip_code || "") : "");
   const [addressLine, setAddressLine] = useState(editMode ? (existingProfile?.address_line || "") : "");
 
   const [loading, setLoading] = useState(false);
-
-  // Picker modals
   const [provinceModal, setProvinceModal] = useState(false);
   const [cityModal, setCityModal] = useState(false);
   const [barangayModal, setBarangayModal] = useState(false);
 
   const fullName = useMemo(() => {
-    return [firstName, middleName, lastName]
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .join(" ");
+    return [firstName, middleName, lastName].map((s) => s.trim()).filter(Boolean).join(" ");
   }, [firstName, middleName, lastName]);
 
-  const provinceOptions = useMemo(() => {
-    return ADDRESS_DATA.map((p) => ({ label: p.province, value: p.province }));
-  }, []);
-
+  const provinceOptions = useMemo(() => ADDRESS_DATA.map((p) => ({ label: p.province, value: p.province })), []);
   const cityOptions = useMemo(() => {
     const p = ADDRESS_DATA.find((x) => x.province === province);
-    if (!p) return [];
-    return p.cities.map((c) => ({ label: c.city, value: c.city }));
+    return p ? p.cities.map((c) => ({ label: c.city, value: c.city })) : [];
   }, [province]);
-
   const barangayOptions = useMemo(() => {
     const p = ADDRESS_DATA.find((x) => x.province === province);
     const c = p?.cities.find((x) => x.city === city);
-    if (!c) return [];
-    return c.barangays.map((b) => ({ label: b, value: b }));
+    return c ? c.barangays.map((b) => ({ label: b, value: b })) : [];
   }, [province, city]);
 
   function validate() {
@@ -191,10 +193,8 @@ export default function PersonalInfoScreen({ navigation, route }) {
     if (!city.trim()) return "City/Municipality is required";
     if (!barangay.trim()) return "Barangay is required";
     if (!addressLine.trim()) return "Address line is required";
-
     const em = email.trim();
     if (em && !/^\S+@\S+\.\S+$/.test(em)) return "Email is invalid (or leave it blank)";
-
     return null;
   }
 
@@ -204,7 +204,6 @@ export default function PersonalInfoScreen({ navigation, route }) {
 
     setLoading(true);
     try {
-      // 1) Get authenticated user
       const { data: authData, error: authErr } = await supabase.auth.getUser();
       if (authErr) throw authErr;
 
@@ -212,14 +211,12 @@ export default function PersonalInfoScreen({ navigation, route }) {
       const userId = user?.id;
       if (!userId) throw new Error("Not logged in. Please login again.");
 
-      // 2) Get phone number
       const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
       if (sessionErr) throw sessionErr;
 
       const phone = getPhoneFromUserOrSession(user, sessionData?.session?.user);
       if (!phone) throw new Error("Phone number not found. Please login again.");
 
-      // 3) Build profile payload
       const profilePayload = {
         id: userId,
         phone: phone.trim(),
@@ -236,14 +233,9 @@ export default function PersonalInfoScreen({ navigation, route }) {
         address_line: addressLine.trim(),
       };
 
-      // 4) Upsert profile
-      const { error: profileErr } = await supabase
-        .from("profiles")
-        .upsert(profilePayload, { onConflict: "id" });
-
+      const { error: profileErr } = await supabase.from("profiles").upsert(profilePayload, { onConflict: "id" });
       if (profileErr) throw profileErr;
 
-      // Edit mode: just go back to profile screen
       if (editMode) {
         Alert.alert("Success", "Profile updated successfully!", [
           { text: "OK", onPress: () => navigation.goBack() }
@@ -251,13 +243,11 @@ export default function PersonalInfoScreen({ navigation, route }) {
         return;
       }
 
-      // 5) Registration mode: Ensure commuter_accounts exists
       const { data: acct, error: acctReadErr } = await supabase
         .from("commuter_accounts")
         .select("commuter_id, account_active")
         .eq("commuter_id", userId)
         .maybeSingle();
-
       if (acctReadErr) throw acctReadErr;
 
       if (!acct) {
@@ -268,12 +258,9 @@ export default function PersonalInfoScreen({ navigation, route }) {
           passenger_type: "casual",
           verification_status: "unverified",
         });
-
         if (acctCreateErr) throw acctCreateErr;
       }
 
-      // 6) Navigate to MPINSetup to complete registration
-      // Note: Wallet is created by backend when MPIN is set
       navigation.replace("MPINSetup", { profile: profilePayload });
     } catch (e) {
       console.error("Registration error:", e);
@@ -283,385 +270,432 @@ export default function PersonalInfoScreen({ navigation, route }) {
     }
   }
 
-  const onPickProvince = (v) => {
-    setProvince(v);
-    // reset dependent fields
-    setCity("");
-    setBarangay("");
-  };
-
-  const onPickCity = (v) => {
-    setCity(v);
-    setBarangay("");
-  };
-
-  const onPickBarangay = (v) => setBarangay(v);
-
-  const renderBirthdateInput = () => {
-    const display = birthdateObj ? formatNiceDate(birthdateObj) : "";
-    return (
-      <>
-        <Text style={styles.label}>Birthdate *</Text>
-
-        {/* Touchable input-style field */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => setShowDatePicker(true)}
-          style={[styles.input, styles.touchInput]}
-        >
-          <Text style={[styles.touchValue, !display && styles.touchPlaceholder]}>
-            {display || "Select birthdate"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Android inline picker */}
-        {showDatePicker && Platform.OS === "android" && (
-          <DateTimePicker
-            value={birthdateObj || new Date(2000, 0, 1)}
-            mode="date"
-            display="calendar"
-            maximumDate={clampMaxDate(new Date())}
-            onChange={(event, selectedDate) => {
-              setShowDatePicker(false);
-              if (event.type === "dismissed") return;
-              if (selectedDate) setBirthdateObj(selectedDate);
-            }}
-          />
-        )}
-
-        {/* iOS modal picker */}
-        {Platform.OS === "ios" && (
-          <Modal
-            visible={showDatePicker}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowDatePicker(false)}
-          >
-            <View style={dpStyles.backdrop}>
-              <View style={dpStyles.card}>
-                <Text style={dpStyles.title}>Select birthdate</Text>
-
-                <DateTimePicker
-                  value={birthdateObj || new Date(2000, 0, 1)}
-                  mode="date"
-                  display="spinner"
-                  maximumDate={clampMaxDate(new Date())}
-                  onChange={(event, selectedDate) => {
-                    if (selectedDate) setBirthdateObj(selectedDate);
-                  }}
-                />
-
-                <TouchableOpacity
-                  style={dpStyles.doneBtn}
-                  onPress={() => setShowDatePicker(false)}
-                  activeOpacity={0.9}
-                >
-                  <Text style={dpStyles.doneText}>Done</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-        )}
-      </>
-    );
-  };
+  const onPickProvince = (v) => { setProvince(v); setCity(""); setBarangay(""); };
+  const onPickCity = (v) => { setCity(v); setBarangay(""); };
 
   return (
-    <AuthBackground>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {editMode && (
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
+    <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+
+      {/* Header */}
+      <View style={styles.header}>
+        {editMode ? (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
           </TouchableOpacity>
+        ) : (
+          <View style={{ width: 44 }} />
         )}
-        <Text style={styles.title}>
-          {editMode ? "Edit Personal Information" : "Personal Information"}
+        <Text style={styles.headerTitle}>
+          {editMode ? "Edit Profile" : "Personal Info"}
         </Text>
+        <View style={{ width: 44 }} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.subtitle}>
           {editMode ? "Update your details below" : "Fill in your details to continue"}
         </Text>
 
-        <GlassInput
-          label="First Name *"
-          value={firstName}
-          onChangeText={setFirstName}
-          placeholder="First name"
-        />
-
-        <GlassInput
-          label="Middle Name"
-          value={middleName}
-          onChangeText={setMiddleName}
-          placeholder="Middle name"
-        />
-
-        <GlassInput
-          label="Last Name *"
-          value={lastName}
-          onChangeText={setLastName}
-          placeholder="Last name"
-        />
-
-        {/* ✅ Date picker birthdate */}
-        {renderBirthdateInput()}
-
-        <GlassInput
-          label="Email (optional)"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="name@gmail.com"
-          keyboardType="email-address"
-        />
-
-        <Text style={styles.sectionTitle}>Address</Text>
-
-        {/* ✅ Province Picker */}
-        <Text style={styles.label}>Province *</Text>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => setProvinceModal(true)}
-          style={[styles.input, styles.touchInput]}
-        >
-          <Text style={[styles.touchValue, !province && styles.touchPlaceholder]}>
-            {province || "Select province"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* ✅ City Picker */}
-        <Text style={styles.label}>City/Municipality *</Text>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => {
-            if (!province) return Alert.alert("Select province first", "Please select a province first.");
-            setCityModal(true);
-          }}
-          style={[styles.input, styles.touchInput, !province && { opacity: 0.55 }]}
-        >
-          <Text style={[styles.touchValue, !city && styles.touchPlaceholder]}>
-            {city || "Select city/municipality"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* ✅ Barangay Picker */}
-        <Text style={styles.label}>Barangay *</Text>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => {
-            if (!province || !city)
-              return Alert.alert("Select location first", "Please select province and city first.");
-            setBarangayModal(true);
-          }}
-          style={[styles.input, styles.touchInput, (!province || !city) && { opacity: 0.55 }]}
-        >
-          <Text style={[styles.touchValue, !barangay && styles.touchPlaceholder]}>
-            {barangay || "Select barangay"}
-          </Text>
-        </TouchableOpacity>
-
-        <GlassInput
-          label="ZIP Code"
-          value={zipCode}
-          onChangeText={setZipCode}
-          placeholder="8709"
-          keyboardType="numeric"
-        />
-
-        <GlassInput
-          label="House No. + Street Address *"
-          value={addressLine}
-          onChangeText={setAddressLine}
-          placeholder="P6 Lower Sugod"
-        />
-
-        <View style={styles.infoBox}>
-          <Text style={styles.infoText}>Full Name (auto): {fullName || "-"}</Text>
+        {/* ── NAME SECTION ── */}
+        <Text style={styles.sectionLabel}>Full Name</Text>
+        <View style={styles.card}>
+          <Field label="First Name *" value={firstName} onChangeText={setFirstName} placeholder="First name" autoCapitalize="words" theme={theme} />
+          <View style={styles.divider} />
+          <Field label="Middle Name" value={middleName} onChangeText={setMiddleName} placeholder="Middle name (optional)" autoCapitalize="words" theme={theme} />
+          <View style={styles.divider} />
+          <Field label="Last Name *" value={lastName} onChangeText={setLastName} placeholder="Last name" autoCapitalize="words" theme={theme} />
         </View>
 
-        <GoldButton
-          label={loading ? "Saving..." : editMode ? "Save Changes" : "Continue"}
+        {/* ── PERSONAL DETAILS ── */}
+        <Text style={styles.sectionLabel}>Personal Details</Text>
+        <View style={styles.card}>
+          {/* Birthdate */}
+          <View style={styles.fieldWrap}>
+            <Text style={styles.fieldLabel}>Birthdate *</Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => setShowDatePicker(true)}
+              style={styles.selectInputInCard}
+            >
+              <Text style={[styles.selectText, !birthdateObj && styles.selectPlaceholder]}>
+                {birthdateObj ? formatNiceDate(birthdateObj) : "Select birthdate"}
+              </Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.divider} />
+          <Field label="Email (optional)" value={email} onChangeText={setEmail} placeholder="name@gmail.com" keyboardType="email-address" theme={theme} />
+        </View>
+
+        {/* ── ADDRESS SECTION ── */}
+        <Text style={styles.sectionLabel}>Address</Text>
+        <View style={styles.card}>
+          <View style={styles.fieldWrap}>
+            <Text style={styles.fieldLabel}>Province *</Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => setProvinceModal(true)}
+              style={styles.selectInputInCard}
+            >
+              <Text style={[styles.selectText, !province && styles.selectPlaceholder]}>
+                {province || "Select province"}
+              </Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.divider} />
+          <View style={[styles.fieldWrap, !province && { opacity: 0.5 }]}>
+            <Text style={styles.fieldLabel}>City/Municipality *</Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                if (!province) return Alert.alert("Select province first", "Please select a province first.");
+                setCityModal(true);
+              }}
+              style={styles.selectInputInCard}
+            >
+              <Text style={[styles.selectText, !city && styles.selectPlaceholder]}>
+                {city || "Select city/municipality"}
+              </Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.divider} />
+          <View style={[styles.fieldWrap, (!province || !city) && { opacity: 0.5 }]}>
+            <Text style={styles.fieldLabel}>Barangay *</Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                if (!province || !city) return Alert.alert("Select location first", "Please select province and city first.");
+                setBarangayModal(true);
+              }}
+              style={styles.selectInputInCard}
+            >
+              <Text style={[styles.selectText, !barangay && styles.selectPlaceholder]}>
+                {barangay || "Select barangay"}
+              </Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.divider} />
+          <Field label="ZIP Code" value={zipCode} onChangeText={setZipCode} placeholder="e.g. 8709" keyboardType="numeric" theme={theme} />
+          <View style={styles.divider} />
+          <Field label="House No. + Street Address *" value={addressLine} onChangeText={setAddressLine} placeholder="e.g. P6 Lower Sugod" autoCapitalize="words" theme={theme} />
+        </View>
+
+        {/* Full name preview */}
+        {!!fullName && (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>Full Name: {fullName}</Text>
+          </View>
+        )}
+
+        {/* Save Button */}
+        <TouchableOpacity
+          style={[styles.saveBtn, loading && { opacity: 0.6 }]}
           onPress={onContinue}
           disabled={loading}
-        />
+          activeOpacity={0.85}
+        >
+          <Text style={styles.saveBtnText}>
+            {loading ? "Saving..." : editMode ? "Save Changes" : "Continue"}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Picker Modals */}
-      <PickerModal
-        visible={provinceModal}
-        title="Select Province"
-        value={province}
-        items={provinceOptions}
-        onChange={onPickProvince}
-        onClose={() => setProvinceModal(false)}
-        placeholder="Choose province"
-      />
+      {/* ── DATE PICKER ── */}
+      {showDatePicker && Platform.OS === "android" && (
+        <DateTimePicker
+          value={birthdateObj || new Date(2000, 0, 1)}
+          mode="date"
+          display="calendar"
+          maximumDate={new Date()}
+          onChange={(event, selectedDate) => {
+            setShowDatePicker(false);
+            if (event.type !== "dismissed" && selectedDate) setBirthdateObj(selectedDate);
+          }}
+        />
+      )}
 
-      <PickerModal
-        visible={cityModal}
-        title="Select City/Municipality"
-        value={city}
-        items={cityOptions}
-        onChange={onPickCity}
-        onClose={() => setCityModal(false)}
-        placeholder={province ? "Choose city" : "Select province first"}
-      />
+      {Platform.OS === "ios" && (
+        <Modal visible={showDatePicker} transparent animationType="fade" onRequestClose={() => setShowDatePicker(false)}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Select Birthdate</Text>
+              <DateTimePicker
+                value={birthdateObj || new Date(2000, 0, 1)}
+                mode="date"
+                display="spinner"
+                maximumDate={new Date()}
+                onChange={(event, selectedDate) => { if (selectedDate) setBirthdateObj(selectedDate); }}
+                themeVariant={isDarkMode ? "dark" : "light"}
+              />
+              <TouchableOpacity style={styles.modalDoneBtn} onPress={() => setShowDatePicker(false)} activeOpacity={0.9}>
+                <Text style={styles.modalDoneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
 
-      <PickerModal
-        visible={barangayModal}
-        title="Select Barangay"
-        value={barangay}
-        items={barangayOptions}
-        onChange={onPickBarangay}
-        onClose={() => setBarangayModal(false)}
-        placeholder={city ? "Choose barangay" : "Select city first"}
-      />
-    </AuthBackground>
+      {/* ── PICKER MODALS ── */}
+      <PickerModal visible={provinceModal} title="Select Province" value={province} items={provinceOptions} onChange={onPickProvince} onClose={() => setProvinceModal(false)} placeholder="Choose province" theme={theme} />
+      <PickerModal visible={cityModal} title="Select City/Municipality" value={city} items={cityOptions} onChange={onPickCity} onClose={() => setCityModal(false)} placeholder={province ? "Choose city" : "Select province first"} theme={theme} />
+      <PickerModal visible={barangayModal} title="Select Barangay" value={barangay} items={barangayOptions} onChange={(v) => setBarangay(v)} onClose={() => setBarangayModal(false)} placeholder={city ? "Choose barangay" : "Select city first"} theme={theme} />
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0B0E14" },
-  content: { padding: 18, paddingBottom: 40 },
-  backButton: {
-    paddingVertical: 8,
-    marginBottom: 8,
-  },
-  backButtonText: {
-    color: "#7CFF9B",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  title: { color: "#fff", fontSize: 26, fontWeight: "900", marginBottom: 8 },
-  subtitle: { color: "rgba(255,255,255,0.65)", marginBottom: 20 },
-  sectionTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "900",
-    marginTop: 12,
-    marginBottom: 12,
-  },
-  label: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 14,
-    fontWeight: "700",
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    borderRadius: 14,
-    padding: 14,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    color: "#fff",
-    fontSize: 15,
-    marginBottom: 4,
-  },
+// ── STYLES ──
+const createStyles = (theme, isDarkMode) =>
+  StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 8,
+    },
+    backBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    headerTitle: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: "900",
+    },
+    content: {
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 20,
+    },
+    subtitle: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      marginBottom: 24,
+    },
+    sectionLabel: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+      marginBottom: 10,
+    },
 
-  // Touchable "input" style
-  touchInput: {
-    justifyContent: "center",
-  },
-  touchValue: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  touchPlaceholder: {
-    color: "rgba(255,255,255,0.35)",
-    fontWeight: "600",
-  },
+    // Card container for grouped fields
+    card: {
+      backgroundColor: theme.card,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      marginBottom: 24,
+      overflow: "hidden",
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.border,
+    },
+    fieldWrap: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    fieldLabel: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: "700",
+      marginBottom: 6,
+      letterSpacing: 0.2,
+    },
+    selectInputInCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    selectText: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: "700",
+      flex: 1,
+    },
+    selectPlaceholder: {
+      color: theme.textMuted,
+      fontWeight: "500",
+    },
+    chevron: {
+      color: theme.textMuted,
+      fontSize: 22,
+      marginLeft: 8,
+    },
 
-  infoBox: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  infoText: { color: "rgba(255,255,255,0.65)", fontSize: 13 },
-  btn: {
-    marginTop: 20,
-    backgroundColor: "#FFD36A",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-  btnText: { color: "#0B0E14", fontWeight: "900", fontSize: 16 },
-});
+    // Full name preview box
+    infoBox: {
+      marginBottom: 20,
+      padding: 14,
+      borderRadius: 14,
+      backgroundColor: isDarkMode ? "rgba(124,255,155,0.07)" : "rgba(76,175,80,0.07)",
+      borderWidth: 1,
+      borderColor: isDarkMode ? "rgba(124,255,155,0.2)" : "rgba(76,175,80,0.2)",
+    },
+    infoText: {
+      color: theme.success,
+      fontSize: 14,
+      fontWeight: "700",
+    },
 
-// Picker modal styles
-const pmStyles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    justifyContent: "center",
-    padding: 18,
-  },
-  card: {
-    backgroundColor: "#111623",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    padding: 14,
-  },
-  title: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  pickerWrap: {
-    borderRadius: 14,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  picker: {
-    color: "#fff",
-  },
-  doneBtn: {
-    marginTop: 12,
-    backgroundColor: "#FFD36A",
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-  doneText: { color: "#0B0E14", fontWeight: "900", fontSize: 15 },
-});
+    // Save button
+    saveBtn: {
+      height: 54,
+      borderRadius: 16,
+      backgroundColor: theme.success,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 4,
+    },
+    saveBtnText: {
+      color: isDarkMode ? "#0B0E14" : "#FFFFFF",
+      fontWeight: "900",
+      fontSize: 16,
+    },
 
-// iOS date picker modal styles
-const dpStyles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    justifyContent: "center",
-    padding: 18,
-  },
-  card: {
-    backgroundColor: "#111623",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    padding: 14,
-  },
-  title: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  doneBtn: {
-    marginTop: 12,
-    backgroundColor: "#FFD36A",
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-  doneText: { color: "#0B0E14", fontWeight: "900", fontSize: 15 },
-});
+    // Modal (date picker + pickers)
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      justifyContent: "center",
+      padding: 20,
+    },
+    modalCard: {
+      backgroundColor: theme.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 16,
+    },
+    modalTitle: {
+      color: theme.text,
+      fontWeight: "900",
+      fontSize: 16,
+      marginBottom: 10,
+    },
+    modalDoneBtn: {
+      marginTop: 14,
+      backgroundColor: theme.success,
+      paddingVertical: 14,
+      borderRadius: 14,
+      alignItems: "center",
+    },
+    modalDoneText: {
+      color: isDarkMode ? "#0B0E14" : "#FFFFFF",
+      fontWeight: "900",
+      fontSize: 15,
+    },
+  });
+
+// Field styles (theme-aware)
+const fieldStyles = (theme) =>
+  StyleSheet.create({
+    wrap: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    label: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: "700",
+      marginBottom: 6,
+      letterSpacing: 0.2,
+    },
+    input: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: "700",
+      paddingVertical: 0,
+    },
+    selectInput: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+    },
+    selectText: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: "700",
+      flex: 1,
+    },
+    selectPlaceholder: {
+      color: theme.textMuted,
+      fontWeight: "500",
+    },
+  });
+
+// Picker modal styles (theme-aware)
+const pickerModalStyles = (theme) =>
+  StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      justifyContent: "center",
+      padding: 20,
+    },
+    card: {
+      backgroundColor: theme.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 16,
+    },
+    title: {
+      color: theme.text,
+      fontWeight: "900",
+      fontSize: 16,
+      marginBottom: 10,
+    },
+    pickerWrap: {
+      borderRadius: 14,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.background,
+    },
+    picker: {
+      color: theme.text,
+    },
+    doneBtn: {
+      marginTop: 14,
+      backgroundColor: theme.success,
+      paddingVertical: 14,
+      borderRadius: 14,
+      alignItems: "center",
+    },
+    doneText: {
+      color: theme.isDark ? "#0B0E14" : "#FFFFFF",
+      fontWeight: "900",
+      fontSize: 15,
+    },
+  });

@@ -20,9 +20,8 @@ export default function VerificationSubmittedScreen({ navigation }) {
         </Text>
       </Card>
 
-      <View style={{ marginTop: "auto", gap: 10, paddingBottom: 18 }}>
+      <View style={{ marginTop: "auto", gap: 10, paddingBottom: 110 }}>
         <PrimaryButton label="Go to Home" onPress={() => navigation.navigate("Home")} />
-        <GhostButton label="Upload Again" onPress={() => navigation.navigate("PassengerType")} />
       </View>
     </Screen>
   );

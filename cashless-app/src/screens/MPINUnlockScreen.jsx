@@ -1,18 +1,22 @@
 import React, { useContext, useEffect, useRef, useState, useMemo } from "react";
 import {
   View, Text, TextInput, Alert, TouchableOpacity,
-  StyleSheet, SafeAreaView, ActivityIndicator, Animated, Platform,
+  StyleSheet, ActivityIndicator, Animated, Platform,
+  KeyboardAvoidingView, ScrollView, Keyboard
 } from "react-native";
 import { AppLockContext } from "../context/AppLockContext";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../api/supabase";
 import * as Crypto from "expo-crypto";
 import { verifyMpin } from "../api/mpinLocal";
+import AuthBackground from "../components/AuthBackground";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { LockIcon } from "@hugeicons/core-free-icons";
 
 export default function MPINUnlockScreen({ navigation }) {
   const { setLocked } = useContext(AppLockContext);
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { theme, isDarkMode } = useTheme();
+  const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
 
   const [mpin, setMpin] = useState("");
   const [attempts, setAttempts] = useState(0);
@@ -42,6 +46,12 @@ export default function MPINUnlockScreen({ navigation }) {
         // ignore
       }
     })();
+
+    // Auto-focus native keyboard after a brief delay for UI smoothness
+    const t = setTimeout(() => {
+      textInputRef.current?.focus();
+    }, 150);
+    return () => clearTimeout(t);
   }, []);
 
   // ── Auto-submit when 6 digits are entered ──────────────────────────────────
@@ -146,26 +156,6 @@ export default function MPINUnlockScreen({ navigation }) {
     }
   };
 
-  // Numeric keypad digit press
-  const handleDigit = (d) => {
-    if (loading) return;
-    setMpin((prev) => (prev.length < 6 ? prev + d : prev));
-  };
-
-  // Backspace
-  const handleBackspace = () => {
-    if (loading) return;
-    setErrorMsg("");
-    setMpin((prev) => prev.slice(0, -1));
-  };
-
-  // Clear all
-  const handleClear = () => {
-    if (loading) return;
-    setErrorMsg("");
-    setMpin("");
-  };
-
   // Render dots
   const dots = [0, 1, 2, 3, 4, 5].map((i) => (
     <Animated.View
@@ -178,210 +168,133 @@ export default function MPINUnlockScreen({ navigation }) {
     />
   ));
 
-  // Keypad layout
-  const keypad = [
-    ["1", "2", "3"],
-    ["4", "5", "6"],
-    ["7", "8", "9"],
-    ["clear", "0", "back"],
-  ];
-
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-
-        <View style={styles.cardContainer}>
-          {/* Lock Icon */}
-          <View style={styles.iconWrapper}>
-            <View style={styles.lockIconOuter}>
-              <View style={styles.lockIconInner}>
-                <Text style={styles.lockEmoji}>🔒</Text>
+    <AuthBackground>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.topSection}>
+            {/* Lock Icon */}
+            <View style={styles.iconWrapper}>
+              <View style={styles.iconCircle}>
+                <HugeiconsIcon icon={LockIcon} size={32} color={isDarkMode ? theme.accent : theme.primary} />
               </View>
             </View>
-          </View>
 
-          <View style={styles.textWrapper}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>
-              {phone ? `Logged in as ${phone}` : "Enter your 6-digit MPIN to unlock."}
-            </Text>
-          </View>
-
-          {/* MPIN Dots */}
-          <View style={styles.dotsContainer}>
-            <View style={styles.dotsRow}>{dots}</View>
-          </View>
-
-          {/* Hidden input for hardware keyboard support */}
-          <TextInput
-            ref={textInputRef}
-            value={mpin}
-            onChangeText={(t) => {
-              if (!loading) setMpin(t.replace(/[^\d]/g, "").slice(0, 6));
-            }}
-            keyboardType="number-pad"
-            secureTextEntry
-            maxLength={6}
-            style={styles.hiddenInput}
-          />
-
-          {/* Error / attempts */}
-          {errorMsg ? (
-            <Text style={styles.errorText}>{errorMsg}</Text>
-          ) : null}
-
-          {/* Loading indicator */}
-          {loading && (
-            <ActivityIndicator
-              color={theme.accent}
-              style={{ marginTop: 8 }}
-            />
-          )}
-        </View>
-
-        {/* ── Numeric Keypad ─────────────────────────────────── */}
-        <View style={styles.keypad}>
-          {keypad.map((row, ri) => (
-            <View key={ri} style={styles.keypadRow}>
-              {row.map((key) => {
-                if (key === "back") {
-                  return (
-                    <TouchableOpacity
-                      key="back"
-                      style={styles.keypadKey}
-                      onPress={handleBackspace}
-                      onLongPress={handleClear}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.keypadBackspace}>⌫</Text>
-                    </TouchableOpacity>
-                  );
-                }
-                if (key === "clear") {
-                  return (
-                    <TouchableOpacity
-                      key="clear"
-                      style={styles.keypadKey}
-                      onPress={handleClear}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.keypadClear}>C</Text>
-                    </TouchableOpacity>
-                  );
-                }
-                return (
-                  <TouchableOpacity
-                    key={key}
-                    style={styles.keypadKey}
-                    onPress={() => handleDigit(key)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.keypadKeyText}>{key}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+            <View style={styles.textWrapper}>
+              <Text style={styles.title}>Enter Your PIN</Text>
+              <Text style={styles.subtitle}>
+                {phone ? `Logged in as ${phone}` : "Enter your 6-digit PIN to unlock."}
+              </Text>
             </View>
-          ))}
-        </View>
 
-        {/* Switch account */}
-        <View style={styles.bottomSection}>
-          <TouchableOpacity onPress={handleSwitchNumber} style={styles.switchBtn} activeOpacity={0.7}>
-            <Text style={styles.switchText}>Login with a different account</Text>
-          </TouchableOpacity>
-        </View>
+            {/* MPIN Dots */}
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={() => textInputRef.current?.focus()}
+              style={styles.dotsContainer}
+            >
+              <View style={styles.dotsRow}>{dots}</View>
+            </TouchableOpacity>
 
-      </View>
-    </SafeAreaView>
+            {/* Hidden input for hardware keyboard support */}
+            <TextInput
+              ref={textInputRef}
+              value={mpin}
+              onChangeText={(t) => {
+                if (!loading) setMpin(t.replace(/[^\d]/g, "").slice(0, 6));
+              }}
+              keyboardType="number-pad"
+              secureTextEntry
+              maxLength={6}
+              style={styles.hiddenInput}
+            />
+
+            {/* Error / attempts */}
+            <View style={styles.statusContainer}>
+              {loading ? (
+                <ActivityIndicator color={theme.accent} size="small" />
+              ) : errorMsg ? (
+                <Text style={styles.errorText}>{errorMsg}</Text>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Switch account */}
+          <View style={styles.bottomSection}>
+            <TouchableOpacity onPress={handleSwitchNumber} style={styles.switchBtn} activeOpacity={0.7}>
+              <Text style={styles.switchText}>Login with a different account</Text>
+            </TouchableOpacity>
+          </View>
+
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </AuthBackground>
   );
 }
 
-const createStyles = (theme) => StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: theme.background,
-  },
-  container: {
-    flex: 1,
-    justifyContent: "center",
+const createStyles = (theme, isDarkMode) => StyleSheet.create({
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "space-between",
     paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingTop: 40,
+    paddingBottom: 24,
   },
-  cardContainer: {
-    backgroundColor: theme.cardAlt,
-    borderRadius: 36,
-    padding: 28,
+  topSection: {
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: theme.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: theme.isDark ? 0.4 : 0.1,
-    shadowRadius: 24,
-    elevation: 8,
-    marginBottom: 24,
+    marginTop: 20,
   },
   iconWrapper: {
-    marginBottom: 20,
+    alignItems: "center",
+    marginBottom: 24,
   },
-  lockIconOuter: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: theme.isDark ? "rgba(247, 227, 83, 0.08)" : "rgba(247, 227, 83, 0.15)",
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: isDarkMode ? "rgba(247, 227, 83, 0.12)" : "rgba(11, 14, 20, 0.05)",
     alignItems: "center",
     justifyContent: "center",
-  },
-  lockIconInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.isDark ? "rgba(247, 227, 83, 0.15)" : theme.accentWarm,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: theme.isDark ? "rgba(247, 227, 83, 0.4)" : "rgba(255,255,255,0.5)",
-    shadowColor: theme.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  lockEmoji: {
-    fontSize: 26,
   },
   textWrapper: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 32,
   },
   title: {
     color: theme.text,
-    fontSize: 26,
-    fontWeight: "800",
-    marginBottom: 6,
+    fontSize: 28,
+    fontWeight: "900",
+    marginBottom: 8,
     letterSpacing: -0.5,
   },
   subtitle: {
     color: theme.textSecondary,
-    fontSize: 14,
+    fontSize: 15,
     textAlign: "center",
-    lineHeight: 20,
-    paddingHorizontal: 10,
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
   dotsContainer: {
-    marginBottom: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: theme.isDark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.03)",
+    marginBottom: 16,
+    height: 44,
+    justifyContent: "center",
   },
   dotsRow: {
     flexDirection: "row",
-    gap: 18,
+    gap: 16,
   },
   dot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
   dotFilled: {
     backgroundColor: theme.accent,
@@ -394,59 +307,25 @@ const createStyles = (theme) => StyleSheet.create({
   dotEmpty: {
     backgroundColor: "transparent",
     borderWidth: 2,
-    borderColor: theme.isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+    borderColor: isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
   },
   hiddenInput: {
-    position: "absolute",
-    top: -9999,
+    width: 0,
+    height: 0,
     opacity: 0,
+    position: "absolute",
+  },
+  statusContainer: {
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
   },
   errorText: {
     color: theme.danger,
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
     textAlign: "center",
-    marginTop: 8,
-  },
-  // ── Keypad ────────────────────────────────────────────────
-  keypad: {
-    marginTop: 4,
-    gap: 10,
-  },
-  keypadRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 16,
-  },
-  keypadKey: {
-    width: 76,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: theme.card,
-    borderWidth: 1,
-    borderColor: theme.border,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: theme.isDark ? 0.25 : 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  keypadKeyText: {
-    color: theme.text,
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  keypadBackspace: {
-    color: theme.textSecondary,
-    fontSize: 20,
-    fontWeight: "600",
-  },
-  keypadClear: {
-    color: theme.danger,
-    fontSize: 18,
-    fontWeight: "700",
   },
   // ── Bottom ────────────────────────────────────────────────
   bottomSection: {
@@ -456,12 +335,10 @@ const createStyles = (theme) => StyleSheet.create({
   switchBtn: {
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 16,
-    backgroundColor: theme.card,
   },
   switchText: {
     color: theme.textSecondary,
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 14,
     textAlign: "center",
   },

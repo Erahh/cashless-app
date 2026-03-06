@@ -11,11 +11,12 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Platform,
+  StatusBar,
 } from "react-native";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
 import QuickActions from "../components/QuickActions";
-import BottomNav from "../components/BottomNav";
 import MiniMapCard from "../components/MiniMapCard";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { Notification01Icon, ScanIcon, WalletAdd01Icon, FlashIcon, SmartphoneWifiIcon, QrCodeIcon, Coins01Icon, InvoiceIcon, CheckmarkCircle01Icon, Bus01Icon, MoneySend01Icon } from "@hugeicons/core-free-icons";
@@ -480,8 +481,6 @@ export default function HomeScreen({ navigation, route }) {
           ) : null}
         </View>
       </ScrollView >
-
-      <BottomNav navigation={navigation} active="Home" />
     </SafeAreaView >
   );
 }
@@ -503,7 +502,11 @@ function ActionCard({ icon, title, subtitle, onPress }) {
 
 
 const createStyles = (theme) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: theme.background },
+  safe: {
+    flex: 1,
+    backgroundColor: theme.background,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0
+  },
   scroll: { flex: 1 },
   content: { padding: 18, paddingBottom: 160 },
 

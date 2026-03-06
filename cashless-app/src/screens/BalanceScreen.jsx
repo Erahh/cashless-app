@@ -13,7 +13,6 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, RefreshIcon, AnalyticsUpIcon, ArrowRight01Icon, WalletAdd01Icon, FlashIcon, QrCodeIcon } from "@hugeicons/core-free-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchWallet } from "../api/walletApi";
-import BottomNav from "../components/BottomNav";
 import QuickActions from "../components/QuickActions";
 import TxIcon from "../components/TxIcon";
 import { useTheme } from "../context/ThemeContext";
@@ -237,15 +236,13 @@ export default function BalanceScreen({ navigation }) {
           </>
         )}
       </ScrollView>
-
-      <BottomNav navigation={navigation} active="Wallet" />
     </SafeAreaView >
   );
 }
 
 const createStyles = (theme) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.background },
-  content: { padding: 20, paddingTop: 16 },
+  content: { padding: 20, paddingTop: 16, paddingBottom: 160 },
 
   topRow: {
     flexDirection: "row",

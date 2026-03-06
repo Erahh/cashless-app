@@ -184,6 +184,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   content: {
     padding: 18,
+    paddingBottom: 160,
   },
   topRow: {
     flexDirection: "row",

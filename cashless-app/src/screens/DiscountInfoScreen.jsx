@@ -101,13 +101,7 @@ export default function DiscountInfoScreen({ navigation, route }) {
             <HugeiconsIcon icon={ArrowRight01Icon} size={20} color="#0B0E14" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={() => navigation.navigate("Home")}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.secondaryBtnText}>Do it Later</Text>
-          </TouchableOpacity>
+
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -124,7 +118,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
 
   // Header

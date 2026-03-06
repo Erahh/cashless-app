@@ -13,15 +13,15 @@ import {
   StyleSheet,
   Image,
   Linking,
+  StatusBar,
 } from "react-native";
 import { supabase } from "../api/supabase";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {
-  ArrowLeft01Icon, Camera01Icon, PencilEdit01Icon, CheckmarkCircle01Icon,
-  Clock01Icon, Shield01Icon, CheckmarkBadge01Icon, ArrowRight01Icon,
-  SmartPhone01Icon, Logout01Icon, UserIcon, AlertCircleIcon,
-  Mail01Icon, CallIcon, Calendar01Icon, Location01Icon, Building01Icon,
-  Home01Icon, MapPinIcon, LockIcon, DarkModeIcon, Clock02Icon
+  ArrowLeft01Icon, Camera01Icon, Shield01Icon, ArrowRight01Icon,
+  Cancel01Icon, UserIcon,
+  LockIcon, Clock01Icon, QrCodeIcon,
+  Notification01Icon, InformationCircleIcon, SmartphoneWifiIcon,
 } from "@hugeicons/core-free-icons";
 import * as ImagePicker from "expo-image-picker";
 import { renderApiRequest } from "../api/apiHelper";
@@ -33,7 +33,7 @@ export default function ProfileScreen({ navigation }) {
   const [uploading, setUploading] = useState(false);
   const { setLocked } = useContext(AppLockContext);
   const { theme, isDarkMode, toggleTheme } = useTheme();
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
 
   const computed = useMemo(() => {
     const name = profile?.full_name || "—";
@@ -63,8 +63,8 @@ export default function ProfileScreen({ navigation }) {
 
     const chipText =
       passengerType === "casual"
-        ? "CASUAL • Regular Fare"
-        : `${passengerLabel.toUpperCase()} • ${verLabel.toUpperCase()}`;
+        ? "Regular Fare"
+        : `${passengerLabel} • ${verLabel}`;
 
     return { name, initials, passengerLabel, verLabel, verTone, chipText, passengerType, discountActive };
   }, [profile, account]);
@@ -112,10 +112,8 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  // ✅ Profile photo upload using expo-image-picker
   const handleAvatarUpload = async () => {
     try {
-      // Ask user to pick from gallery or camera
       const choice = await new Promise((resolve) => {
         Alert.alert("Profile Photo", "Choose a photo source", [
           { text: "Camera", onPress: () => resolve("camera") },
@@ -177,18 +175,14 @@ export default function ProfileScreen({ navigation }) {
       if (result.canceled || !result.assets?.[0]) return;
 
       const asset = result.assets[0];
-
-      // Determine mime type from URI
       const ext = (asset.uri || "").split(".").pop()?.toLowerCase();
       const allowedExts = ["jpg", "jpeg", "png"];
       if (!allowedExts.includes(ext)) {
         return Alert.alert("Unsupported File", "Please select a JPEG or PNG image.");
       }
 
-      // Estimate size from base64 if fileSize is missing (base64 is ~33% larger than binary)
       const estimatedSize = asset.base64 ? (asset.base64.length * 0.75) : 0;
-      const MAX_BYTES = 2 * 1024 * 1024; // 2MB
-
+      const MAX_BYTES = 2 * 1024 * 1024;
       if (estimatedSize > MAX_BYTES) {
         return Alert.alert("File Too Large", "Profile photo must be smaller than 2MB.");
       }
@@ -223,16 +217,14 @@ export default function ProfileScreen({ navigation }) {
     return unsub;
   }, [navigation]);
 
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { load(); }, []);
 
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7CFF9B" />
+          <ActivityIndicator size="large" color={theme.accent} />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </SafeAreaView>
@@ -241,6 +233,8 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -252,261 +246,143 @@ export default function ProfileScreen({ navigation }) {
             style={styles.backBtn}
             activeOpacity={0.7}
           >
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color={theme.text} />
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile</Text>
           <View style={{ width: 44 }} />
         </View>
 
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
+        {/* Profile Card — Minimal style */}
+        <View style={styles.profileRow}>
           <TouchableOpacity
-            style={styles.avatarContainer}
             onPress={handleAvatarUpload}
             activeOpacity={0.7}
             disabled={uploading}
+            style={styles.avatarWrap}
           >
             {profile?.avatar_url ? (
-              <Image
-                source={{ uri: profile.avatar_url }}
-                style={styles.avatarImage}
-              />
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
             ) : (
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{computed.initials}</Text>
               </View>
             )}
-            {/* Camera badge */}
             <View style={styles.cameraBadge}>
               {uploading ? (
-                <ActivityIndicator size={12} color="#000" />
+                <ActivityIndicator size={10} color={isDarkMode ? "#0B0E14" : "#fff"} />
               ) : (
-                <HugeiconsIcon icon={Camera01Icon} size={14} color="#000" />
+                <HugeiconsIcon icon={Camera01Icon} size={12} color={isDarkMode ? "#0B0E14" : "#fff"} />
               )}
             </View>
           </TouchableOpacity>
 
-          <Text style={styles.profileName}>{computed.name}</Text>
-          <Text style={styles.profileEmail}>{profile?.email || profile?.phone || "—"}</Text>
-
-          <View style={[styles.badge, styles[`badge_${computed.verTone}`]]}>
-            <Text style={styles.badgeText}>{computed.chipText}</Text>
-          </View>
-
-          <View style={styles.profileActions}>
-            <TouchableOpacity
-              style={styles.editProfileBtn}
-              onPress={() => navigation.navigate("PersonalInfo", {
-                editMode: true,
-                profile: profile
-              })}
-              activeOpacity={0.8}
-            >
-              <HugeiconsIcon icon={PencilEdit01Icon} size={18} color={theme.isDark ? "#0B0E14" : "#FFFFFF"} />
-              <Text style={styles.editProfileText}>Edit Profile</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.verifyBtn,
-                computed.verLabel === "Verified" && styles.verifyBtnVerified,
-                computed.verLabel === "Pending" && styles.verifyBtnPending,
-              ]}
-              onPress={() => {
-                if (computed.verLabel === "Verified" || computed.verLabel === "Pending") return;
-                navigation.navigate("PassengerType");
-              }}
-              activeOpacity={computed.verLabel === "Verified" || computed.verLabel === "Pending" ? 1 : 0.8}
-              disabled={computed.verLabel === "Verified" || computed.verLabel === "Pending"}
-            >
-              <HugeiconsIcon
-                icon={
-                  computed.verLabel === "Verified" ? CheckmarkBadge01Icon :
-                    computed.verLabel === "Pending" ? Clock01Icon :
-                      Shield01Icon
-                }
-                size={18}
-                color={"#0B0E14"}
-              />
-              <Text style={styles.verifyBtnText}>
-                {computed.verLabel === "Verified" ? "Verified ✓" :
-                  computed.verLabel === "Pending" ? "Pending" :
-                    computed.verLabel === "Rejected" ? "Re-upload ID" :
-                      "Verify ID"}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName} numberOfLines={1}>{computed.name}</Text>
+            <Text style={styles.profileEmail} numberOfLines={1}>
+              {profile?.email || profile?.phone || "—"}
+            </Text>
           </View>
         </View>
 
-        {/* Discount Status Indicator */}
-        {computed.passengerType !== "casual" && (
-          <View style={[
-            styles.discountIndicator,
-            computed.discountActive ? styles.discountActive : styles.discountInactive
-          ]}>
-            <View style={styles.discountLeft}>
-              <HugeiconsIcon
-                icon={computed.discountActive ? CheckmarkCircle01Icon : AlertCircleIcon}
-                size={24}
-                color={computed.discountActive ? "#7CFF9B" : "#FFD36A"}
-              />
-              <View style={styles.discountContent}>
-                <Text style={styles.discountTitle}>
-                  {computed.discountActive ? "Discount Active ✅" : "Discount Not Active"}
-                </Text>
-                <Text style={styles.discountText}>
-                  {computed.discountActive
-                    ? `You're receiving ${computed.passengerLabel} discounted fares`
-                    : computed.verLabel === "Pending"
-                      ? "Your verification is pending admin approval"
-                      : "Upload your ID to activate discounted fares"
-                  }
-                </Text>
+        {/* Account Section */}
+        <Text style={styles.sectionLabel}>Account</Text>
+        <View style={styles.menuCard}>
+          <MenuItem
+            icon={UserIcon}
+            title="Manage Profile"
+            onPress={() => navigation.navigate("PersonalInfo", {
+              editMode: true,
+              profile: profile
+            })}
+            theme={theme}
+          />
+          <View style={styles.menuDivider} />
+          <MenuItem
+            icon={LockIcon}
+            title="Password & Security"
+            rightText={account?.pin_set ? "SET" : "NOT SET"}
+            rightColor={account?.pin_set ? theme.success : theme.danger}
+            theme={theme}
+          />
+          <View style={styles.menuDivider} />
+          <MenuItem
+            icon={Notification01Icon}
+            title="Notifications"
+            onPress={() => navigation.navigate("Notifications")}
+            theme={theme}
+          />
+          <View style={styles.menuDivider} />
+          <MenuItem
+            icon={Shield01Icon}
+            title="Verification Status"
+            rightText={computed.verLabel}
+            rightColor={
+              computed.verTone === "good" ? theme.success :
+                computed.verTone === "warn" ? theme.warning : theme.danger
+            }
+            onPress={() => {
+              if (computed.verLabel === "Verified" || computed.verLabel === "Pending") return;
+              navigation.navigate("PassengerType");
+            }}
+            theme={theme}
+          />
+        </View>
+
+        {/* Preferences Section */}
+        <Text style={styles.sectionLabel}>Preferences</Text>
+        <View style={styles.menuCard}>
+          <View style={styles.menuItem}>
+            <View style={styles.menuLeft}>
+              <View style={styles.menuIconWrap}>
+                <HugeiconsIcon icon={Clock01Icon} size={20} color={theme.text} />
               </View>
+              <Text style={styles.menuTitle}>Theme</Text>
             </View>
-            {!computed.discountActive && (
-              <TouchableOpacity
-                style={styles.discountBtn}
-                onPress={() => navigation.navigate("PassengerType")}
-                activeOpacity={0.8}
-              >
-                <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.isDark ? "#0B0E14" : "#FFFFFF"} />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {/* Personal Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          <View style={styles.infoCard}>
-            <InfoRow icon={UserIcon} label="Full Name" value={profile?.full_name} />
-            <InfoRow icon={Mail01Icon} label="Email" value={profile?.email || "—"} />
-            <InfoRow icon={CallIcon} label="Phone" value={profile?.phone || "—"} />
-            <InfoRow icon={Calendar01Icon} label="Birthdate" value={profile?.birthdate || "—"} />
-          </View>
-        </View>
-
-        {/* Address Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Address</Text>
-          <View style={styles.infoCard}>
-            <InfoRow icon={Location01Icon} label="Province" value={profile?.province || "—"} />
-            <InfoRow icon={Building01Icon} label="City/Municipality" value={profile?.city || "—"} />
-            <InfoRow icon={Home01Icon} label="Barangay" value={profile?.barangay || "—"} />
-            <InfoRow icon={Mail01Icon} label="ZIP Code" value={profile?.zip_code || "—"} />
-            <InfoRow icon={MapPinIcon} label="Street Address" value={profile?.address_line || "—"} />
-          </View>
-        </View>
-
-        {/* Account Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account Details</Text>
-          <View style={styles.infoCard}>
-            <InfoRow
-              icon={Shield01Icon}
-              label="Account Status"
-              value={account?.account_active ? "ACTIVE" : "INACTIVE"}
-              valueColor={account?.account_active ? "#7CFF9B" : "#FF7A7A"}
-            />
-            <InfoRow
-              icon={LockIcon}
-              label="MPIN Status"
-              value={account?.pin_set ? "SET" : "NOT SET"}
-              valueColor={account?.pin_set ? "#7CFF9B" : "#FFD36A"}
-            />
-            <InfoRow
-              icon={UserIcon}
-              label="Passenger Type"
-              value={(account?.passenger_type || "casual").toUpperCase()}
-            />
-            <InfoRow
-              icon={CheckmarkBadge01Icon}
-              label="Verification"
-              value={(account?.verification_status || "unverified").toUpperCase()}
-              valueColor={
-                computed.verTone === "good" ? "#7CFF9B" :
-                  computed.verTone === "warn" ? "#FFD36A" : "#FF7A7A"
-              }
-            />
-            {account?.verified_at && (
-              <InfoRow
-                icon={Clock02Icon}
-                label="Verified At"
-                value={new Date(account.verified_at).toLocaleDateString()}
+            <View style={styles.menuRight}>
+              <Text style={styles.menuRightText}>{isDarkMode ? "Dark" : "Light"}</Text>
+              <Switch
+                value={isDarkMode}
+                onValueChange={toggleTheme}
+                trackColor={{ false: theme.border, true: theme.accent }}
+                thumbColor={isDarkMode ? "#ffffff" : "#f4f3f4"}
               />
-            )}
+            </View>
           </View>
+          <View style={styles.menuDivider} />
+          <MenuItem
+            icon={InformationCircleIcon}
+            title="About Us"
+            theme={theme}
+          />
         </View>
 
-        {/* Settings Menu */}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Settings</Text>
-          <View style={styles.menuCard}>
-            <MenuItem
-              icon={DarkModeIcon}
-              title="Darkmode"
-              onPress={toggleTheme}
-              rightComponent={
-                <Switch
-                  value={isDarkMode}
-                  onValueChange={toggleTheme}
-                  trackColor={{ false: theme.border, true: theme.accent }}
-                  thumbColor={theme.isDark ? "#ffffff" : "#f4f3f4"}
-                />
-              }
-            />
-          </View>
-        </View>
-
-        {/* Account Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account Actions</Text>
-
-          <TouchableOpacity
-            style={styles.actionCard}
+        {/* Support Section */}
+        <Text style={styles.sectionLabel}>Support</Text>
+        <View style={styles.menuCard}>
+          <MenuItem
+            icon={SmartphoneWifiIcon}
+            title="Switch Account"
             onPress={() => {
               Alert.alert("Switch number", "Sign out and use a different phone number?", [
                 { text: "Cancel", style: "cancel" },
                 { text: "Switch", style: "destructive", onPress: signOutToPhone },
               ]);
             }}
-            activeOpacity={0.8}
-          >
-            <View style={styles.actionLeft}>
-              <View style={[styles.actionIcon, { backgroundColor: theme.warningBg }]}>
-                <HugeiconsIcon icon={SmartPhone01Icon} size={20} color="#FFD36A" />
-              </View>
-              <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Use different number</Text>
-                <Text style={styles.actionSub}>Switch to another phone number</Text>
-              </View>
-            </View>
-            {<HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.textMuted} />}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionCard, styles.actionCardDanger]}
+            theme={theme}
+          />
+          <View style={styles.menuDivider} />
+          <MenuItem
+            icon={Cancel01Icon}
+            title="Logout"
+            titleColor={theme.danger}
             onPress={() => {
               Alert.alert("Logout", "Are you sure you want to logout?", [
                 { text: "Cancel", style: "cancel" },
                 { text: "Logout", style: "destructive", onPress: signOutToPhone },
               ]);
             }}
-            activeOpacity={0.8}
-          >
-            <View style={styles.actionLeft}>
-              <View style={[styles.actionIcon, { backgroundColor: theme.dangerBg }]}>
-                <HugeiconsIcon icon={Logout01Icon} size={20} color="#FF7A7A" />
-              </View>
-              <View style={styles.actionContent}>
-                <Text style={[styles.actionTitle, { color: theme.danger }]}>Logout</Text>
-                <Text style={styles.actionSub}>Sign out from your account</Text>
-              </View>
-            </View>
-            {<HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.textMuted} />}
-          </TouchableOpacity>
+            theme={theme}
+          />
         </View>
 
         {/* App Version */}
@@ -516,41 +392,69 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
-function InfoRow({ icon, label, value, valueColor }) {
-  const { theme } = useTheme();
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
-  return (
-    <View style={styles.infoRow}>
-      <View style={styles.infoLeft}>
-        <HugeiconsIcon icon={icon || UserIcon} size={18} color={theme.textMuted} />
-        <Text style={styles.infoLabel}>{label}</Text>
-      </View>
-      <Text style={[styles.infoValue, valueColor && { color: valueColor }]}>
-        {value || "—"}
-      </Text>
-    </View>
-  );
-}
-
-function MenuItem({ icon, title, onPress, rightComponent }) {
-  const { theme } = useTheme();
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+function MenuItem({ icon, title, onPress, rightText, rightColor, titleColor, theme }) {
   return (
     <TouchableOpacity
-      style={styles.menuItem}
+      style={menuStyles.item}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={onPress ? 0.7 : 1}
     >
-      <View style={styles.menuLeft}>
-        <HugeiconsIcon icon={icon || UserIcon} size={20} color={theme.text} />
-        <Text style={styles.menuTitle}>{title}</Text>
+      <View style={menuStyles.left}>
+        <View style={[menuStyles.iconWrap, { backgroundColor: theme.isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}>
+          <HugeiconsIcon icon={icon || UserIcon} size={20} color={titleColor || theme.text} />
+        </View>
+        <Text style={[menuStyles.title, { color: titleColor || theme.text }]}>{title}</Text>
       </View>
-      {rightComponent || <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.textMuted} />}
+      <View style={menuStyles.right}>
+        {rightText && (
+          <Text style={[menuStyles.rightText, rightColor && { color: rightColor }]}>
+            {rightText}
+          </Text>
+        )}
+        <HugeiconsIcon icon={ArrowRight01Icon} size={18} color={theme.textMuted} />
+      </View>
     </TouchableOpacity>
   );
 }
 
-const createStyles = (theme) => StyleSheet.create({
+const menuStyles = StyleSheet.create({
+  item: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 52,
+  },
+  left: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    flex: 1,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  right: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  rightText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+});
+
+const createStyles = (theme, isDarkMode) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: theme.background,
@@ -566,8 +470,8 @@ const createStyles = (theme) => StyleSheet.create({
     fontSize: 14,
   },
   content: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingBottom: 120,
   },
 
   // Header
@@ -575,14 +479,16 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 10,
-    marginBottom: 28,
+    paddingTop: 12,
+    marginBottom: 24,
   },
   backBtn: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: theme.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -592,307 +498,143 @@ const createStyles = (theme) => StyleSheet.create({
     fontWeight: "900",
   },
 
-  // Profile Card
-  profileCard: {
-    backgroundColor: theme.card,
-    borderRadius: 24,
-    padding: 24,
+  // Profile row (horizontal profile card like reference)
+  profileRow: {
+    flexDirection: "row",
     alignItems: "center",
+    padding: 20,
+    backgroundColor: theme.card,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: theme.border,
-    marginBottom: 20,
+    marginBottom: 28,
+    gap: 16,
   },
-  avatarContainer: {
-    marginBottom: 16,
+  avatarWrap: {
     position: "relative",
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: theme.successBg,
-    borderWidth: 3,
-    borderColor: theme.success,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: isDarkMode
+      ? "rgba(247, 227, 83, 0.1)"
+      : "rgba(26, 26, 26, 0.06)",
+    borderWidth: 2,
+    borderColor: isDarkMode
+      ? "rgba(247, 227, 83, 0.3)"
+      : "rgba(26, 26, 26, 0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    color: theme.success,
-    fontSize: 28,
+    color: isDarkMode ? theme.accent : theme.primary,
+    fontSize: 22,
     fontWeight: "900",
   },
   avatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    borderColor: theme.success,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: theme.border,
   },
   cameraBadge: {
     position: "absolute",
-    bottom: 0,
-    right: -4,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.success,
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "rgba(30,30,30,0.9)",
+    borderColor: theme.background,
+  },
+  profileInfo: {
+    flex: 1,
   },
   profileName: {
     color: theme.text,
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  profileEmail: {
-    color: theme.textSecondary,
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  badge: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    marginBottom: 20,
-  },
-  badgeText: {
-    color: theme.isDark ? "#0B0E14" : "#fff",
-    fontWeight: "900",
-    fontSize: 12,
-  },
-  badge_good: {
-    backgroundColor: theme.success,
-  },
-  badge_warn: {
-    backgroundColor: theme.warning,
-  },
-  badge_bad: {
-    backgroundColor: theme.danger,
-  },
-  editProfileBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: theme.success,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  editProfileText: {
-    color: theme.isDark ? "#0B0E14" : "#fff",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  profileActions: {
-    flexDirection: "row",
-    gap: 10,
-    width: "100%",
-  },
-  verifyBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: theme.warning,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-  },
-  verifyBtnVerified: {
-    backgroundColor: theme.success,
-    opacity: 0.7,
-  },
-  verifyBtnPending: {
-    backgroundColor: theme.warning,
-    opacity: 0.7,
-  },
-  verifyBtnText: {
-    color: theme.isDark ? "#0B0E14" : "#fff",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-
-
-  // Discount Indicator
-  discountIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 2,
-  },
-  discountActive: {
-    backgroundColor: theme.successBg,
-    borderColor: theme.success,
-  },
-  discountInactive: {
-    backgroundColor: theme.warningBg,
-    borderColor: theme.warning,
-  },
-  discountLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1,
-  },
-  discountContent: {
-    flex: 1,
-  },
-  discountTitle: {
-    color: theme.text,
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: "900",
     marginBottom: 4,
   },
-  discountText: {
-    color: theme.textSecondary,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  discountBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.warning,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  // Sections
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
+  profileEmail: {
     color: theme.textSecondary,
     fontSize: 13,
+  },
+
+  // Section labels
+  sectionLabel: {
+    color: theme.textMuted,
+    fontSize: 12,
     fontWeight: "700",
-    marginBottom: 12,
-    textTransform: "uppercase",
     letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 10,
+    marginLeft: 4,
   },
 
-  // Info Card
-  infoCard: {
-    backgroundColor: theme.card,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: theme.border,
-    overflow: "hidden",
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    minHeight: 52,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  infoLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flexShrink: 0,
-    paddingTop: 1,
-  },
-  infoLabel: {
-    color: theme.textSecondary,
-    fontSize: 14,
-  },
-  infoValue: {
-    color: theme.text,
-    fontSize: 14,
-    fontWeight: "700",
-    flex: 1,
-    textAlign: "right",
-    flexWrap: "wrap",
-    paddingLeft: 12,
-  },
-
-  // Menu Card
+  // Menu card
   menuCard: {
     backgroundColor: theme.card,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: theme.border,
+    marginBottom: 24,
     overflow: "hidden",
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: theme.border,
+    marginLeft: 66,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 52,
   },
   menuLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-  },
-  menuTitle: {
-    color: theme.text,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-
-  // Actions
-  actionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: theme.card,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-  },
-  actionCardDanger: {
-    backgroundColor: theme.dangerBg,
-    borderColor: theme.dangerBg,
-  },
-  actionLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    gap: 14,
     flex: 1,
   },
-  actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  menuIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
     alignItems: "center",
     justifyContent: "center",
   },
-  actionContent: {
-    flex: 1,
-  },
-  actionTitle: {
+  menuTitle: {
     color: theme.text,
     fontSize: 15,
-    fontWeight: "800",
-    marginBottom: 4,
+    fontWeight: "600",
   },
-  actionSub: {
-    color: theme.textSecondary,
-    fontSize: 12,
+  menuRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  menuRightText: {
+    color: theme.textMuted,
+    fontSize: 13,
+    fontWeight: "600",
   },
 
   // Version
   versionText: {
+    textAlign: "center",
     color: theme.textMuted,
     fontSize: 12,
-    textAlign: "center",
-    marginTop: 12,
+    marginTop: 8,
+    marginBottom: 20,
   },
 });

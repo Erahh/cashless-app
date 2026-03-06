@@ -15,7 +15,6 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, RefreshIcon, ArrowRight01Icon, MoreVerticalCircle01Icon, Notification03Icon } from "@hugeicons/core-free-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchNotifications, deleteNotification, clearNotifications } from "../api/notificationsApi";
-import BottomNav from "../components/BottomNav";
 import { useTheme } from "../context/ThemeContext";
 
 function normalizePayload(payload) {
@@ -268,7 +267,6 @@ export default function NotificationsScreen({ navigation }) {
         </TouchableWithoutFeedback>
       </Modal>
 
-      <BottomNav navigation={navigation} active="Alerts" />
     </SafeAreaView>
   );
 }

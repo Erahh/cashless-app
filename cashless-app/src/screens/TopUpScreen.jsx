@@ -41,63 +41,60 @@ export default function TopUpScreen({ navigation }) {
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={{ flex: 1 }}
         >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <Screen title="Top Up" subtitle="Add funds to your wallet using GCash.">
-                    <ScrollView
-                        contentContainerStyle={{ flexGrow: 1 }}
-                        keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={false}
-                    >
-                        <Card>
-                            <Pill text="GCash / PayMongo" />
+            <Screen title="Top Up" subtitle="Add funds to your wallet using GCash.">
+                <ScrollView
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <Card>
+                        <Pill text="GCash / PayMongo" />
 
-                            <Text style={s.label}>Amount (PHP)</Text>
-                            <TextInput
-                                value={amount}
-                                onChangeText={setAmount}
-                                keyboardType="numeric"
-                                placeholder="e.g. 100"
-                                placeholderTextColor="rgba(244,238,230,0.35)"
-                                style={s.amountInput}
-                            />
+                        <Text style={s.label}>Amount (PHP)</Text>
+                        <TextInput
+                            value={amount}
+                            onChangeText={setAmount}
+                            keyboardType="numeric"
+                            placeholder="e.g. 100"
+                            placeholderTextColor="rgba(244,238,230,0.35)"
+                            style={s.amountInput}
+                        />
 
-                            {/* ✅ Quick Amount Presets */}
-                            <Text style={s.presetLabel}>Quick Select</Text>
-                            <View style={s.presetsRow}>
-                                {PRESETS.map((val) => (
-                                    <TouchableOpacity
-                                        key={val}
+                        {/* ✅ Quick Amount Presets */}
+                        <Text style={s.presetLabel}>Quick Select</Text>
+                        <View style={s.presetsRow}>
+                            {PRESETS.map((val) => (
+                                <TouchableOpacity
+                                    key={val}
+                                    style={[
+                                        s.presetBtn,
+                                        Number(amount) === val && s.presetBtnActive,
+                                    ]}
+                                    activeOpacity={0.8}
+                                    onPress={() => setAmount(String(val))}
+                                >
+                                    <Text
                                         style={[
-                                            s.presetBtn,
-                                            Number(amount) === val && s.presetBtnActive,
+                                            s.presetText,
+                                            Number(amount) === val && s.presetTextActive,
                                         ]}
-                                        activeOpacity={0.8}
-                                        onPress={() => setAmount(String(val))}
                                     >
-                                        <Text
-                                            style={[
-                                                s.presetText,
-                                                Number(amount) === val && s.presetTextActive,
-                                            ]}
-                                        >
-                                            ₱{val.toLocaleString()}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
-                            <Text style={s.hint}>
-                                Minimum amount is ₱20.00
-                            </Text>
-                        </Card>
-
-                        <View style={{ marginTop: "auto", gap: 10, paddingBottom: 18, paddingTop: 20 }}>
-                            <PrimaryButton label="Continue to GCash" onPress={startTopup} />
-                            <GhostButton label="Cancel" onPress={() => navigation.goBack()} />
+                                        ₱{val.toLocaleString()}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
                         </View>
-                    </ScrollView>
-                </Screen>
-            </TouchableWithoutFeedback>
+
+                        <Text style={s.hint}>
+                            Minimum amount is ₱20.00
+                        </Text>
+                    </Card>
+
+                    <View style={{ marginTop: "auto", gap: 10, paddingBottom: 110, paddingTop: 20 }}>
+                        <PrimaryButton label="Continue to GCash" onPress={startTopup} />
+                    </View>
+                </ScrollView>
+            </Screen>
         </KeyboardAvoidingView>
     );
 }

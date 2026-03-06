@@ -15,7 +15,6 @@ import QRCode from "react-native-qrcode-svg";
 import { supabase } from "../api/supabase";
 import { API_BASE_URL } from "../config/api";
 import QuickActions from "../components/QuickActions";
-import BottomNav from "../components/BottomNav";
 import { useTheme } from "../context/ThemeContext";
 
 export default function MyQRScreen({ navigation }) {
@@ -149,8 +148,6 @@ export default function MyQRScreen({ navigation }) {
 
         <View style={{ height: 140 }} />
       </ScrollView>
-
-      <BottomNav navigation={navigation} active="MyQR" />
     </SafeAreaView>
   );
 }
@@ -160,6 +157,7 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 20,
+    paddingBottom: 160,
     // explicitly NOT alignItems: "center" here to fix horizontal scrollview touch intercept issue
   },
 

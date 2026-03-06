@@ -295,6 +295,7 @@ const styles = StyleSheet.create({
     },
     listContent: {
         flexGrow: 1,
+        paddingBottom: 120,
     },
     listSectionTitle: {
         fontSize: 16,

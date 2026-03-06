@@ -5,31 +5,40 @@ import { Home01Icon, WalletAdd01Icon, InvoiceIcon, UserIcon, QrCodeIcon } from "
 import { useTheme } from "../context/ThemeContext";
 
 export default function BottomNav({
+  state,
   navigation,
   active = "Home",
   centerRoute = "MyQR",
-}) {
-  const { theme } = useTheme();
-
-  const go = (route) => {
-    if (!navigation || !route) return;
-    navigation.navigate(route);
-  };
-
-  const tabs = [
+  tabs = [
     { key: "Home", label: "Home", icon: Home01Icon, route: "Home" },
     { key: "Wallet", label: "Wallet", icon: WalletAdd01Icon, route: "Balance" },
     { key: "History", label: "History", icon: InvoiceIcon, route: "Transactions" },
     { key: "Profile", label: "Profile", icon: UserIcon, route: "Profile" },
-  ];
+  ],
+  centerIcon = QrCodeIcon,
+  onNavigate
+}) {
+  const { theme } = useTheme();
+
+  // If used as a custom React Navigation tabBar, use the state to determine active route
+  const currentRoute = state ? state.routes[state.index].name : active;
+
+  const go = (route) => {
+    if (onNavigate) {
+      onNavigate(route);
+      return;
+    }
+    if (!navigation || !route) return;
+    navigation.navigate(route);
+  };
 
   return (
     <View style={styles.wrap} pointerEvents="box-none">
       <View style={[styles.bar, { backgroundColor: theme.bottomNavBg, borderColor: theme.border }]}>
         {/* Left 2 */}
         <View style={[styles.side, { left: 10 }]}>
-          <TabItem item={tabs[0]} active={active} theme={theme} onPress={() => go(tabs[0].route)} />
-          <TabItem item={tabs[1]} active={active} theme={theme} onPress={() => go(tabs[1].route)} />
+          <TabItem item={tabs[0]} active={currentRoute} theme={theme} onPress={() => go(tabs[0].route)} />
+          <TabItem item={tabs[1]} active={currentRoute} theme={theme} onPress={() => go(tabs[1].route)} />
         </View>
 
         {/* Center Spacer (reserve space for FAB so tabs don't squeeze) */}
@@ -37,8 +46,8 @@ export default function BottomNav({
 
         {/* Right 2 */}
         <View style={[styles.side, { right: 10 }]}>
-          <TabItem item={tabs[2]} active={active} theme={theme} onPress={() => go(tabs[2].route)} />
-          <TabItem item={tabs[3]} active={active} theme={theme} onPress={() => go(tabs[3].route)} />
+          <TabItem item={tabs[2]} active={currentRoute} theme={theme} onPress={() => go(tabs[2].route)} />
+          <TabItem item={tabs[3]} active={currentRoute} theme={theme} onPress={() => go(tabs[3].route)} />
         </View>
 
         {/* Floating FAB */}
@@ -47,7 +56,7 @@ export default function BottomNav({
           onPress={() => go(centerRoute)}
           style={[styles.fab, { backgroundColor: theme.accent }]}
         >
-          <HugeiconsIcon icon={QrCodeIcon} size={24} color={theme.isDark ? '#0B0E14' : '#1A1A1A'} />
+          <HugeiconsIcon icon={centerIcon} size={24} color={theme.isDark ? '#0B0E14' : '#1A1A1A'} />
         </TouchableOpacity>
       </View>
     </View>
@@ -55,7 +64,7 @@ export default function BottomNav({
 }
 
 function TabItem({ item, active, onPress, theme }) {
-  const isActive = active === item.key;
+  const isActive = active === item.key || active === item.route;
 
   // Icon and Box colors:
   // Active: Yellow background with dark icon (matches reference image)

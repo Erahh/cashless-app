@@ -334,7 +334,7 @@ export default function OperatorEarningsScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0B0E14" },
   scroll: { flex: 1 },
-  content: { padding: 18, paddingBottom: 80 },
+  content: { padding: 18, paddingBottom: 120 },
 
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 

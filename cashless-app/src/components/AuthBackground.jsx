@@ -1,23 +1,41 @@
 import React from "react";
-import { SafeAreaView, StyleSheet, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { StyleSheet, View, StatusBar, Platform } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 
 export default function AuthBackground({ children }) {
+    const { theme, isDarkMode } = useTheme();
+
     return (
-        <LinearGradient
-            colors={["#241A0A", "#0B0E14"]}
-            start={{ x: 0.2, y: 0 }}
-            end={{ x: 0.8, y: 1 }}
-            style={{ flex: 1 }}
-        >
+        <View style={[styles.root, { backgroundColor: theme.background }]}>
+            <StatusBar
+                barStyle={isDarkMode ? "light-content" : "dark-content"}
+                backgroundColor={theme.background}
+                translucent={false}
+            />
+            {/* Subtle decorative glow */}
+            <View style={[styles.glowCircle, {
+                backgroundColor: isDarkMode
+                    ? "rgba(247, 227, 83, 0.04)"
+                    : "rgba(247, 227, 83, 0.08)",
+            }]} />
             <SafeAreaView style={styles.safe}>
                 <View style={styles.wrap}>{children}</View>
             </SafeAreaView>
-        </LinearGradient>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    root: { flex: 1 },
     safe: { flex: 1 },
-    wrap: { flex: 1, padding: 20, paddingTop: 26 },
+    wrap: { flex: 1, paddingHorizontal: 24, paddingTop: 20 },
+    glowCircle: {
+        position: "absolute",
+        top: -120,
+        right: -80,
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+    },
 });

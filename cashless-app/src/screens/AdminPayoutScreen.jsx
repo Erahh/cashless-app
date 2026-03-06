@@ -80,7 +80,7 @@ export default function AdminPayoutScreen({ navigation }) {
           <Text style={{ color: "rgba(255,255,255,0.7)", marginTop: 10 }}>Loading…</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
           {data.items.length === 0 ? (
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No unpaid settlements</Text>

@@ -322,6 +322,7 @@ const styles = StyleSheet.create({
 
   bottomSheet: {
     padding: 18,
+    paddingBottom: 110,
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.08)",
     backgroundColor: "rgba(11,14,20,0.98)",

@@ -6,6 +6,7 @@ export const AppLockContext = createContext();
 
 export function AppLockProvider({ children }) {
   const [locked, setLocked] = useState(false);
+  const [lockSuppressed, setLockSuppressed] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -36,7 +37,7 @@ export function AppLockProvider({ children }) {
   }, []);
 
   return (
-    <AppLockContext.Provider value={{ locked, setLocked }}>
+    <AppLockContext.Provider value={{ locked, setLocked, lockSuppressed, setLockSuppressed }}>
       {children}
     </AppLockContext.Provider>
   );

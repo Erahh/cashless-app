@@ -31,7 +31,7 @@ export default function ProfileScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [account, setAccount] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const { setLocked } = useContext(AppLockContext);
+  const { setLocked, setLockSuppressed } = useContext(AppLockContext);
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
 
@@ -141,6 +141,7 @@ export default function ProfileScreen({ navigation }) {
           }
           return Alert.alert("Permission Required", "Camera access is needed to take a photo.");
         }
+        setLockSuppressed(true);
         result = await ImagePicker.launchCameraAsync({
           mediaTypes: ["images"],
           allowsEditing: true,
@@ -163,6 +164,7 @@ export default function ProfileScreen({ navigation }) {
           }
           return Alert.alert("Permission Required", "Photo library access is needed.");
         }
+        setLockSuppressed(true);
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ["images"],
           allowsEditing: true,
@@ -172,7 +174,13 @@ export default function ProfileScreen({ navigation }) {
         });
       }
 
-      if (result.canceled || !result.assets?.[0]) return;
+      if (result.canceled || !result.assets?.[0]) {
+        setLockSuppressed(false);
+        return;
+      }
+
+      // Keep suppressed until we start the upload or finish processing
+      // but actually finally block handles it better.
 
       const asset = result.assets[0];
       const ext = (asset.uri || "").split(".").pop()?.toLowerCase();
@@ -209,6 +217,7 @@ export default function ProfileScreen({ navigation }) {
       Alert.alert("Upload Failed", e.message || "Failed to upload photo.");
     } finally {
       setUploading(false);
+      setTimeout(() => setLockSuppressed(false), 1000);
     }
   };
 

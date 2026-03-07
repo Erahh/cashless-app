@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
     View,
     Text,
@@ -15,8 +15,10 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, ArrowRight01Icon, Camera01Icon, Image01Icon, CheckmarkCircle01Icon, IdeaIcon } from "@hugeicons/core-free-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
+import { AppLockContext } from "../../context/AppLockContext";
 
 export default function UploadFrontIDScreen({ navigation, route }) {
+    const { setLockSuppressed } = useContext(AppLockContext);
     const { theme, isDarkMode } = useTheme();
     const styles = getStyles(theme);
     const { passenger_type } = route.params || {};
@@ -29,14 +31,20 @@ export default function UploadFrontIDScreen({ navigation, route }) {
             return Alert.alert("Permission needed", "Please allow access to your photos.");
         }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 0.8,
-        });
+        setLockSuppressed(true);
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+            });
 
-        if (!result.canceled && result.assets?.[0]?.uri) {
-            setFrontImage(result.assets[0].uri);
+            if (!result.canceled && result.assets?.[0]?.uri) {
+                setFrontImage(result.assets[0].uri);
+            }
+        } finally {
+            // Give 1 second delay before re-enabling lock lock to ensure app is active
+            setTimeout(() => setLockSuppressed(false), 1000);
         }
     };
 
@@ -46,13 +54,18 @@ export default function UploadFrontIDScreen({ navigation, route }) {
             return Alert.alert("Permission needed", "Please allow access to your camera.");
         }
 
-        const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            quality: 0.8,
-        });
+        setLockSuppressed(true);
+        try {
+            const result = await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                quality: 0.8,
+            });
 
-        if (!result.canceled && result.assets?.[0]?.uri) {
-            setFrontImage(result.assets[0].uri);
+            if (!result.canceled && result.assets?.[0]?.uri) {
+                setFrontImage(result.assets[0].uri);
+            }
+        } finally {
+            setTimeout(() => setLockSuppressed(false), 1000);
         }
     };
 

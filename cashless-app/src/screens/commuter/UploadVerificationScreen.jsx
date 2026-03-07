@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -16,10 +16,12 @@ import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, Camera01Icon, CheckmarkCircle01Icon, Shield01Icon } from "@hugeicons/core-free-icons";
+import { AppLockContext } from "../../context/AppLockContext";
 
 const { width } = Dimensions.get("window");
 
 export default function UploadVerificationScreen({ navigation, route }) {
+  const { setLockSuppressed } = useContext(AppLockContext);
   // passenger_type passed from PassengerType flow: "student" or "senior"
   const passengerType = route?.params?.passenger_type;
 
@@ -33,15 +35,20 @@ export default function UploadVerificationScreen({ navigation, route }) {
       return Alert.alert("Permission needed", "Allow gallery access to upload ID.");
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'], // Updated from deprecated MediaTypeOptions.Images
-      allowsEditing: true,
-      quality: 0.8,
-      base64: true, // Request base64 for backend upload
-    });
+    setLockSuppressed(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'], // Updated from deprecated MediaTypeOptions.Images
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true, // Request base64 for backend upload
+      });
 
-    if (!result.canceled) {
-      setFn(result.assets[0]);
+      if (!result.canceled) {
+        setFn(result.assets[0]);
+      }
+    } finally {
+      setTimeout(() => setLockSuppressed(false), 1000);
     }
   };
 

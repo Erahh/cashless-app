@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
     View,
     Text,
@@ -17,8 +17,10 @@ import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
 import { useTheme } from "../../context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
+import { AppLockContext } from "../../context/AppLockContext";
 
 export default function UploadBackIDScreen({ navigation, route }) {
+    const { setLockSuppressed } = useContext(AppLockContext);
     const { theme, isDarkMode } = useTheme();
     const styles = getStyles(theme);
     const { passenger_type, frontImage } = route.params || {};
@@ -31,14 +33,19 @@ export default function UploadBackIDScreen({ navigation, route }) {
             return Alert.alert("Permission needed", "Please allow access to your photos.");
         }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 0.8,
-        });
+        setLockSuppressed(true);
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+            });
 
-        if (!result.canceled && result.assets?.[0]?.uri) {
-            setBackImage(result.assets[0].uri);
+            if (!result.canceled && result.assets?.[0]?.uri) {
+                setBackImage(result.assets[0].uri);
+            }
+        } finally {
+            setTimeout(() => setLockSuppressed(false), 1000);
         }
     };
 
@@ -48,13 +55,18 @@ export default function UploadBackIDScreen({ navigation, route }) {
             return Alert.alert("Permission needed", "Please allow access to your camera.");
         }
 
-        const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            quality: 0.8,
-        });
+        setLockSuppressed(true);
+        try {
+            const result = await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                quality: 0.8,
+            });
 
-        if (!result.canceled && result.assets?.[0]?.uri) {
-            setBackImage(result.assets[0].uri);
+            if (!result.canceled && result.assets?.[0]?.uri) {
+                setBackImage(result.assets[0].uri);
+            }
+        } finally {
+            setTimeout(() => setLockSuppressed(false), 1000);
         }
     };
 

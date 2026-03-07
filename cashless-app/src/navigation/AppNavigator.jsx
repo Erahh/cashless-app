@@ -2,16 +2,16 @@ import React, { useContext } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AppLockContext } from "../context/AppLockContext";
 
-import AuthGateScreen from "../screens/AuthGateScreen";
-import PhoneScreen from "../screens/PhoneScreen";
-import OTPScreen from "../screens/OTPScreen";
-import PersonalInfoScreen from "../screens/PersonalInfoScreen";
-import ReviewInfoScreen from "../screens/ReviewInfoScreen";
-import MPINSetupScreen from "../screens/MPINSetupScreen";
-import ActivatedScreen from "../screens/ActivatedScreen";
-import MPINUnlockScreen from "../screens/MPINUnlockScreen";
+import AuthGateScreen from "../screens/auth/AuthGateScreen";
+import PhoneScreen from "../screens/auth/PhoneScreen";
+import OTPScreen from "../screens/auth/OTPScreen";
+import PersonalInfoScreen from "../screens/common/PersonalInfoScreen";
+import ReviewInfoScreen from "../screens/auth/ReviewInfoScreen";
+import MPINSetupScreen from "../screens/auth/MPINSetupScreen";
+import ActivatedScreen from "../screens/auth/ActivatedScreen";
+import MPINUnlockScreen from "../screens/auth/MPINUnlockScreen";
 
-import RoleGateScreen from "../screens/RoleGateScreen";
+import RoleGateScreen from "../screens/auth/RoleGateScreen";
 import CommuterNavigator from "./CommuterNavigator";
 import OperatorNavigator from "./OperatorNavigator";
 import AdminNavigator from "./AdminNavigator";

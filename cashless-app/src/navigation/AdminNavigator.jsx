@@ -6,15 +6,15 @@ import BottomNav from "../components/BottomNav";
 import { InnerNavProvider, useInnerNav } from "../context/InnerNavContext";
 import { Home01Icon, CheckmarkCircle01Icon, MoneySend01Icon, UserIcon, Bus01Icon } from "@hugeicons/core-free-icons";
 
-import AdminDashboardScreen from "../screens/AdminDashboardScreen";
-import AdminVerificationScreen from "../screens/AdminVerificationScreen";
-import AdminVerificationDetailScreen from "../screens/AdminVerificationDetailScreen";
-import AdminSettlementsScreen from "../screens/AdminSettlementsScreen";
-import AdminCreateOperatorScreen from "../screens/AdminCreateOperatorScreen";
-import AdminPayoutScreen from "../screens/AdminPayoutScreen";
+import AdminDashboardScreen from "../screens/admin/AdminDashboardScreen";
+import AdminVerificationScreen from "../screens/admin/AdminVerificationScreen";
+import AdminVerificationDetailScreen from "../screens/admin/AdminVerificationDetailScreen";
+import AdminSettlementsScreen from "../screens/admin/AdminSettlementsScreen";
+import AdminCreateOperatorScreen from "../screens/admin/AdminCreateOperatorScreen";
+import AdminPayoutScreen from "../screens/admin/AdminPayoutScreen";
 
-import NotificationsScreen from "../screens/NotificationsScreen";
-import ProfileScreen from "../screens/ProfileScreen";
+import NotificationsScreen from "../screens/common/NotificationsScreen";
+import ProfileScreen from "../screens/common/ProfileScreen";
 
 const Stack = createNativeStackNavigator();
 

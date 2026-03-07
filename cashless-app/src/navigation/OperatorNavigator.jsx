@@ -6,13 +6,13 @@ import BottomNav from "../components/BottomNav";
 import { InnerNavProvider, useInnerNav } from "../context/InnerNavContext";
 import { QrCodeIcon, Notification01Icon, UserIcon, ScanIcon, InvoiceIcon } from "@hugeicons/core-free-icons";
 
-import OperatorScanScreen from "../screens/OperatorScanScreen";
-import OperatorSetupScreen from "../screens/OperatorSetupScreen";
-import OperatorEarningsScreen from "../screens/OperatorEarningsScreen";
-import OperatorMyQRScreen from "../screens/OperatorMyQRScreen";
+import OperatorScanScreen from "../screens/operator/OperatorScanScreen";
+import OperatorSetupScreen from "../screens/operator/OperatorSetupScreen";
+import OperatorEarningsScreen from "../screens/operator/OperatorEarningsScreen";
+import OperatorMyQRScreen from "../screens/operator/OperatorMyQRScreen";
 
-import NotificationsScreen from "../screens/NotificationsScreen";
-import ProfileScreen from "../screens/ProfileScreen";
+import NotificationsScreen from "../screens/common/NotificationsScreen";
+import ProfileScreen from "../screens/common/ProfileScreen";
 
 const Stack = createNativeStackNavigator();
 

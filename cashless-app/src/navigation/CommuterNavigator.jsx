@@ -5,32 +5,32 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import BottomNav from "../components/BottomNav";
 import { InnerNavProvider, useInnerNav } from "../context/InnerNavContext";
 
-import HomeScreen from "../screens/HomeScreen";
-import BalanceScreen from "../screens/BalanceScreen";
-import TransactionsScreen from "../screens/TransactionsScreen";
-import ProfileScreen from "../screens/ProfileScreen";
-import MyQRScreen from "../screens/MyQRScreen";
+import HomeScreen from "../screens/common/HomeScreen";
+import BalanceScreen from "../screens/commuter/BalanceScreen";
+import TransactionsScreen from "../screens/commuter/TransactionsScreen";
+import ProfileScreen from "../screens/common/ProfileScreen";
+import MyQRScreen from "../screens/commuter/MyQRScreen";
 
-import CommuterScanScreen from "../screens/CommuterScanScreen";
-import PayConfirmScreen from "../screens/PayConfirmScreen";
-import NFCTapPayScreen from "../screens/NFCTapPayScreen";
-import RegisterRFIDScreen from "../screens/RegisterRFIDScreen";
-import TopUpCheckoutScreen from "../screens/TopUpCheckoutScreen";
-import TopUpScreen from "../screens/TopUpScreen";
+import CommuterScanScreen from "../screens/commuter/CommuterScanScreen";
+import PayConfirmScreen from "../screens/commuter/PayConfirmScreen";
+import NFCTapPayScreen from "../screens/commuter/NFCTapPayScreen";
+import RegisterRFIDScreen from "../screens/commuter/RegisterRFIDScreen";
+import TopUpCheckoutScreen from "../screens/commuter/TopUpCheckoutScreen";
+import TopUpScreen from "../screens/commuter/TopUpScreen";
 
-import PassengerTypeScreen from "../screens/PassengerTypeScreen";
-import DiscountInfoScreen from "../screens/DiscountInfoScreen";
-import UploadFrontIDScreen from "../screens/UploadFrontIDScreen";
-import UploadBackIDScreen from "../screens/UploadBackIDScreen";
-import UploadVerificationScreen from "../screens/UploadVerificationScreen";
-import VerificationSubmittedScreen from "../screens/VerificationSubmittedScreen";
+import PassengerTypeScreen from "../screens/commuter/PassengerTypeScreen";
+import DiscountInfoScreen from "../screens/commuter/DiscountInfoScreen";
+import UploadFrontIDScreen from "../screens/commuter/UploadFrontIDScreen";
+import UploadBackIDScreen from "../screens/commuter/UploadBackIDScreen";
+import UploadVerificationScreen from "../screens/commuter/UploadVerificationScreen";
+import VerificationSubmittedScreen from "../screens/commuter/VerificationSubmittedScreen";
 
-import GuardianLinkScreen from "../screens/GuardianLinkScreen";
-import FriendsMapScreen from "../screens/FriendsMapScreen";
-import AddFriendScreen from "../screens/AddFriendScreen";
-import PersonalInfoScreen from "../screens/PersonalInfoScreen";
-import SendLoadScreen from "../screens/SendLoadScreen";
-import NotificationsScreen from "../screens/NotificationsScreen";
+import GuardianLinkScreen from "../screens/commuter/GuardianLinkScreen";
+import FriendsMapScreen from "../screens/commuter/FriendsMapScreen";
+import AddFriendScreen from "../screens/commuter/AddFriendScreen";
+import PersonalInfoScreen from "../screens/common/PersonalInfoScreen";
+import SendLoadScreen from "../screens/commuter/SendLoadScreen";
+import NotificationsScreen from "../screens/common/NotificationsScreen";
 
 const Stack = createNativeStackNavigator();
 

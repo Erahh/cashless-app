@@ -149,7 +149,7 @@ export default function AdminVerificationDetailScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
     </SafeAreaView>
   );

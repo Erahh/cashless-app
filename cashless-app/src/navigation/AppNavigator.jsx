@@ -12,6 +12,8 @@ import ActivatedScreen from "../screens/auth/ActivatedScreen";
 import MPINUnlockScreen from "../screens/auth/MPINUnlockScreen";
 
 import RoleGateScreen from "../screens/auth/RoleGateScreen";
+import RoleSelectionScreen from "../screens/auth/RoleSelectionScreen";
+import OperatorCodeScreen from "../screens/auth/OperatorCodeScreen";
 import CommuterNavigator from "./CommuterNavigator";
 import OperatorNavigator from "./OperatorNavigator";
 import AdminNavigator from "./AdminNavigator";
@@ -34,7 +36,9 @@ export default function AppNavigator() {
         <>
           {/* AUTH FLOW */}
           <Stack.Screen name="AuthGate" component={AuthGateScreen} />
+          <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
           <Stack.Screen name="PhoneScreen" component={PhoneScreen} />
+          <Stack.Screen name="OperatorCode" component={OperatorCodeScreen} />
           <Stack.Screen name="OTPScreen" component={OTPScreen} />
 
           {/* REGISTRATION */}

@@ -22,19 +22,21 @@ import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
-// ✅ Helper to normalize PH phone to E.164 format
+// ✅ Helper to normalize PH phone to E.164 format (+639...)
 function normalizePH(phone) {
-  const p = (phone || "").trim();
+  let p = (phone || "").trim();
   if (!p) return "";
-  if (p.startsWith("+")) return "+" + p.slice(1).replace(/[^\d]/g, "");
+  // Strip everything except + and digits
+  p = p.replace(/[^\d+]/g, "");
   if (p.startsWith("09")) return "+63" + p.slice(1);
-  if (p.startsWith("9")) return "+63" + p;
+  if (p.startsWith("9") && p.length === 10) return "+63" + p;
+  if (p.startsWith("+63") === false && p.length === 10) return "+63" + p;
   return p;
 }
 
 export default function OTPScreen({ navigation, route }) {
-  const rawPhone = route?.params?.phone;
-  const phone = normalizePH(rawPhone);
+  const { phone: rawPhone, isLogin, registrationData } = route.params || {};
+  const phone = useMemo(() => normalizePH(rawPhone), [rawPhone]);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -45,6 +47,13 @@ export default function OTPScreen({ navigation, route }) {
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const inputRef = useRef(null);
+
+  // Auto-send OTP if it's a signup (Login flow already sends it in PhoneScreen)
+  useEffect(() => {
+    if (isLogin === false && phone) {
+      resend(); // Sends initial OTP
+    }
+  }, []);
 
   // Auto-submit when 6 digits are entered
   useEffect(() => {
@@ -71,20 +80,41 @@ export default function OTPScreen({ navigation, route }) {
 
       setVerifying(true);
       setErrorMsg("");
-      Keyboard.dismiss();
+      console.log(`[OTP] Verifying code ${codeToVerify} for phone ${phone}`);
 
-      const { error } = await supabase.auth.verifyOtp({
+      const { data: authData, error } = await supabase.auth.verifyOtp({
         phone,
         token: codeToVerify,
         type: "sms",
       });
-      if (error) throw error;
 
-      // Register device
+      if (error) {
+        console.error("[OTP] Supabase verifyOtp error:", error);
+        throw error;
+      }
+
+      console.log("[OTP] Auth success, session in progress...");
+      const accessToken = authData?.session?.access_token;
+      if (!accessToken) throw new Error("Verification failed: No session established.");
+
+      // If Signup flow, call finalize-registration on backend
+      if (registrationData) {
+        const resp = await fetch(`${API_BASE_URL}/auth/finalize-registration`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(registrationData),
+        });
+
+        const json = await resp.json();
+        if (!resp.ok) throw new Error(json.error || "Failed to finalize registration");
+      }
+
+      // Register device (async)
       (async () => {
         try {
-          const { data: session } = await supabase.auth.getSession();
-          const accessToken = session?.session?.access_token;
           if (accessToken) {
             const res = await fetch(`${API_BASE_URL}/me/register-device`, {
               method: "POST",
@@ -105,10 +135,11 @@ export default function OTPScreen({ navigation, route }) {
 
       navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
     } catch (e) {
-      setErrorMsg("Invalid OTP. Please try again.");
+      setErrorMsg(e.message || "Invalid OTP. Please try again.");
       setOtp("");
       triggerShake();
-      inputRef.current?.focus();
+      setVerifying(false); // Make editable before focusing
+      setTimeout(() => inputRef.current?.focus(), 100);
     } finally {
       setVerifying(false);
     }
@@ -119,9 +150,12 @@ export default function OTPScreen({ navigation, route }) {
       if (!phone) return Alert.alert("Error", "Missing phone number.");
       setResending(true);
       setErrorMsg("");
+      setOtp(""); // Clear current entry so they can type the new one
       const { error } = await supabase.auth.signInWithOtp({ phone });
       if (error) throw error;
       Alert.alert("Success", "OTP resent successfully!");
+      // Refocus input
+      inputRef.current?.focus();
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to resend OTP");
     } finally {
@@ -354,8 +388,8 @@ const createStyles = (theme) =>
       borderRadius: 1,
     },
     hiddenInput: {
-      width: 0,
-      height: 0,
+      width: 1,
+      height: 1,
       opacity: 0,
       position: "absolute",
     },

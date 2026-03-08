@@ -202,72 +202,61 @@ export default function PersonalInfoScreen({ navigation, route }) {
     const msg = validate();
     if (msg) return Alert.alert("Missing info", msg);
 
-    setLoading(true);
-    try {
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      if (authErr) throw authErr;
+    if (editMode) {
+      setLoading(true);
+      try {
+        const { data: authData, error: authErr } = await supabase.auth.getUser();
+        if (authErr) throw authErr;
 
-      const user = authData?.user;
-      const userId = user?.id;
-      if (!userId) throw new Error("Not logged in. Please login again.");
+        const userId = authData?.user?.id;
+        if (!userId) throw new Error("Not logged in.");
 
-      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-      if (sessionErr) throw sessionErr;
+        const profilePayload = {
+          id: userId,
+          first_name: firstName.trim(),
+          middle_name: middleName.trim() || null,
+          last_name: lastName.trim(),
+          full_name: fullName || null,
+          birthdate: toISODateOnly(birthdateObj),
+          email: email.trim() || null,
+          province: province.trim(),
+          city: city.trim(),
+          barangay: barangay.trim(),
+          zip_code: zipCode.trim() || null,
+          address_line: addressLine.trim(),
+        };
 
-      const phone = getPhoneFromUserOrSession(user, sessionData?.session?.user);
-      if (!phone) throw new Error("Phone number not found. Please login again.");
+        const { error: profileErr } = await supabase.from("profiles").upsert(profilePayload);
+        if (profileErr) throw profileErr;
 
-      const profilePayload = {
-        id: userId,
-        phone: phone.trim(),
-        first_name: firstName.trim(),
-        middle_name: middleName.trim() || null,
-        last_name: lastName.trim(),
-        full_name: fullName || null,
-        birthdate: toISODateOnly(birthdateObj),
-        email: email.trim() || null,
-        province: province.trim(),
-        city: city.trim(),
-        barangay: barangay.trim(),
-        zip_code: zipCode.trim() || null,
-        address_line: addressLine.trim(),
-      };
-
-      const { error: profileErr } = await supabase.from("profiles").upsert(profilePayload, { onConflict: "id" });
-      if (profileErr) throw profileErr;
-
-      if (editMode) {
         Alert.alert("Success", "Profile updated successfully!", [
           { text: "OK", onPress: () => navigation.goBack() }
         ]);
-        return;
+      } catch (e) {
+        Alert.alert("Error", e.message);
+      } finally {
+        setLoading(false);
       }
-
-      const { data: acct, error: acctReadErr } = await supabase
-        .from("commuter_accounts")
-        .select("commuter_id, account_active")
-        .eq("commuter_id", userId)
-        .maybeSingle();
-      if (acctReadErr) throw acctReadErr;
-
-      if (!acct) {
-        const { error: acctCreateErr } = await supabase.from("commuter_accounts").insert({
-          commuter_id: userId,
-          account_active: false,
-          pin_set: false,
-          passenger_type: "casual",
-          verification_status: "unverified",
-        });
-        if (acctCreateErr) throw acctCreateErr;
-      }
-
-      navigation.replace("MPINSetup", { profile: profilePayload });
-    } catch (e) {
-      console.error("Registration error:", e);
-      Alert.alert("Error", e?.message || "Failed to save profile");
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    // Signup mode: just pass data to MPINSetup
+    const registrationData = {
+      ...route.params, // contains role, phone, registration_code
+      first_name: firstName.trim(),
+      middle_name: middleName.trim() || null,
+      last_name: lastName.trim(),
+      full_name: fullName || null,
+      birthdate: toISODateOnly(birthdateObj),
+      email: email.trim() || null,
+      province: province.trim(),
+      city: city.trim(),
+      barangay: barangay.trim(),
+      zip_code: zipCode.trim() || null,
+      address_line: addressLine.trim(),
+    };
+
+    navigation.replace("MPINSetup", { registrationData });
   }
 
   const onPickProvince = (v) => { setProvince(v); setCity(""); setBarangay(""); };
@@ -407,7 +396,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
           </Text>
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* ── DATE PICKER ── */}

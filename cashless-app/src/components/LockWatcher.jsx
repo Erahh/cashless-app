@@ -16,14 +16,16 @@ export default function LockWatcher() {
             }
 
             // when app leaves active -> lock it after a short grace period
-            // UNLESS lock is suppressed (e.g. camera is open)
+            // UNLESS lock is suppressed (e.g. camera is open or on verification screens)
             if (appState.current === "active" && next.match(/inactive|background/)) {
                 if (!lockSuppressed) {
-                    // 3 second grace period for minor interruptions
+                    // 3 second grace period for minor interruptions (like notification shades)
                     lockTimer.current = setTimeout(() => {
                         setLocked(true);
                         lockTimer.current = null;
                     }, 3000);
+                } else {
+                    console.log("[LockWatcher] Lock suppressed via context");
                 }
             }
 

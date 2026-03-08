@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
     View,
     Text,
@@ -22,6 +22,12 @@ import { AppLockContext } from "../../context/AppLockContext";
 export default function UploadBackIDScreen({ navigation, route }) {
     const { setLockSuppressed } = useContext(AppLockContext);
     const { theme, isDarkMode } = useTheme();
+
+    // Prevent app from locking while on this screen
+    useEffect(() => {
+        setLockSuppressed(true);
+        return () => setLockSuppressed(false);
+    }, [setLockSuppressed]);
     const styles = getStyles(theme);
     const { passenger_type, frontImage } = route.params || {};
     const [backImage, setBackImage] = useState(null);

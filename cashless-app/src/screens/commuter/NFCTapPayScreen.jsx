@@ -28,7 +28,7 @@ export default function NFCTapPayScreen({ navigation }) {
             subtitle="Hold your NFC card/phone near the device to pay fare."
             onBack={() => navigation.goBack()}
         >
-            <View style={{ flex: 1, paddingBottom: 110 }}>
+            <View style={{ flex: 1, paddingBottom: 140 }}>
                 <Card>
                     <View style={styles.bigIconWrap}>
                         <Text style={styles.bigIcon}>📳</Text>

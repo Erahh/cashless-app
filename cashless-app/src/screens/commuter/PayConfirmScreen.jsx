@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Alert, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Alert, StyleSheet, ScrollView } from "react-native";
 import { Screen, Card, Pill, PrimaryButton, GhostButton } from "../../components/ui";
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
@@ -41,26 +41,28 @@ export default function PayConfirmScreen({ navigation, route }) {
 
     return (
         <Screen title="Confirm Payment" subtitle="Review fare before paying.">
-            <Card>
-                <Pill text="Operator QR scanned" />
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
+                <Card>
+                    <Pill text="Operator QR scanned" />
 
-                <Text style={styles.label}>QR Token</Text>
-                <Text style={styles.value}>{qr_token}</Text>
+                    <Text style={styles.label}>QR Token</Text>
+                    <Text style={styles.value}>{qr_token}</Text>
 
-                <View style={styles.box}>
-                    <Text style={styles.label}>Fare Amount</Text>
-                    <Text style={styles.money}>₱{Number(amount).toFixed(2)}</Text>
+                    <View style={styles.box}>
+                        <Text style={styles.label}>Fare Amount</Text>
+                        <Text style={styles.money}>₱{Number(amount).toFixed(2)}</Text>
 
-                    <Text style={styles.dim}>
-                        This fare will be deducted from your wallet balance.
-                    </Text>
+                        <Text style={styles.dim}>
+                            This fare will be deducted from your wallet balance.
+                        </Text>
+                    </View>
+                </Card>
+
+                <View style={{ marginTop: 14, gap: 10 }}>
+                    <PrimaryButton label="Pay Now" onPress={onPay} />
+                    <GhostButton label="Cancel" onPress={() => navigation.goBack()} />
                 </View>
-            </Card>
-
-            <View style={{ marginTop: 14, gap: 10 }}>
-                <PrimaryButton label="Pay Now" onPress={onPay} />
-                <GhostButton label="Cancel" onPress={() => navigation.goBack()} />
-            </View>
+            </ScrollView>
         </Screen>
     );
 }

@@ -77,7 +77,7 @@ export default function MPINUnlockScreen({ navigation }) {
     try {
       await supabase.auth.signOut();
       setLocked(false);
-      navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
+      navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to switch account");
     }
@@ -105,7 +105,7 @@ export default function MPINUnlockScreen({ navigation }) {
       const userId = sessionData?.session?.user?.id;
       if (!userId) {
         Alert.alert("Session Expired", "Please login again.");
-        navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
+        navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
         return;
       }
 
@@ -132,7 +132,7 @@ export default function MPINUnlockScreen({ navigation }) {
               text: "OK",
               onPress: async () => {
                 await supabase.auth.signOut();
-                navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
+                navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
               },
             },
           ]);

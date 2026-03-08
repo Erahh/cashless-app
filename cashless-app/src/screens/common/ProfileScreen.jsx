@@ -69,13 +69,16 @@ export default function ProfileScreen({ navigation }) {
     return { name, initials, passengerLabel, verLabel, verTone, chipText, passengerType, discountActive };
   }, [profile, account]);
 
+  const [isOperator, setIsOperator] = useState(false);
+  const [operatorApp, setOperatorApp] = useState(null);
+
   async function load() {
     setLoading(true);
     try {
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       const userId = userRes?.user?.id;
       if (userErr || !userId) {
-        navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
+        navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
         return;
       }
 
@@ -95,6 +98,14 @@ export default function ProfileScreen({ navigation }) {
 
       setProfile(p);
       setAccount(a);
+
+      // Check Operator Status
+      const { data: op } = await supabase.from("operator_users").select("*").eq("user_id", userId).single();
+      setIsOperator(!!op);
+
+      // Check Application Status
+      const { data: app } = await supabase.from("operator_applications").select("*").eq("user_id", userId).order("submitted_at", { ascending: false }).limit(1).single();
+      setOperatorApp(app);
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to load profile");
     } finally {
@@ -106,7 +117,7 @@ export default function ProfileScreen({ navigation }) {
     try {
       await supabase.auth.signOut();
       setLocked(false);
-      navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
+      navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to sign out");
     }
@@ -332,6 +343,26 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => {
               if (computed.verLabel === "Verified" || computed.verLabel === "Pending") return;
               navigation.navigate("PassengerType");
+            }}
+            theme={theme}
+          />
+          <View style={styles.menuDivider} />
+          <MenuItem
+            icon={Shield01Icon || UserIcon}
+            title="Become an Operator"
+            rightText={
+              isOperator ? "ACTIVE" :
+                operatorApp?.status === "pending" ? "PENDING" :
+                  operatorApp?.status === "rejected" ? "REJECTED" : "APPLY"
+            }
+            rightColor={
+              isOperator ? theme.success :
+                operatorApp?.status === "pending" ? theme.warning :
+                  operatorApp?.status === "rejected" ? theme.danger : theme.accent
+            }
+            onPress={() => {
+              if (isOperator) return Alert.alert("Active", "You are already a verified operator.");
+              navigation.navigate("OperatorApply");
             }}
             theme={theme}
           />

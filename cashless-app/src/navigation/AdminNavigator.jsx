@@ -11,10 +11,19 @@ import AdminVerificationScreen from "../screens/admin/AdminVerificationScreen";
 import AdminVerificationDetailScreen from "../screens/admin/AdminVerificationDetailScreen";
 import AdminSettlementsScreen from "../screens/admin/AdminSettlementsScreen";
 import AdminCreateOperatorScreen from "../screens/admin/AdminCreateOperatorScreen";
+import AdminRegistrationCodesScreen from "../screens/admin/AdminRegistrationCodesScreen";
 import AdminPayoutScreen from "../screens/admin/AdminPayoutScreen";
 
 import NotificationsScreen from "../screens/common/NotificationsScreen";
 import ProfileScreen from "../screens/common/ProfileScreen";
+
+// Verification flow
+import PassengerTypeScreen from "../screens/commuter/PassengerTypeScreen";
+import DiscountInfoScreen from "../screens/commuter/DiscountInfoScreen";
+import UploadFrontIDScreen from "../screens/commuter/UploadFrontIDScreen";
+import UploadBackIDScreen from "../screens/commuter/UploadBackIDScreen";
+import UploadVerificationScreen from "../screens/commuter/UploadVerificationScreen";
+import VerificationSubmittedScreen from "../screens/commuter/VerificationSubmittedScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -87,11 +96,20 @@ function AdminContent() {
                 <Stack.Screen name="AdminVerificationDetail" component={withNavCapture(AdminVerificationDetailScreen)} />
                 <Stack.Screen name="AdminSettlements" component={withNavCapture(AdminSettlementsScreen)} />
                 <Stack.Screen name="AdminCreateOperator" component={withNavCapture(AdminCreateOperatorScreen)} />
+                <Stack.Screen name="AdminRegistrationCodes" component={withNavCapture(AdminRegistrationCodesScreen)} />
                 <Stack.Screen name="AdminPayout" component={withNavCapture(AdminPayoutScreen)} />
 
                 {/* Shared */}
                 <Stack.Screen name="Profile" component={withNavCapture(ProfileScreen)} />
                 <Stack.Screen name="Notifications" component={withNavCapture(NotificationsScreen)} />
+
+                {/* Verification (Shared for all roles) */}
+                <Stack.Screen name="PassengerType" component={withNavCapture(PassengerTypeScreen)} />
+                <Stack.Screen name="DiscountInfo" component={withNavCapture(DiscountInfoScreen)} />
+                <Stack.Screen name="UploadFrontID" component={withNavCapture(UploadFrontIDScreen)} />
+                <Stack.Screen name="UploadBackID" component={withNavCapture(UploadBackIDScreen)} />
+                <Stack.Screen name="UploadVerification" component={withNavCapture(UploadVerificationScreen)} />
+                <Stack.Screen name="VerificationSubmitted" component={withNavCapture(VerificationSubmittedScreen)} />
             </Stack.Navigator>
             <AdminBottomNav />
         </View>

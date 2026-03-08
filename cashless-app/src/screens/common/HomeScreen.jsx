@@ -168,7 +168,8 @@ export default function HomeScreen({ navigation, route }) {
     let verificationStatus = "Unverified";
     if (ver === "verified") verificationStatus = "Verified";
     else if (ver === "pending") verificationStatus = "Pending";
-    else verificationStatus = "Unverified"; // unverified or rejected
+    else if (ver === "rejected") verificationStatus = "Rejected";
+    else verificationStatus = "Unverified";
 
     // Badge mapping
     let badge = { text: "CASUAL • Regular Fare", tone: "neutral" };
@@ -179,6 +180,8 @@ export default function HomeScreen({ navigation, route }) {
       badge = { text: `${passengerTypeLabel.toUpperCase()} • VERIFIED`, tone: "good" };
     } else if (verificationStatus === "Pending") {
       badge = { text: `${passengerTypeLabel.toUpperCase()} • PENDING`, tone: "warn" };
+    } else if (verificationStatus === "Rejected") {
+      badge = { text: `${passengerTypeLabel.toUpperCase()} • REJECTED`, tone: "bad" };
     } else {
       badge = { text: `${passengerTypeLabel.toUpperCase()} • UNVERIFIED`, tone: "bad" };
     }
@@ -192,6 +195,9 @@ export default function HomeScreen({ navigation, route }) {
 
     const showCallout =
       passengerTypeLabel !== "Casual" && verificationStatus !== "Verified";
+
+    // Check for rejection remarks
+    const rejectionNote = verificationStatus === "Rejected" ? status.verification?.remarks : null;
 
     const isOperator = !!status?.roles?.is_operator;
     const isAdmin = !!status?.roles?.is_admin;
@@ -397,16 +403,22 @@ export default function HomeScreen({ navigation, route }) {
         {/* Verification Callout (only if not verified) */}
         {
           computed.showCallout ? (
-            <View style={styles.callout}>
-              <Text style={styles.calloutTitle}>Discount not active yet</Text>
+            <View style={[styles.callout, computed.verificationStatus === "Rejected" && { backgroundColor: theme.dangerBg, borderColor: theme.danger }]}>
+              <Text style={[styles.calloutTitle, computed.verificationStatus === "Rejected" && { color: theme.danger }]}>
+                {computed.verificationStatus === "Rejected" ? "Verification Rejected" : "Discount not active yet"}
+              </Text>
               <Text style={styles.calloutText}>
-                Upload your ID and wait for admin approval to activate student/senior fare.
+                {computed.verificationStatus === "Rejected"
+                  ? (status.verification?.remarks ? `Reason: ${status.verification.remarks}` : "Admin rejected your application. Please re-check your documents and try again.")
+                  : "Upload your ID and wait for admin approval to activate student/senior fare."}
               </Text>
               <TouchableOpacity
-                style={styles.calloutBtn}
+                style={[styles.calloutBtn, computed.verificationStatus === "Rejected" && { backgroundColor: theme.danger }]}
                 onPress={() => navigation.navigate("PassengerType")}
               >
-                <Text style={styles.calloutBtnText}>Apply for Verification</Text>
+                <Text style={styles.calloutBtnText}>
+                  {computed.verificationStatus === "Rejected" ? "Try Again" : "Apply for Verification"}
+                </Text>
               </TouchableOpacity>
             </View>
           ) : null

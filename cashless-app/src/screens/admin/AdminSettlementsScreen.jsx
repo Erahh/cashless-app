@@ -159,7 +159,7 @@ export default function AdminSettlementsScreen({ navigation }) {
           ) : null}
         </View>
 
-        <View style={{ height: 30 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
     </SafeAreaView>
   );

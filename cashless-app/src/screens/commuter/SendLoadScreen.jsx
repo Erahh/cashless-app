@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
     footer: {
         marginTop: "auto",
         paddingTop: 30,
-        paddingBottom: 110,
+        paddingBottom: 140,
         gap: 12,
     },
     loadingContainer: {

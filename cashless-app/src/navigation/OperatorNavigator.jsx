@@ -10,9 +10,17 @@ import OperatorScanScreen from "../screens/operator/OperatorScanScreen";
 import OperatorSetupScreen from "../screens/operator/OperatorSetupScreen";
 import OperatorEarningsScreen from "../screens/operator/OperatorEarningsScreen";
 import OperatorMyQRScreen from "../screens/operator/OperatorMyQRScreen";
-
+import OperatorApplyScreen from "../screens/operator/OperatorApplyScreen";
 import NotificationsScreen from "../screens/common/NotificationsScreen";
 import ProfileScreen from "../screens/common/ProfileScreen";
+
+// Verification flow
+import PassengerTypeScreen from "../screens/commuter/PassengerTypeScreen";
+import DiscountInfoScreen from "../screens/commuter/DiscountInfoScreen";
+import UploadFrontIDScreen from "../screens/commuter/UploadFrontIDScreen";
+import UploadBackIDScreen from "../screens/commuter/UploadBackIDScreen";
+import UploadVerificationScreen from "../screens/commuter/UploadVerificationScreen";
+import VerificationSubmittedScreen from "../screens/commuter/VerificationSubmittedScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -86,6 +94,15 @@ function OperatorContent() {
                 {/* Shared */}
                 <Stack.Screen name="Profile" component={withNavCapture(ProfileScreen)} />
                 <Stack.Screen name="Notifications" component={withNavCapture(NotificationsScreen)} />
+
+                {/* Verification (Shared for all roles) */}
+                <Stack.Screen name="PassengerType" component={withNavCapture(PassengerTypeScreen)} />
+                <Stack.Screen name="DiscountInfo" component={withNavCapture(DiscountInfoScreen)} />
+                <Stack.Screen name="UploadFrontID" component={withNavCapture(UploadFrontIDScreen)} />
+                <Stack.Screen name="UploadBackID" component={withNavCapture(UploadBackIDScreen)} />
+                <Stack.Screen name="UploadVerification" component={withNavCapture(UploadVerificationScreen)} />
+                <Stack.Screen name="VerificationSubmitted" component={withNavCapture(VerificationSubmittedScreen)} />
+                <Stack.Screen name="OperatorApply" component={withNavCapture(OperatorApplyScreen)} />
             </Stack.Navigator>
             <OperatorBottomNav />
         </View>

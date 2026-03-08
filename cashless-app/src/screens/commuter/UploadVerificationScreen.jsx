@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,13 @@ const { width } = Dimensions.get("window");
 
 export default function UploadVerificationScreen({ navigation, route }) {
   const { setLockSuppressed } = useContext(AppLockContext);
+
+  // Prevent app from locking while on this screen
+  useEffect(() => {
+    setLockSuppressed(true);
+    return () => setLockSuppressed(false);
+  }, [setLockSuppressed]);
+
   // passenger_type passed from PassengerType flow: "student" or "senior"
   const passengerType = route?.params?.passenger_type;
 
@@ -299,7 +306,7 @@ export default function UploadVerificationScreen({ navigation, route }) {
 
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <HugeiconsIcon icon={ShieldCheckIcon} size={20} color="#7CFF9B" />
+          <HugeiconsIcon icon={Shield01Icon} size={20} color="#7CFF9B" />
           <Text style={styles.infoText}>
             Your documents are encrypted and stored securely. Only admins can review them for verification.
           </Text>

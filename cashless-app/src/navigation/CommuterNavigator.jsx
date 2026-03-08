@@ -10,6 +10,7 @@ import BalanceScreen from "../screens/commuter/BalanceScreen";
 import TransactionsScreen from "../screens/commuter/TransactionsScreen";
 import ProfileScreen from "../screens/common/ProfileScreen";
 import MyQRScreen from "../screens/commuter/MyQRScreen";
+import OperatorApplyScreen from "../screens/operator/OperatorApplyScreen";
 
 import CommuterScanScreen from "../screens/commuter/CommuterScanScreen";
 import PayConfirmScreen from "../screens/commuter/PayConfirmScreen";
@@ -112,6 +113,7 @@ function CommuterContent() {
                 <Stack.Screen name="UploadBackID" component={withNavCapture(UploadBackIDScreen)} />
                 <Stack.Screen name="UploadVerification" component={withNavCapture(UploadVerificationScreen)} />
                 <Stack.Screen name="VerificationSubmitted" component={withNavCapture(VerificationSubmittedScreen)} />
+                <Stack.Screen name="OperatorApply" component={withNavCapture(OperatorApplyScreen)} />
 
                 {/* Guardian */}
                 <Stack.Screen name="GuardianLink" component={withNavCapture(GuardianLinkScreen)} />

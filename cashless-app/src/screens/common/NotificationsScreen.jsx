@@ -240,7 +240,7 @@ export default function NotificationsScreen({ navigation }) {
           </View>
         )}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* Floating Popover Menu */}

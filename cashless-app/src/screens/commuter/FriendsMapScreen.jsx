@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     },
     bottomControls: {
         position: 'absolute',
-        bottom: 30,
+        bottom: 120,
         left: 16,
         right: 16,
         flexDirection: 'row',

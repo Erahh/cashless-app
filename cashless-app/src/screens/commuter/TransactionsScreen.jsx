@@ -169,7 +169,7 @@ export default function TransactionsScreen({ navigation }) {
               </TouchableOpacity>
             )}
 
-            <View style={{ height: 24 }} />
+            <View style={{ height: 120 }} />
           </ScrollView>
         </Card>
       </ScrollView>

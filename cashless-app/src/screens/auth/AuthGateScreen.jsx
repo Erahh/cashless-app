@@ -26,7 +26,7 @@ export default function AuthGateScreen({ navigation }) {
         const session = sessionRes?.session;
 
         if (!session?.user?.id) {
-          if (mounted) navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
+          if (mounted) navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
           return;
         }
 
@@ -67,7 +67,7 @@ export default function AuthGateScreen({ navigation }) {
         if (mounted) navigation.reset({ index: 0, routes: [{ name: "RoleGate" }] });
       } catch (e) {
         console.error("AuthGate error:", e);
-        if (mounted) navigation.reset({ index: 0, routes: [{ name: "PhoneScreen" }] });
+        if (mounted) navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
       }
     }
 

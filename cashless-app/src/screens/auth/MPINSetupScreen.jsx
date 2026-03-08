@@ -22,7 +22,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LockIcon, ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 
-export default function MPINSetupScreen({ navigation }) {
+export default function MPINSetupScreen({ navigation, route }) {
   const { setLocked } = useContext(AppLockContext);
   const { theme, isDarkMode } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
@@ -47,12 +47,25 @@ export default function MPINSetupScreen({ navigation }) {
     return { label: "Strong PIN ✓", color: theme.success };
   }, [mpin, theme]);
 
+  const registrationData = route.params?.registrationData;
+
   async function onConfirm() {
     if (!agree) return Alert.alert("Terms", "Please agree to the Terms and Conditions.");
     if (!/^\d{6}$/.test(mpin)) return Alert.alert("MPIN", "MPIN must be exactly 6 digits.");
     if (mpin !== confirm) return Alert.alert("MPIN", "MPIN does not match.");
     if (weakPin(mpin)) return Alert.alert("MPIN", "Choose a stronger MPIN (avoid common patterns).");
 
+    // Signup flow: Go to OTPScreen to finalize everything
+    if (registrationData) {
+      navigation.navigate("OTPScreen", {
+        phone: registrationData.phone,
+        isLogin: false,
+        registrationData: { ...registrationData, mpin }
+      });
+      return;
+    }
+
+    // Default flow (e.g. from profile or other)
     setLoading(true);
     try {
       const { data: authData, error: authErr } = await supabase.auth.getUser();

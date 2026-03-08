@@ -90,7 +90,7 @@ export default function TopUpScreen({ navigation }) {
                         </Text>
                     </Card>
 
-                    <View style={{ marginTop: "auto", gap: 10, paddingBottom: 110, paddingTop: 20 }}>
+                    <View style={{ marginTop: "auto", gap: 10, paddingBottom: 140, paddingTop: 20 }}>
                         <PrimaryButton label="Continue to GCash" onPress={startTopup} />
                     </View>
                 </ScrollView>

@@ -94,7 +94,7 @@ export default function OperatorSetupScreen({ navigation }) {
           <Text style={styles.ghostText}>Back</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 30 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
     </SafeAreaView>
   );

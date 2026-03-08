@@ -16,6 +16,7 @@ import {
   FlatList,
 } from "react-native";
 import { supabase } from "../../api/supabase";
+import { API_BASE_URL } from "../../config/api";
 import AuthBackground from "../../components/AuthBackground";
 import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -40,8 +41,9 @@ function buildE164(rawDigits) {
   return `+63${d}`;
 }
 
-export default function PhoneScreen({ navigation }) {
-  const [isLogin, setIsLogin] = useState(true);
+export default function PhoneScreen({ navigation, route }) {
+  const { role: passedRole, mode: passedMode } = route.params || {};
+  const [isLogin, setIsLogin] = useState(passedMode === "login" || !passedRole);
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
   const [showPicker, setShowPicker] = useState(false);
   const [rawPhone, setRawPhone] = useState("");
@@ -70,7 +72,7 @@ export default function PhoneScreen({ navigation }) {
     return res.trim();
   };
 
-  const sendOtp = async () => {
+  const handleContinue = async () => {
     if (loading) return;
     try {
       // Strip any leading 0 in case user typed 09... (only for PH)
@@ -89,12 +91,77 @@ export default function PhoneScreen({ navigation }) {
       }
 
       setLoading(true);
-      const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
-      if (error) throw error;
 
-      navigation.navigate("OTPScreen", { phone: fullPhone });
+      // 1. Check if user already exists in profiles (via backend to bypass RLS)
+      const checkUrl = `${API_BASE_URL}/auth/check-phone`;
+      console.log(`[PhoneScreen] Checking registration at: ${checkUrl}`);
+
+      let checkJson = {};
+      try {
+        const checkResp = await fetch(checkUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: fullPhone }),
+        });
+
+        const contentType = checkResp.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const body = await checkResp.text();
+          console.error("[PhoneScreen] Unexpected non-JSON response:", body.slice(0, 100));
+          throw new Error(`Server returned non-JSON response (HTTP ${checkResp.status}). Please ensure backend is pushed to Render.`);
+        }
+
+        checkJson = await checkResp.json();
+        if (!checkResp.ok) throw new Error(checkJson.error || "Failed to check phone registration.");
+      } catch (checkErr) {
+        setLoading(false);
+        console.error("[PhoneScreen] Check-phone error:", checkErr);
+        return Alert.alert("Connection Error", checkErr.message);
+      }
+
+      const alreadyExists = !!checkJson.exists;
+
+      if (!isLogin && alreadyExists) {
+        // Trying to sign up with existing number
+        setLoading(false);
+        return Alert.alert(
+          "Number Already Used",
+          "This phone number is already registered. Please log in instead.",
+          [
+            { text: "Log In", onPress: () => setIsLogin(true) },
+            { text: "Cancel", style: "cancel" }
+          ]
+        );
+      }
+
+      if (isLogin && !alreadyExists) {
+        // Trying to login with non-existent number
+        setLoading(false);
+        return Alert.alert(
+          "Account Not Found",
+          "This number is not registered yet. Please create an account first.",
+          [
+            { text: "Sign Up", onPress: () => navigation.navigate("RoleSelection") },
+            { text: "Cancel", style: "cancel" }
+          ]
+        );
+      }
+
+      if (isLogin) {
+        // Send OTP
+        const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
+        if (error) throw error;
+        navigation.navigate("OTPScreen", { phone: fullPhone, isLogin: true });
+      } else {
+        // Signup flow — proceed to details gathering
+        if (passedRole === "operator") {
+          navigation.navigate("OperatorCode", { role: passedRole, phone: fullPhone });
+        } else {
+          navigation.navigate("PersonalInfo", { role: passedRole, phone: fullPhone });
+        }
+      }
     } catch (e) {
-      Alert.alert("Error", e.message || "Failed to send OTP");
+      Alert.alert("Error", e.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -170,7 +237,7 @@ export default function PhoneScreen({ navigation }) {
                 keyboardType="phone-pad"
                 maxLength={13} // 10 digits + 2 spaces
                 returnKeyType="done"
-                onSubmitEditing={sendOtp}
+                onSubmitEditing={handleContinue}
                 style={styles.phoneInput}
               />
             </View>
@@ -181,7 +248,7 @@ export default function PhoneScreen({ navigation }) {
                 styles.continueBtn,
                 (rawPhone.replace(/[^\d]/g, "").replace(/^0/, "").length < (selectedCountry.code === "+63" ? 10 : 8) || loading) && { opacity: 0.5 },
               ]}
-              onPress={sendOtp}
+              onPress={handleContinue}
               disabled={rawPhone.replace(/[^\d]/g, "").replace(/^0/, "").length < (selectedCountry.code === "+63" ? 10 : 8) || loading}
               activeOpacity={0.9}
             >
@@ -199,7 +266,13 @@ export default function PhoneScreen({ navigation }) {
               </Text>
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => setIsLogin(!isLogin)}
+                onPress={() => {
+                  if (isLogin) {
+                    navigation.navigate("RoleSelection");
+                  } else {
+                    setIsLogin(true);
+                  }
+                }}
               >
                 <Text style={styles.signupLink}>
                   {isLogin ? "Signup" : "Login"}

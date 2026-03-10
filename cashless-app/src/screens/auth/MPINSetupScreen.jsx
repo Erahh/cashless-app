@@ -13,7 +13,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../../api/supabase";
+import { API_BASE_URL } from "../../config/api";
 import * as Crypto from "expo-crypto";
 import { setMpinOnRender } from "../../api/apiHelper";
 import { setMpin as setMpinLocal } from "../../api/mpinLocal";
@@ -55,13 +57,57 @@ export default function MPINSetupScreen({ navigation, route }) {
     if (mpin !== confirm) return Alert.alert("MPIN", "MPIN does not match.");
     if (weakPin(mpin)) return Alert.alert("MPIN", "Choose a stronger MPIN (avoid common patterns).");
 
-    // Signup flow: Go to OTPScreen to finalize everything
+    // Signup flow: Finalize Registration
     if (registrationData) {
-      navigation.navigate("OTPScreen", {
-        phone: registrationData.phone,
-        isLogin: false,
-        registrationData: { ...registrationData, mpin }
-      });
+      setLoading(true);
+      try {
+        const { data: authData, error: authErr } = await supabase.auth.getSession();
+        if (authErr) throw authErr;
+        const accessToken = authData?.session?.access_token;
+        if (!accessToken) throw new Error("No session established.");
+
+        // Call backend to finalize registration
+        const finalData = { ...registrationData, mpin };
+        const resp = await fetch(`${API_BASE_URL}/auth/finalize-registration`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(finalData),
+        });
+
+        const json = await resp.json();
+        if (!resp.ok) throw new Error(json.error || "Failed to finalize registration");
+
+        // Register device token for push notifications
+        try {
+          const deviceRes = await fetch(`${API_BASE_URL}/me/register-device`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          });
+          const deviceJson = await deviceRes.json();
+          if (deviceJson.ok && deviceJson.device_token) {
+            await AsyncStorage.setItem("device_token", deviceJson.device_token);
+          }
+        } catch (deviceErr) {
+          console.warn("Device registration failed:", deviceErr.message);
+        }
+
+        // Complete the process
+        await setMpinOnRender(mpin, confirm);
+        await setMpinLocal(mpin);
+        setLocked(false);
+        navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
+      } catch (err) {
+        console.error("Signup finalize error:", err);
+        Alert.alert("Registration Error", err.message || "Failed to complete signup.");
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 

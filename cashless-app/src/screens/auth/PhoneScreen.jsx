@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+
 import {
   View,
   Text,
@@ -31,6 +32,43 @@ const COUNTRY_CODES = [
   { flag: "🇯🇵", code: "+81", name: "Japan", mask: "90 1234 5678", max: 10 },
 ];
 
+/**
+ * Common Philippine Mobile Carrier Prefixes
+ */
+const PH_CARRIER_MAP = {
+  // Globe & TM
+  "904": "Globe", "905": "Globe", "906": "Globe", "915": "Globe", "916": "Globe", "917": "Globe", "926": "Globe", "927": "Globe", "935": "Globe", "936": "Globe", "937": "Globe", "945": "Globe", "953": "Globe", "954": "Globe", "955": "Globe", "956": "Globe", "965": "Globe", "966": "Globe", "967": "Globe", "975": "Globe", "976": "GOMO", "977": "Globe", "978": "Globe", "979": "Globe", "994": "Globe", "995": "Globe", "996": "Globe", "997": "Globe", "817": "Globe",
+  // Smart & TNT & Sun
+  "907": "Smart", "908": "Smart", "909": "Smart", "910": "Smart", "911": "Smart", "912": "Smart", "913": "Smart", "914": "Smart", "918": "Smart", "919": "Smart", "920": "Smart", "921": "Smart", "928": "Smart", "929": "Smart", "930": "Smart", "931": "Sun", "938": "Smart", "939": "Smart", "940": "Smart", "946": "Smart", "947": "Smart", "948": "Smart", "949": "Smart", "950": "Smart", "951": "Smart", "961": "Smart", "963": "Smart", "964": "Smart", "968": "Smart", "969": "Smart", "970": "Smart", "981": "Smart", "989": "Smart", "998": "Smart", "999": "Smart", "813": "Smart",
+  "922": "Sun", "923": "Sun", "924": "Sun", "925": "Sun", "932": "Sun", "933": "Sun", "934": "Sun", "941": "Sun", "942": "Sun", "943": "Sun", "944": "Sun",
+  // DITO
+  "991": "DITO", "992": "DITO", "993": "DITO", "895": "DITO", "896": "DITO", "897": "DITO", "898": "DITO"
+};
+
+function getPHCarrier(num, dbCarriers = null) {
+  if (!num) return null;
+  let d = String(num).replace(/[^\d]/g, "");
+  if (d.startsWith("0")) d = d.slice(1);
+  if (d.length < 3) return null;
+  const prefix = d.slice(0, 3);
+
+  // If DB carriers are loaded, they are the EXCLUSIVE source of truth.
+  // No fallback to static list to ensure user-defined restrictions are respected.
+  if (dbCarriers && Object.keys(dbCarriers).length > 0) {
+    const matched = dbCarriers[prefix];
+    if (matched) return matched;
+
+    // Prefix not found in DB
+    return "Unknown Provider";
+  }
+
+  // If DB hasn't loaded (null), we return null to signify "pending check"
+  // This prevents the button from enabling using a local fallback.
+  return null;
+}
+
+
+
 // ✅ Normalize raw 10-digit input (e.g. 9123456789) to E.164 (+639123456789)
 // User always types without country code in our UI, so we just prepend +63
 function buildE164(rawDigits) {
@@ -48,8 +86,56 @@ export default function PhoneScreen({ navigation, route }) {
   const [showPicker, setShowPicker] = useState(false);
   const [rawPhone, setRawPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const [dbCarriers, setDbCarriers] = useState(null);
   const { theme, isDarkMode } = useTheme();
+  const phoneInputRef = useRef(null);
+
+
+  useEffect(() => {
+    // Fetch carriers from DB on mount
+    const fetchCarriers = async () => {
+      try {
+        const resp = await fetch(`${API_BASE_URL}/auth/supported-carriers`);
+        const json = await resp.json();
+        if (json.ok && json.carriers?.length) {
+          const map = {};
+          json.carriers.forEach(c => { map[c.prefix] = c.carrier_name; });
+          setDbCarriers(map);
+          console.log(`[PhoneScreen] Loaded ${json.carriers.length} providers from database.`);
+        }
+      } catch (err) {
+        console.warn("[PhoneScreen] Could not fetch carriers from DB, using static map.", err.message);
+      }
+    };
+    fetchCarriers();
+  }, []);
+
   const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
+
+  const carrier = useMemo(() => {
+    if (selectedCountry.code === "+63") {
+      return getPHCarrier(rawPhone, dbCarriers);
+    }
+    return null;
+  }, [rawPhone, selectedCountry.code, dbCarriers]);
+
+  const isInvalidCarrier = useMemo(() => {
+    const digits = rawPhone.replace(/[^\d]/g, "").replace(/^0/, "");
+    if (selectedCountry.code === "+63") {
+      // Immediate invalidation if first digit isn't 9 or 8
+      if (digits.length > 0 && !["9", "8"].includes(digits[0])) return true;
+
+      // After 3 digits, we MUST have a carrier identified by the DB
+      if (digits.length >= 3) {
+        // If carrier is null, it means DB is still loading or check hasn't run
+        if (dbCarriers === null) return false; // Let it be "valid" until we know otherwise? 
+        // Actually, better to block until loaded.
+        return carrier === "Unknown Provider";
+      }
+    }
+    return false;
+  }, [rawPhone, selectedCountry.code, carrier, dbCarriers]);
+
 
   // Format for display while typing
   const formatDisplay = (digits) => {
@@ -92,6 +178,12 @@ export default function PhoneScreen({ navigation, route }) {
 
       setLoading(true);
 
+      // Add carrier check for PH
+      if (selectedCountry.code === "+63" && isInvalidCarrier) {
+        setLoading(false);
+        return Alert.alert("Provider Warning", "This number belongs to an unsupported or invalid provider. Please use a standard Philippine mobile number.");
+      }
+
       // 1. Check if user already exists in profiles (via backend to bypass RLS)
       const checkUrl = `${API_BASE_URL}/auth/check-phone`;
       console.log(`[PhoneScreen] Checking registration at: ${checkUrl}`);
@@ -113,6 +205,8 @@ export default function PhoneScreen({ navigation, route }) {
 
         checkJson = await checkResp.json();
         if (!checkResp.ok) throw new Error(checkJson.error || "Failed to check phone registration.");
+
+        console.log(`[PhoneScreen] Check Response:`, checkJson);
       } catch (checkErr) {
         setLoading(false);
         console.error("[PhoneScreen] Check-phone error:", checkErr);
@@ -120,6 +214,7 @@ export default function PhoneScreen({ navigation, route }) {
       }
 
       const alreadyExists = !!checkJson.exists;
+      console.log(`[PhoneScreen] Status - isLogin: ${isLogin}, alreadyExists: ${alreadyExists}, Phone: ${fullPhone}`);
 
       if (!isLogin && alreadyExists) {
         // Trying to sign up with existing number
@@ -147,18 +242,23 @@ export default function PhoneScreen({ navigation, route }) {
         );
       }
 
+      // ALWAYS send OTP first
+      const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
+      if (error) {
+        setLoading(false);
+        return Alert.alert("Verification Error", error.message);
+      }
+
+      console.log(`[PhoneScreen] OTP sent successfully for: ${fullPhone}`);
+
       if (isLogin) {
-        // Send OTP
-        const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
-        if (error) throw error;
         navigation.navigate("OTPScreen", { phone: fullPhone, isLogin: true });
       } else {
-        // Signup flow — proceed to details gathering
-        if (passedRole === "operator") {
-          navigation.navigate("OperatorCode", { role: passedRole, phone: fullPhone });
-        } else {
-          navigation.navigate("PersonalInfo", { role: passedRole, phone: fullPhone });
-        }
+        navigation.navigate("OTPScreen", {
+          phone: fullPhone,
+          isLogin: false,
+          role: passedRole
+        });
       }
     } catch (e) {
       Alert.alert("Error", e.message || "Something went wrong");
@@ -206,52 +306,80 @@ export default function PhoneScreen({ navigation, route }) {
                 : "Sign up instantly using your phone number"}
             </Text>
 
-            {/* Phone Input Label */}
-            <Text style={styles.inputLabel}>Enter Your Phone Number</Text>
+            {/* Phone Input Label (Now Floating) */}
+            <View style={{ position: 'relative', marginTop: 10 }}>
+              <Text style={styles.floatingLabel}>Phone Number</Text>
 
-            {/* Phone Input Row */}
-            <View style={styles.phoneRow}>
-              {/* Country Prefix */}
+              {/* Phone Input Row */}
               <TouchableOpacity
-                style={styles.prefixBox}
-                activeOpacity={0.7}
-                onPress={() => Keyboard.dismiss() || setShowPicker(true)}
+                activeOpacity={1}
+                onPress={() => phoneInputRef.current?.focus()}
+                style={[styles.phoneRow, isInvalidCarrier && styles.phoneRowError]}
               >
-                <Text style={styles.flag}>{selectedCountry.flag}</Text>
-                <Text style={styles.prefixText}>{selectedCountry.code}</Text>
-                <Text style={styles.chevron}>▾</Text>
+                {/* Country Prefix */}
+                <TouchableOpacity
+                  style={styles.prefixBox}
+                  activeOpacity={0.7}
+                  onPress={() => Keyboard.dismiss() || setShowPicker(true)}
+                >
+                  <Text style={styles.flag}>{selectedCountry.flag}</Text>
+                  <Text style={styles.prefixText}>{selectedCountry.code}</Text>
+                  <Text style={styles.chevron}>▾</Text>
+                </TouchableOpacity>
+
+                <View style={styles.divider} />
+
+                {/* Phone Number Input */}
+                <TextInput
+                  ref={phoneInputRef}
+                  value={formatDisplay(rawPhone)}
+                  onChangeText={(text) => {
+                    let d = text.replace(/[^\d]/g, "");
+
+                    if (selectedCountry.code === "+63") {
+                      // Strip leading 0 or 63
+                      if (d.startsWith("0")) d = d.slice(1);
+                      else if (d.startsWith("63") && d.length > 5) d = d.slice(2);
+                    }
+
+                    const digits = d.slice(0, selectedCountry.max);
+                    setRawPhone(digits);
+                  }}
+                  placeholder={selectedCountry.mask}
+                  placeholderTextColor={theme.textMuted}
+                  keyboardType="phone-pad"
+                  maxLength={13} // 10 digits + 2 spaces
+                  returnKeyType="done"
+                  onSubmitEditing={handleContinue}
+                  style={styles.phoneInput}
+                />
               </TouchableOpacity>
 
-              <View style={styles.divider} />
+            </View>
 
-              {/* Phone Number Input */}
-              <TextInput
-                value={formatDisplay(rawPhone)}
-                onChangeText={(text) => {
-                  // Only store raw digits with max limit based on country
-                  const digits = text.replace(/[^\d]/g, "").slice(0, selectedCountry.max);
-                  setRawPhone(digits);
-                }}
-                placeholder={selectedCountry.mask}
-                placeholderTextColor={theme.textMuted}
-                keyboardType="phone-pad"
-                maxLength={13} // 10 digits + 2 spaces
-                returnKeyType="done"
-                onSubmitEditing={handleContinue}
-                style={styles.phoneInput}
-              />
+
+            {/* Carrier Info / Error Message */}
+            <View style={styles.infoRow}>
+              {carrier && !isInvalidCarrier ? (
+                <View style={styles.carrierBadge}>
+                  <Text style={styles.carrierText}>Network: {carrier}</Text>
+                </View>
+              ) : isInvalidCarrier ? (
+                <Text style={styles.errorText}>Unsupported or invalid provider prefix</Text>
+              ) : null}
             </View>
 
             {/* Continue Button */}
             <TouchableOpacity
               style={[
                 styles.continueBtn,
-                (rawPhone.replace(/[^\d]/g, "").replace(/^0/, "").length < (selectedCountry.code === "+63" ? 10 : 8) || loading) && { opacity: 0.5 },
+                ((rawPhone.replace(/[^\d]/g, "").replace(/^0/, "").length < (selectedCountry.code === "+63" ? 10 : 8)) || isInvalidCarrier || loading || (selectedCountry.code === "+63" && dbCarriers === null)) && { opacity: 0.5 },
               ]}
               onPress={handleContinue}
-              disabled={rawPhone.replace(/[^\d]/g, "").replace(/^0/, "").length < (selectedCountry.code === "+63" ? 10 : 8) || loading}
+              disabled={(rawPhone.replace(/[^\d]/g, "").replace(/^0/, "").length < (selectedCountry.code === "+63" ? 10 : 8)) || isInvalidCarrier || loading || (selectedCountry.code === "+63" && dbCarriers === null)}
               activeOpacity={0.9}
             >
+
               {loading ? (
                 <ActivityIndicator color={theme.isDark ? "#0B0E14" : "#FFFFFF"} />
               ) : (
@@ -369,14 +497,19 @@ const createStyles = (theme, isDarkMode) =>
       lineHeight: 22,
       marginBottom: 40,
     },
-    inputLabel: {
-      color: theme.textSecondary,
-      fontSize: 13,
-      fontWeight: "600",
-      marginBottom: 10,
-      letterSpacing: 0.3,
+    floatingLabel: {
+      position: "absolute",
+      left: 14,
+      top: -10,
+      fontSize: 12,
+      fontWeight: "800",
+      color: theme.accent,
+      backgroundColor: theme.background,
+      zIndex: 1,
+      paddingHorizontal: 6,
     },
     phoneRow: {
+
       flexDirection: "row",
       alignItems: "center",
       borderRadius: 16,
@@ -435,6 +568,33 @@ const createStyles = (theme, isDarkMode) =>
       fontWeight: "900",
       fontSize: 16,
       letterSpacing: 0.3,
+    },
+    infoRow: {
+      height: 24,
+      marginTop: 8,
+      justifyContent: "center",
+      paddingHorizontal: 4,
+    },
+    carrierBadge: {
+      backgroundColor: theme.isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+      alignSelf: "flex-start",
+    },
+    carrierText: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    errorText: {
+      color: theme.danger || "#FF4D4D",
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    phoneRowError: {
+      borderColor: theme.danger || "#FF4D4D",
+      backgroundColor: theme.isDark ? "rgba(255, 77, 77, 0.05)" : "rgba(255, 77, 77, 0.02)",
     },
     signupRow: {
       flexDirection: "row",

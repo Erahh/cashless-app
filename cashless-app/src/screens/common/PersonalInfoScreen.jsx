@@ -11,13 +11,17 @@ import {
   TextInput,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
+
 import { supabase } from "../../api/supabase";
 import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
+import FloatingLabelInput from "../../components/Input";
+
 
 // ------- Sample address data -------
 const ADDRESS_DATA = [
@@ -81,7 +85,7 @@ function PickerModal({ visible, title, value, items, onChange, onClose, placehol
               style={s.picker}
             >
               <Picker.Item label={placeholder} value="" color={theme.textMuted} />
-              {items.map((it) => (
+              {(Array.isArray(items) ? items : []).map((it) => (
                 <Picker.Item key={it.value} label={it.label} value={it.value} color={theme.text} />
               ))}
             </Picker>
@@ -97,43 +101,72 @@ function PickerModal({ visible, title, value, items, onChange, onClose, placehol
 
 // ------- Themed Text Input Field -------
 function Field({ label, value, onChangeText, placeholder, keyboardType, autoCapitalize, theme }) {
-  const s = useMemo(() => fieldStyles(theme), [theme]);
   return (
-    <View style={s.wrap}>
-      {!!label && <Text style={s.label}>{label}</Text>}
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textMuted}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize ?? "none"}
-        style={s.input}
-      />
+    <FloatingLabelInput
+      label={label}
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType}
+      autoCapitalize={autoCapitalize}
+      bgColor={theme.background}
+    />
+  );
+}
+
+
+// ------- Themed Select Field (Touchable dropdown) -------
+function SelectField({ label, value, placeholder, onPress, disabled, theme }) {
+  const isSelected = !!value;
+  const activeColor = isSelected ? theme.success : theme.accent;
+  return (
+    <View style={{ marginTop: 14, marginBottom: 4 }}>
+      <View style={{ position: 'relative' }}>
+        <Text style={{
+          position: 'absolute',
+          left: 14,
+          top: -10,
+          fontSize: 12,
+          color: isSelected ? activeColor : theme.textMuted,
+          backgroundColor: theme.background,
+          paddingHorizontal: 6,
+          zIndex: 1,
+          fontWeight: '700'
+        }}>
+          {label}
+        </Text>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={onPress}
+          disabled={disabled}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderWidth: 1.5,
+            borderColor: isSelected ? activeColor : theme.border,
+            borderRadius: 14,
+            height: 56,
+            paddingHorizontal: 16,
+            backgroundColor: theme.background,
+            opacity: disabled ? 0.5 : 1
+          }}
+        >
+
+          <Text style={{
+            color: isSelected ? theme.text : theme.textMuted,
+            fontSize: 16,
+            fontWeight: "700",
+            flex: 1,
+          }}>
+            {value || placeholder}
+          </Text>
+          <Text style={{ color: theme.textMuted, fontSize: 18 }}>▾</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
-// ------- Themed Select Field (Touchable dropdown) -------
-function SelectField({ label, value, placeholder, onPress, disabled, theme }) {
-  const s = useMemo(() => fieldStyles(theme), [theme]);
-  return (
-    <View style={[s.wrap, disabled && { opacity: 0.5 }]}>
-      {!!label && <Text style={s.label}>{label}</Text>}
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={onPress}
-        disabled={disabled}
-        style={s.selectInput}
-      >
-        <Text style={[s.selectText, !value && s.selectPlaceholder]}>
-          {value || placeholder}
-        </Text>
-        <Text style={s.chevron}>›</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
 
 export default function PersonalInfoScreen({ navigation, route }) {
   const { theme, isDarkMode } = useTheme();
@@ -157,7 +190,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
   const [birthdateObj, setBirthdateObj] = useState(initBirthdate);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const [email, setEmail] = useState(editMode ? (existingProfile?.email || "") : "");
+
 
   const [province, setProvince] = useState(editMode ? (existingProfile?.province || "") : "");
   const [city, setCity] = useState(editMode ? (existingProfile?.city || "") : "");
@@ -170,19 +203,20 @@ export default function PersonalInfoScreen({ navigation, route }) {
   const [cityModal, setCityModal] = useState(false);
   const [barangayModal, setBarangayModal] = useState(false);
 
+
   const fullName = useMemo(() => {
-    return [firstName, middleName, lastName].map((s) => s.trim()).filter(Boolean).join(" ");
+    return [firstName, middleName, lastName].map((s) => (s || "").trim()).filter(Boolean).join(" ");
   }, [firstName, middleName, lastName]);
 
-  const provinceOptions = useMemo(() => ADDRESS_DATA.map((p) => ({ label: p.province, value: p.province })), []);
+  const provinceOptions = useMemo(() => Array.isArray(ADDRESS_DATA) ? ADDRESS_DATA.map((p) => ({ label: p.province, value: p.province })) : [], []);
   const cityOptions = useMemo(() => {
-    const p = ADDRESS_DATA.find((x) => x.province === province);
-    return p ? p.cities.map((c) => ({ label: c.city, value: c.city })) : [];
+    const p = Array.isArray(ADDRESS_DATA) ? ADDRESS_DATA.find((x) => x.province === province) : null;
+    return p && Array.isArray(p.cities) ? p.cities.map((c) => ({ label: c.city, value: c.city })) : [];
   }, [province]);
   const barangayOptions = useMemo(() => {
-    const p = ADDRESS_DATA.find((x) => x.province === province);
-    const c = p?.cities.find((x) => x.city === city);
-    return c ? c.barangays.map((b) => ({ label: b, value: b })) : [];
+    const p = Array.isArray(ADDRESS_DATA) ? ADDRESS_DATA.find((x) => x.province === province) : null;
+    const c = p?.cities?.find((x) => x.city === city);
+    return c && Array.isArray(c.barangays) ? c.barangays.map((b) => ({ label: b, value: b })) : [];
   }, [province, city]);
 
   function validate() {
@@ -193,8 +227,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
     if (!city.trim()) return "City/Municipality is required";
     if (!barangay.trim()) return "Barangay is required";
     if (!addressLine.trim()) return "Address line is required";
-    const em = email.trim();
-    if (em && !/^\S+@\S+\.\S+$/.test(em)) return "Email is invalid (or leave it blank)";
+
     return null;
   }
 
@@ -218,7 +251,6 @@ export default function PersonalInfoScreen({ navigation, route }) {
           last_name: lastName.trim(),
           full_name: fullName || null,
           birthdate: toISODateOnly(birthdateObj),
-          email: email.trim() || null,
           province: province.trim(),
           city: city.trim(),
           barangay: barangay.trim(),
@@ -248,7 +280,6 @@ export default function PersonalInfoScreen({ navigation, route }) {
       last_name: lastName.trim(),
       full_name: fullName || null,
       birthdate: toISODateOnly(birthdateObj),
-      email: email.trim() || null,
       province: province.trim(),
       city: city.trim(),
       barangay: barangay.trim(),
@@ -256,8 +287,10 @@ export default function PersonalInfoScreen({ navigation, route }) {
       address_line: addressLine.trim(),
     };
 
-    navigation.replace("MPINSetup", { registrationData });
+    navigation.navigate("ReviewInfo", { profile: registrationData });
   }
+
+
 
   const onPickProvince = (v) => { setProvince(v); setCity(""); setBarangay(""); };
   const onPickCity = (v) => { setCity(v); setBarangay(""); };
@@ -268,7 +301,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
 
       {/* Header */}
       <View style={styles.header}>
-        {editMode ? (
+        {navigation.canGoBack() ? (
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
             <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
           </TouchableOpacity>
@@ -290,92 +323,53 @@ export default function PersonalInfoScreen({ navigation, route }) {
           {editMode ? "Update your details below" : "Fill in your details to continue"}
         </Text>
 
+
+
         {/* ── NAME SECTION ── */}
         <Text style={styles.sectionLabel}>Full Name</Text>
-        <View style={styles.card}>
-          <Field label="First Name *" value={firstName} onChangeText={setFirstName} placeholder="First name" autoCapitalize="words" theme={theme} />
-          <View style={styles.divider} />
-          <Field label="Middle Name" value={middleName} onChangeText={setMiddleName} placeholder="Middle name (optional)" autoCapitalize="words" theme={theme} />
-          <View style={styles.divider} />
-          <Field label="Last Name *" value={lastName} onChangeText={setLastName} placeholder="Last name" autoCapitalize="words" theme={theme} />
-        </View>
+        <Field label="First Name *" value={firstName} onChangeText={setFirstName} placeholder="First name" autoCapitalize="words" theme={theme} />
+        <Field label="Middle Name" value={middleName} onChangeText={setMiddleName} placeholder="Middle name (optional)" autoCapitalize="words" theme={theme} />
+        <Field label="Last Name *" value={lastName} onChangeText={setLastName} placeholder="Last name" autoCapitalize="words" theme={theme} />
 
         {/* ── PERSONAL DETAILS ── */}
-        <Text style={styles.sectionLabel}>Personal Details</Text>
-        <View style={styles.card}>
-          {/* Birthdate */}
-          <View style={styles.fieldWrap}>
-            <Text style={styles.fieldLabel}>Birthdate *</Text>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => setShowDatePicker(true)}
-              style={styles.selectInputInCard}
-            >
-              <Text style={[styles.selectText, !birthdateObj && styles.selectPlaceholder]}>
-                {birthdateObj ? formatNiceDate(birthdateObj) : "Select birthdate"}
-              </Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.divider} />
-          <Field label="Email (optional)" value={email} onChangeText={setEmail} placeholder="name@gmail.com" keyboardType="email-address" theme={theme} />
-        </View>
+        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Personal Details</Text>
+        <SelectField
+          label="Birthdate *"
+          value={birthdateObj ? formatNiceDate(birthdateObj) : ""}
+          placeholder="Select birthdate"
+          onPress={() => setShowDatePicker(true)}
+          theme={theme}
+        />
+
 
         {/* ── ADDRESS SECTION ── */}
-        <Text style={styles.sectionLabel}>Address</Text>
-        <View style={styles.card}>
-          <View style={styles.fieldWrap}>
-            <Text style={styles.fieldLabel}>Province *</Text>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => setProvinceModal(true)}
-              style={styles.selectInputInCard}
-            >
-              <Text style={[styles.selectText, !province && styles.selectPlaceholder]}>
-                {province || "Select province"}
-              </Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.divider} />
-          <View style={[styles.fieldWrap, !province && { opacity: 0.5 }]}>
-            <Text style={styles.fieldLabel}>City/Municipality *</Text>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => {
-                if (!province) return Alert.alert("Select province first", "Please select a province first.");
-                setCityModal(true);
-              }}
-              style={styles.selectInputInCard}
-            >
-              <Text style={[styles.selectText, !city && styles.selectPlaceholder]}>
-                {city || "Select city/municipality"}
-              </Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.divider} />
-          <View style={[styles.fieldWrap, (!province || !city) && { opacity: 0.5 }]}>
-            <Text style={styles.fieldLabel}>Barangay *</Text>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => {
-                if (!province || !city) return Alert.alert("Select location first", "Please select province and city first.");
-                setBarangayModal(true);
-              }}
-              style={styles.selectInputInCard}
-            >
-              <Text style={[styles.selectText, !barangay && styles.selectPlaceholder]}>
-                {barangay || "Select barangay"}
-              </Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.divider} />
-          <Field label="ZIP Code" value={zipCode} onChangeText={setZipCode} placeholder="e.g. 8709" keyboardType="numeric" theme={theme} />
-          <View style={styles.divider} />
-          <Field label="House No. + Street Address *" value={addressLine} onChangeText={setAddressLine} placeholder="e.g. P6 Lower Sugod" autoCapitalize="words" theme={theme} />
-        </View>
+        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Address</Text>
+        <SelectField label="Province *" value={province} placeholder="Select province" onPress={() => setProvinceModal(true)} theme={theme} />
+        <SelectField
+          label="City/Municipality *"
+          value={city}
+          placeholder="Select city/municipality"
+          disabled={!province}
+          onPress={() => {
+            if (!province) return Alert.alert("Select province first", "Please select a province first.");
+            setCityModal(true);
+          }}
+          theme={theme}
+        />
+        <SelectField
+          label="Barangay *"
+          value={barangay}
+          placeholder="Select barangay"
+          disabled={!province || !city}
+          onPress={() => {
+            if (!province || !city) return Alert.alert("Select location first", "Please select province and city first.");
+            setBarangayModal(true);
+          }}
+          theme={theme}
+        />
+        <Field label="ZIP Code" value={zipCode} onChangeText={setZipCode} placeholder="e.g. 8709" keyboardType="numeric" theme={theme} />
+        <Field label="House No. + Street Address *" value={addressLine} onChangeText={setAddressLine} placeholder="e.g. P6 Lower Sugod" autoCapitalize="words" theme={theme} />
+
 
         {/* Full name preview */}
         {!!fullName && (
@@ -598,6 +592,8 @@ const createStyles = (theme, isDarkMode) =>
       fontWeight: "900",
       fontSize: 15,
     },
+
+
   });
 
 // Field styles (theme-aware)

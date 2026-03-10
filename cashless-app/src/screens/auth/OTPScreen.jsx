@@ -35,7 +35,7 @@ function normalizePH(phone) {
 }
 
 export default function OTPScreen({ navigation, route }) {
-  const { phone: rawPhone, isLogin, registrationData } = route.params || {};
+  const { phone: rawPhone, isLogin, role } = route.params || {};
   const phone = useMemo(() => normalizePH(rawPhone), [rawPhone]);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -48,11 +48,10 @@ export default function OTPScreen({ navigation, route }) {
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const inputRef = useRef(null);
 
-  // Auto-send OTP if it's a signup (Login flow already sends it in PhoneScreen)
+  // OTP is now pre-sent by PhoneScreen for both Login and Signup.
+  // We only need to focus the input here.
   useEffect(() => {
-    if (isLogin === false && phone) {
-      resend(); // Sends initial OTP
-    }
+    setTimeout(() => inputRef.current?.focus(), 500);
   }, []);
 
   // Auto-submit when 6 digits are entered
@@ -97,21 +96,6 @@ export default function OTPScreen({ navigation, route }) {
       const accessToken = authData?.session?.access_token;
       if (!accessToken) throw new Error("Verification failed: No session established.");
 
-      // If Signup flow, call finalize-registration on backend
-      if (registrationData) {
-        const resp = await fetch(`${API_BASE_URL}/auth/finalize-registration`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(registrationData),
-        });
-
-        const json = await resp.json();
-        if (!resp.ok) throw new Error(json.error || "Failed to finalize registration");
-      }
-
       // Register device (async)
       (async () => {
         try {
@@ -133,7 +117,15 @@ export default function OTPScreen({ navigation, route }) {
         }
       })();
 
-      navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
+      if (!isLogin) {
+        if (role === "operator") {
+          navigation.reset({ index: 0, routes: [{ name: "OperatorCode", params: { role, phone } }] });
+        } else {
+          navigation.reset({ index: 0, routes: [{ name: "PersonalInfo", params: { role, phone } }] });
+        }
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
+      }
     } catch (e) {
       setErrorMsg(e.message || "Invalid OTP. Please try again.");
       setOtp("");

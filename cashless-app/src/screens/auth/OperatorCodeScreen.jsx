@@ -17,6 +17,8 @@ import AuthBackground from "../../components/AuthBackground";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, QrCodeIcon } from "@hugeicons/core-free-icons";
 import { API_BASE_URL } from "../../config/api";
+import FloatingLabelInput from "../../components/Input";
+
 
 export default function OperatorCodeScreen({ navigation, route }) {
     const { theme, isDarkMode } = useTheme();
@@ -77,17 +79,16 @@ export default function OperatorCodeScreen({ navigation, route }) {
                             Please enter the special registration code provided by your administrator.
                         </Text>
 
-                        <View style={styles.inputWrap}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="OP-XXXXXX"
-                                placeholderTextColor={theme.textMuted}
-                                value={code}
-                                onChangeText={(t) => setCode(t.toUpperCase())}
-                                autoCapitalize="characters"
-                                autoCorrect={false}
-                            />
-                        </View>
+                        <FloatingLabelInput
+                            label="Registration Code"
+                            placeholder="OP-XXXXXX"
+                            value={code}
+                            onChangeText={(t) => setCode(t.toUpperCase())}
+                            autoCapitalize="characters"
+                            bgColor={theme.background}
+                            style={{ marginBottom: 20 }}
+                        />
+
 
                         <TouchableOpacity
                             style={[styles.btn, loading && { opacity: 0.7 }]}

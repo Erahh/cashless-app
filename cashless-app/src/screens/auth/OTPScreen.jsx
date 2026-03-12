@@ -21,6 +21,7 @@ import AuthBackground from "../../components/AuthBackground";
 import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
+import CEraLogo from "../../components/CEraLogo";
 
 // ✅ Helper to normalize PH phone to E.164 format (+639...)
 function normalizePH(phone) {
@@ -208,7 +209,7 @@ export default function OTPScreen({ navigation, route }) {
             >
               <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
             </TouchableOpacity>
-            <Text style={styles.logo}>ERA</Text>
+            <CEraLogo size="small" />
           </View>
 
           {/* Main Content */}

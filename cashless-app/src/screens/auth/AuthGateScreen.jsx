@@ -1,8 +1,9 @@
 import React, { useEffect, useContext } from "react";
-import { View, ActivityIndicator, StyleSheet, Text } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { supabase } from "../../api/supabase";
 import { AppLockContext } from "../../context/AppLockContext";
 import { useTheme } from "../../context/ThemeContext";
+import CEraLogo from "../../components/CEraLogo";
 
 export default function AuthGateScreen({ navigation }) {
   const { locked } = useContext(AppLockContext);
@@ -77,8 +78,7 @@ export default function AuthGateScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ActivityIndicator size="large" color={theme.accent} />
-      <Text style={[styles.text, { color: theme.textSecondary }]}>Loading...</Text>
+      <CEraLogo />
     </View>
   );
 }
@@ -88,10 +88,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
-  text: {
-    marginTop: 16,
-    fontSize: 14,
-    fontWeight: "600",
   },
 });

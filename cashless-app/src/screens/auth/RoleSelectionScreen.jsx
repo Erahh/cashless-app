@@ -11,6 +11,7 @@ import { useTheme } from "../../context/ThemeContext";
 import AuthBackground from "../../components/AuthBackground";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { UserIcon, Bus01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import CEraLogo from "../../components/CEraLogo";
 
 const { width } = Dimensions.get("window");
 
@@ -27,7 +28,9 @@ export default function RoleSelectionScreen({ navigation }) {
             <SafeAreaView style={styles.safe}>
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.logo}>ERA</Text>
+                        <View style={styles.logoWrapper}>
+                            <CEraLogo size="small" />
+                        </View>
                         <Text style={styles.title}>Join the Future of Mobility</Text>
                         <Text style={styles.subtitle}>Choose your path to get started</Text>
                     </View>
@@ -96,12 +99,9 @@ const createStyles = (theme, isDarkMode) =>
         header: {
             marginBottom: 48,
         },
-        logo: {
-            fontSize: 28,
-            fontWeight: "900",
-            color: theme.text,
-            letterSpacing: 4,
+        logoWrapper: {
             marginBottom: 16,
+            alignItems: "flex-start",
         },
         title: {
             fontSize: 32,
@@ -163,7 +163,7 @@ const createStyles = (theme, isDarkMode) =>
             color: theme.textSecondary,
         },
         loginLink: {
-            color: theme.accent,
+            color: isDarkMode ? theme.accent : "#333333",
             fontWeight: "800",
         },
     });

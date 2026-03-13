@@ -60,6 +60,19 @@ export default function NotificationsScreen({ navigation }) {
     load(50);
   };
 
+  const handleNotificationClick = (n, p) => {
+    // Navigate based on notification type
+    const lowerType = String(p.type || "").toLowerCase();
+    
+    // Security or Account related go to Profile
+    if (lowerType.includes("security") || lowerType.includes("account")) {
+      navigation.navigate("Profile");
+    } else {
+      // By default (rides, send, top-up, transfer, payment, etc.), go to Transactions history
+      navigation.navigate("Transactions");
+    }
+  };
+
   const handleDelete = async (id) => {
     try {
       setMenuVisible(false);
@@ -211,9 +224,14 @@ export default function NotificationsScreen({ navigation }) {
               const displayTime = diffDays === 0 ? "Today" : diffDays === 1 ? "Yesterday" : `${diffDays} days ago`;
 
               return (
-                <View key={n.id} style={styles.notificationItem}>
+                <TouchableOpacity 
+                  key={n.id} 
+                  style={styles.notificationItem}
+                  activeOpacity={0.7}
+                  onPress={() => handleNotificationClick(n, p)}
+                >
                   <View style={styles.itemRow}>
-                    <RenderIcon name={icon} color={color} lib={lib} />
+                     <RenderIcon name={icon} color={color} lib={lib} />
 
                     <View style={styles.itemContent}>
                       <Text style={styles.itemTitle}>{p.title}</Text>
@@ -227,7 +245,7 @@ export default function NotificationsScreen({ navigation }) {
                       <HugeiconsIcon icon={MoreVerticalCircle01Icon} size={20} color={theme.textMuted} />
                     </TouchableOpacity>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })}
 

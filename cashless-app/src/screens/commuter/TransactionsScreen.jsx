@@ -128,9 +128,11 @@ export default function TransactionsScreen({ navigation }) {
               const dateString = dateDate.toLocaleDateString();
 
               return (
-                <View
+                <TouchableOpacity
                   key={it.id}
                   style={styles.txRow}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate("TransactionDetails", { item: it })}
                 >
                   <View style={styles.itemRow}>
                     <TxIcon title={tString} type={it.kind} source={it.source} />
@@ -152,7 +154,7 @@ export default function TransactionsScreen({ navigation }) {
                       </View>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })}
 

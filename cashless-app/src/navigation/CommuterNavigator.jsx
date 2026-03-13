@@ -8,6 +8,7 @@ import { InnerNavProvider, useInnerNav } from "../context/InnerNavContext";
 import HomeScreen from "../screens/common/HomeScreen";
 import BalanceScreen from "../screens/commuter/BalanceScreen";
 import TransactionsScreen from "../screens/commuter/TransactionsScreen";
+import TransactionDetailsScreen from "../screens/commuter/TransactionDetailsScreen";
 import ProfileScreen from "../screens/common/ProfileScreen";
 import MyQRScreen from "../screens/commuter/MyQRScreen";
 import OperatorApplyScreen from "../screens/operator/OperatorApplyScreen";
@@ -92,6 +93,7 @@ function CommuterContent() {
                 <Stack.Screen name="Home" component={withNavCapture(HomeScreen)} options={{ animation: "fade" }} />
                 <Stack.Screen name="Balance" component={withNavCapture(BalanceScreen)} options={{ animation: "fade" }} />
                 <Stack.Screen name="Transactions" component={withNavCapture(TransactionsScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="TransactionDetails" component={withNavCapture(TransactionDetailsScreen)} options={{ animation: "slide_from_right" }} />
                 <Stack.Screen name="Profile" component={withNavCapture(ProfileScreen)} options={{ animation: "fade" }} />
                 <Stack.Screen name="MyQR" component={withNavCapture(MyQRScreen)} options={{ animation: "slide_from_bottom" }} />
 

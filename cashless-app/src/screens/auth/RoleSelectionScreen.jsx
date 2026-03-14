@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     SafeAreaView,
     Dimensions,
+    Alert,
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 import AuthBackground from "../../components/AuthBackground";
@@ -74,7 +75,17 @@ export default function RoleSelectionScreen({ navigation }) {
                             Already have an account?{" "}
                             <Text
                                 style={styles.loginLink}
-                                onPress={() => navigation.navigate("PhoneScreen", { mode: "login" })}
+                                onPress={() => {
+                                    Alert.alert(
+                                        "Log In",
+                                        "Select your account type:",
+                                        [
+                                            { text: "Commuter", onPress: () => navigation.navigate("PhoneScreen", { mode: "login", role: "commuter" }) },
+                                            { text: "Operator", onPress: () => navigation.navigate("PhoneScreen", { mode: "login", role: "operator" }) },
+                                            { text: "Cancel", style: "cancel" }
+                                        ]
+                                    );
+                                }}
                             >
                                 Log In
                             </Text>

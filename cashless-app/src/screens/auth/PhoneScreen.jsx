@@ -82,7 +82,7 @@ function buildE164(rawDigits) {
 
 export default function PhoneScreen({ navigation, route }) {
   const { role: passedRole, mode: passedMode } = route.params || {};
-  const [isLogin, setIsLogin] = useState(passedMode === "login" || !passedRole);
+  const [isLogin, setIsLogin] = useState(passedMode === "login" || passedRole === "commuter" || passedRole === "operator" || !passedRole);
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
   const [showPicker, setShowPicker] = useState(false);
   const [rawPhone, setRawPhone] = useState("");
@@ -90,6 +90,7 @@ export default function PhoneScreen({ navigation, route }) {
   const [dbCarriers, setDbCarriers] = useState(null);
   const [phoneStatus, setPhoneStatus] = useState(null); // null | 'checking' | 'exists' | 'not_found' | 'error'
   const [checkedPhone, setCheckedPhone] = useState(null); // the phone string we last checked
+  const [checkedRoleInfo, setCheckedRoleInfo] = useState(null); // { is_operator: false, is_admin: false }
   const { theme, isDarkMode } = useTheme();
   const phoneInputRef = useRef(null);
   const checkTimerRef = useRef(null);
@@ -212,7 +213,8 @@ export default function PhoneScreen({ navigation, route }) {
 
         setCheckedPhone(fullPhone);
         setPhoneStatus(json.exists ? 'exists' : 'not_found');
-        console.log(`[PhoneScreen] Pre-check: ${fullPhone} -> ${json.exists ? 'exists' : 'not_found'}`);
+        setCheckedRoleInfo({ is_operator: !!json.is_operator, is_admin: !!json.is_admin });
+        console.log(`[PhoneScreen] Pre-check: ${fullPhone} -> ${json.exists ? 'exists' : 'not_found'}, OP: ${!!json.is_operator}`);
       } catch (err) {
         if (err.name === 'AbortError') return;
         console.warn('[PhoneScreen] Pre-check failed:', err.message);
@@ -229,6 +231,7 @@ export default function PhoneScreen({ navigation, route }) {
   useEffect(() => {
     setPhoneStatus(null);
     setCheckedPhone(null);
+    setCheckedRoleInfo(null);
   }, [isLogin]);
 
 
@@ -278,10 +281,14 @@ export default function PhoneScreen({ navigation, route }) {
 
       // ── Use cached pre-check result if available (INSTANT!) ──
       let alreadyExists;
+      let roleInfo = { is_operator: false, is_admin: false };
+
       if (checkedPhone === fullPhone && phoneStatus === 'exists') {
         alreadyExists = true;
+        roleInfo = checkedRoleInfo || roleInfo;
       } else if (checkedPhone === fullPhone && phoneStatus === 'not_found') {
         alreadyExists = false;
+        roleInfo = checkedRoleInfo || roleInfo;
       } else {
         // Fallback: do the check now (only if pre-check didn't complete)
         setLoading(true);
@@ -302,8 +309,10 @@ export default function PhoneScreen({ navigation, route }) {
           const checkJson = await checkResp.json();
           if (!checkResp.ok) throw new Error(checkJson.error || "Failed to check phone.");
           alreadyExists = !!checkJson.exists;
+          roleInfo = { is_operator: !!checkJson.is_operator, is_admin: !!checkJson.is_admin };
           setCheckedPhone(fullPhone);
           setPhoneStatus(alreadyExists ? 'exists' : 'not_found');
+          setCheckedRoleInfo(roleInfo);
         } catch (checkErr) {
           setLoading(false);
           return Alert.alert("Connection Error", checkErr.message);
@@ -311,6 +320,31 @@ export default function PhoneScreen({ navigation, route }) {
       }
 
       // ── Instant validation based on cached/fetched result ──
+      if (isLogin && alreadyExists && passedRole) {
+        const isOpOrAdmin = roleInfo.is_operator || roleInfo.is_admin;
+        if (passedRole === "operator" && !isOpOrAdmin) {
+           setLoading(false);
+           return Alert.alert(
+              "Access Denied",
+              "This account is not registered as an Operator. Please use the Commuter login.",
+              [
+                { text: "Commuter Login", onPress: () => navigation.replace("PhoneScreen", { mode: "login", role: "commuter" }) },
+                { text: "Cancel", style: "cancel" }
+              ]
+           );
+        } else if (passedRole === "commuter" && isOpOrAdmin) {
+           setLoading(false);
+           return Alert.alert(
+              "Operator Account",
+              "This account is registered as an Operator. Please use the Operator login.",
+              [
+                { text: "Operator Login", onPress: () => navigation.replace("PhoneScreen", { mode: "login", role: "operator" }) },
+                { text: "Cancel", style: "cancel" }
+              ]
+           );
+        }
+      }
+
       if (!isLogin && alreadyExists) {
         setLoading(false);
         return Alert.alert(
@@ -329,7 +363,16 @@ export default function PhoneScreen({ navigation, route }) {
           "Account Not Found",
           "This number is not registered yet. Please create an account first.",
           [
-            { text: "Sign Up", onPress: () => navigation.navigate("RoleSelection") },
+            { 
+              text: "Sign Up", 
+              onPress: () => {
+                if (passedRole) {
+                  setIsLogin(false);
+                } else {
+                  navigation.navigate("RoleSelection");
+                }
+              }
+            },
             { text: "Cancel", style: "cancel" }
           ]
         );
@@ -392,11 +435,15 @@ export default function PhoneScreen({ navigation, route }) {
           {/* Main Content */}
           <View style={styles.container}>
             <Text style={styles.title}>
-              {isLogin ? "Welcome Back!" : "Create an Account"}
+              {isLogin 
+                ? (passedMode === "login" ? "Welcome Back!" : "Welcome!") 
+                : "Create an Account"}
             </Text>
             <Text style={styles.subtitle}>
               {isLogin
-                ? "Access your account through your phone number"
+                ? (passedMode === "login" 
+                    ? "Access your account through your phone number" 
+                    : "Enter your phone number to continue")
                 : "Sign up instantly using your phone number"}
             </Text>
 
@@ -534,7 +581,11 @@ export default function PhoneScreen({ navigation, route }) {
                 activeOpacity={0.8}
                 onPress={() => {
                   if (isLogin) {
-                    navigation.navigate("RoleSelection");
+                    if (passedRole) {
+                      setIsLogin(false);
+                    } else {
+                      navigation.navigate("RoleSelection");
+                    }
                   } else {
                     setIsLogin(true);
                   }

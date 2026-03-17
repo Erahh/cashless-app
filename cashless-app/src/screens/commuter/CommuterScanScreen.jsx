@@ -3,6 +3,7 @@ import { View, Text, TextInput, Alert, TouchableOpacity } from "react-native";
 import { Screen, Card, PrimaryButton, GhostButton, Pill } from "../../components/ui";
 import QRScanView from "../../components/QRScanView";
 import { payOperator } from "../../api/payApi";
+import { useTheme } from "../../context/ThemeContext";
 
 /**
  * What QR should contain:
@@ -26,6 +27,7 @@ function extractOperatorQr(scanned) {
 }
 
 export default function CommuterScanScreen({ navigation }) {
+    const { theme, isDarkMode } = useTheme();
     const [operatorQr, setOperatorQr] = useState("");
     const [amount, setAmount] = useState("");
     const [step, setStep] = useState("scan"); // scan | pay
@@ -89,11 +91,12 @@ export default function CommuterScanScreen({ navigation }) {
             title="Commuter Scan"
             subtitle="Scan operator QR then pay fare from your wallet."
             onBack={() => navigation.goBack()}
+            theme={theme}
         >
             <View style={{ flex: 1, paddingBottom: 120 }}>
                 {step === "scan" ? (
-                    <Card>
-                        <Pill text="Step 1 • Scan Operator QR" />
+                    <Card theme={theme}>
+                        <Pill text="Step 1 • Scan Operator QR" theme={theme} />
                         <View style={{ marginTop: 14 }}>
                             <QRScanView
                                 label="Scan Operator QR"
@@ -104,38 +107,38 @@ export default function CommuterScanScreen({ navigation }) {
                         </View>
                     </Card>
                 ) : (
-                    <Card>
-                        <Pill text="Step 2 • Enter Fare" />
+                    <Card theme={theme}>
+                        <Pill text="Step 2 • Enter Fare" theme={theme} />
 
-                        <Text style={{ marginTop: 16, color: "rgba(244,238,230,0.75)", fontWeight: "800" }}>
+                        <Text style={{ marginTop: 16, color: theme.textSecondary, fontWeight: "800" }}>
                             Operator QR
                         </Text>
-                        <Text style={{ marginTop: 6, color: "#F4EEE6", fontWeight: "900" }} numberOfLines={1}>
+                        <Text style={{ marginTop: 6, color: theme.text, fontWeight: "900" }} numberOfLines={1}>
                             {operatorQr}
                         </Text>
 
-                        <Text style={{ marginTop: 18, color: "rgba(244,238,230,0.75)" }}>Fare Amount (PHP)</Text>
+                        <Text style={{ marginTop: 18, color: theme.textSecondary }}>Fare Amount (PHP)</Text>
                         <TextInput
                             value={amount}
                             onChangeText={(t) => setAmount(t.replace(/[^\d.]/g, ""))}
                             keyboardType="decimal-pad"
                             placeholder="e.g. 15"
-                            placeholderTextColor="rgba(244,238,230,0.35)"
+                            placeholderTextColor={theme.textMuted}
                             style={{
                                 marginTop: 10,
                                 borderRadius: 14,
                                 padding: 14,
                                 borderWidth: 1,
-                                borderColor: "rgba(255,255,255,0.10)",
-                                backgroundColor: "rgba(0,0,0,0.18)",
-                                color: "#F4EEE6",
+                                borderColor: theme.border,
+                                backgroundColor: isDarkMode ? "rgba(0,0,0,0.18)" : theme.background,
+                                color: theme.text,
                                 fontWeight: "900",
                                 fontSize: 18,
                             }}
                         />
 
                         <View style={{ marginTop: 16, gap: 10 }}>
-                            <PrimaryButton label={loading ? "Processing..." : "Pay Now"} onPress={confirmPay} disabled={loading} />
+                            <PrimaryButton label={loading ? "Processing..." : "Pay Now"} onPress={confirmPay} disabled={loading} theme={theme} />
                             <TouchableOpacity
                                 onPress={() => {
                                     setStep("scan");
@@ -145,7 +148,7 @@ export default function CommuterScanScreen({ navigation }) {
                                 style={{ paddingVertical: 12 }}
                                 activeOpacity={0.9}
                             >
-                                <Text style={{ color: "rgba(255,255,255,0.75)", textAlign: "center", fontWeight: "800" }}>
+                                <Text style={{ color: theme.textSecondary, textAlign: "center", fontWeight: "800" }}>
                                     Scan different operator
                                 </Text>
                             </TouchableOpacity>

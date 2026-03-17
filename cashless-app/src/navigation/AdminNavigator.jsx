@@ -92,10 +92,10 @@ function AdminContent() {
                 <Stack.Screen name="AdminDashboard" component={withNavCapture(AdminDashboardScreen)} />
 
                 {/* Admin Ops */}
-                <Stack.Screen name="AdminVerification" component={withNavCapture(AdminVerificationScreen)} />
-                <Stack.Screen name="AdminVerificationDetail" component={withNavCapture(AdminVerificationDetailScreen)} />
-                <Stack.Screen name="AdminSettlements" component={withNavCapture(AdminSettlementsScreen)} />
-                <Stack.Screen name="AdminCreateOperator" component={withNavCapture(AdminCreateOperatorScreen)} />
+                <Stack.Screen name="AdminVerification" component={withNavCapture(AdminVerificationScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="AdminVerificationDetail" component={withNavCapture(AdminVerificationDetailScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="AdminSettlements" component={withNavCapture(AdminSettlementsScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="AdminCreateOperator" component={withNavCapture(AdminCreateOperatorScreen)} options={{ animation: "fade" }} />
                 <Stack.Screen name="AdminRegistrationCodes" component={withNavCapture(AdminRegistrationCodesScreen)} />
                 <Stack.Screen name="AdminPayout" component={withNavCapture(AdminPayoutScreen)} />
 

@@ -125,6 +125,25 @@ export default function OTPScreen({ navigation, route }) {
           navigation.reset({ index: 0, routes: [{ name: "PersonalInfo", params: { role, phone } }] });
         }
       } else {
+        // Seamlessly route fully set up users past the AuthGate/RoleGate splash screens
+        try {
+          const res = await fetch(`${API_BASE_URL}/me/status`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (res.ok) {
+            const statusData = await res.json();
+            if (statusData.account && statusData.account.account_active && statusData.account.pin_set) {
+              const roles = statusData.roles || {};
+              const target = !!roles.is_admin ? "AdminApp" : !!roles.is_operator ? "OperatorApp" : "CommuterApp";
+              navigation.reset({ index: 0, routes: [{ name: target }] });
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn("[OTP] Seamless login check failed:", e);
+        }
+        
+        // Fallback to AuthGate if something failed or user needs setup (MPIN, Profile, etc.)
         navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
       }
     } catch (e) {

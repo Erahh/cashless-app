@@ -215,7 +215,7 @@ export default function BalanceScreen({ navigation }) {
                   key: "topup",
                   icon: WalletAdd01Icon,
                   title: "Top Up",
-                  onPress: () => navigation.navigate("SendLoad")
+                  onPress: () => navigation.navigate("TopUp")
                 },
                 {
                   key: "send_load",

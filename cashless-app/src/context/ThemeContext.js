@@ -8,24 +8,24 @@ const THEME_STORAGE_KEY = '@app_theme_preference';
 
 export const lightTheme = {
     isDark: false,
-    background: '#F6F4F0', // Warm off-white based on the mockup
-    card: '#EFEBE2', // Slightly darker for cards
-    cardAlt: '#FFFFFF', // Clean white option
-    border: 'rgba(0, 0, 0, 0.08)',
-    text: '#1A1A1A',
-    textSecondary: 'rgba(26, 26, 26, 0.65)',
-    textMuted: 'rgba(26, 26, 26, 0.45)',
-    accent: '#F7E353', // Vibrant Yellow
-    accentWarm: '#FFB800',
-    primary: '#0B0E14',
-    success: '#4CAF50',
-    successBg: 'rgba(76, 175, 80, 0.1)',
-    danger: '#FF4C4C',
-    dangerBg: 'rgba(255, 76, 76, 0.1)',
+    background: '#F8F9FA', // Clean off-white
+    card: '#FFFFFF', // Pure white for cards
+    cardAlt: '#F1F3F5',
+    border: 'rgba(0, 0, 0, 0.05)',
+    text: '#121417',
+    textSecondary: '#495057',
+    textMuted: '#ADB5BD',
+    accent: '#F7E353', // Keep the vibrant yellow
+    accentWarm: '#FAB005',
+    primary: '#121417',
+    success: '#2FB344',
+    successBg: 'rgba(47, 179, 68, 0.1)',
+    danger: '#D63939',
+    dangerBg: 'rgba(214, 57, 57, 0.1)',
     warning: '#F7E353',
-    warningBg: 'rgba(247, 227, 83, 0.1)',
-    bottomNavBg: 'rgba(255, 255, 255, 0.95)',
-    iconUnfocused: 'rgba(0, 0, 0, 0.4)',
+    warningBg: 'rgba(247, 227, 83, 0.12)',
+    bottomNavBg: '#FFFFFF',
+    iconUnfocused: '#868E96',
 };
 
 export const darkTheme = {

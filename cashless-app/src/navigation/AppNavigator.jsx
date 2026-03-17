@@ -51,9 +51,9 @@ export default function AppNavigator() {
           <Stack.Screen name="RoleGate" component={RoleGateScreen} />
 
           {/* ROLE APPS */}
-          <Stack.Screen name="CommuterApp" component={CommuterNavigator} />
-          <Stack.Screen name="OperatorApp" component={OperatorNavigator} />
-          <Stack.Screen name="AdminApp" component={AdminNavigator} />
+          <Stack.Screen name="CommuterApp" component={CommuterNavigator} options={{ animation: "fade" }} />
+          <Stack.Screen name="OperatorApp" component={OperatorNavigator} options={{ animation: "fade" }} />
+          <Stack.Screen name="AdminApp" component={AdminNavigator} options={{ animation: "fade" }} />
         </>
       )}
     </Stack.Navigator>

@@ -1,12 +1,73 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Alert, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, TouchableWithoutFeedback, Keyboard, StyleSheet } from "react-native";
-import { Screen, Card, PrimaryButton, GhostButton, Pill } from "../../components/ui";
+import { View, Text, TextInput, Alert, TouchableOpacity, ScrollView, StyleSheet, Pressable } from "react-native";
+import { Screen, PrimaryButton, Pill } from "../../components/ui";
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
+import { useTheme } from "../../context/ThemeContext";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Linking from "expo-linking";
+import * as Haptics from "expo-haptics";
+import Animated, { FadeInUp, useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring } from "react-native-reanimated";
 
-const PRESETS = [50, 100, 200, 500, 1000];
+const PRESETS = [50, 100, 200, 500, 1000, 2000];
+
+function PresetButton({ val, idx, amount, setAmount, style }) {
+    const scale = useSharedValue(1);
+    const rotation = useSharedValue(0);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [
+            { scale: scale.value },
+            { rotate: `${rotation.value}deg` }
+        ]
+    }));
+
+    const isActive = Number(amount) === val;
+
+    const handlePress = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        
+        scale.value = withSequence(
+            withSpring(0.92, { damping: 10, stiffness: 200 }),
+            withSpring(1, { damping: 10, stiffness: 200 })
+        );
+        
+        rotation.value = withSequence(
+            withTiming(-5, { duration: 40 }),
+            withTiming(5, { duration: 40 }),
+            withTiming(-5, { duration: 40 }),
+            withTiming(0, { duration: 40 })
+        );
+        
+        // Small delay so the animation smoothly plays before updating UI state
+        setTimeout(() => setAmount(String(val)), 100);
+    };
+
+    return (
+        <Animated.View 
+            entering={FadeInUp.delay(idx * 70).springify().damping(15)}
+            style={[style.presetWrapper, animatedStyle]}
+        >
+            <Pressable
+                onPress={handlePress}
+                style={({ pressed }) => [
+                    style.presetBtn,
+                    isActive && style.presetBtnActive,
+                    pressed && { opacity: 0.85 }
+                ]}
+            >
+                <Text style={[style.presetText, isActive && style.presetTextActive]}>
+                    ₱{val.toLocaleString()}
+                </Text>
+            </Pressable>
+        </Animated.View>
+    );
+}
 
 export default function TopUpScreen({ navigation }) {
+    const { theme, isDarkMode } = useTheme();
+    const style = React.useMemo(() => createDynamicStyles(theme, isDarkMode), [theme, isDarkMode]);
     const [amount, setAmount] = useState("");
 
     const startTopup = async () => {
@@ -18,13 +79,18 @@ export default function TopUpScreen({ navigation }) {
             const token = s?.session?.access_token;
             if (!token) return Alert.alert("Session", "Please login again.");
 
+            const callbackUrl = Linking.createURL("/");
+
             const res = await fetch(`${API_BASE_URL}/wallet/topup/checkout`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ amount: amt }),
+                body: JSON.stringify({
+                    amount: amt,
+                    callbackUrl: callbackUrl,
+                }),
             });
 
             const json = await res.json();
@@ -37,121 +103,153 @@ export default function TopUpScreen({ navigation }) {
     };
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1 }}
+        <Screen
+            title="Top Up"
+            subtitle="Add funds to your wallet instantly."
+            theme={theme}
+            onBack={() => navigation.goBack()}
         >
-            <Screen title="Top Up" subtitle="Add funds to your wallet using GCash.">
+            <View style={{ flex: 1 }}>
                 <ScrollView
+                    style={{ flex: 1 }}
                     contentContainerStyle={{ flexGrow: 1 }}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    <Card>
-                        <Pill text="GCash / PayMongo" />
+                    <View style={style.container}>
+                        <LinearGradient
+                            colors={isDarkMode ? ['#1e1e1e', '#121212'] : ['#ffffff', '#f6f6f6']}
+                            style={style.mainCard}
+                        >
+                            <Pill text="Amount" theme={theme} />
+                            <View style={style.amountContainer}>
+                                <Text style={style.currencyLabel}>₱</Text>
+                                <TextInput
+                                    value={amount}
+                                    onChangeText={setAmount}
+                                    keyboardType="numeric"
+                                    placeholder="0.00"
+                                    placeholderTextColor={theme.textMuted}
+                                    style={style.mainAmountInput}
+                                />
+                            </View>
 
-                        <Text style={s.label}>Amount (PHP)</Text>
-                        <TextInput
-                            value={amount}
-                            onChangeText={setAmount}
-                            keyboardType="numeric"
-                            placeholder="e.g. 100"
-                            placeholderTextColor="rgba(244,238,230,0.35)"
-                            style={s.amountInput}
-                        />
+                            <Text style={style.quickAmountTitle}>QUICK AMOUNT</Text>
+                            <View style={style.presetsRow}>
+                                {PRESETS.map((val, idx) => (
+                                    <PresetButton 
+                                        key={val} 
+                                        val={val} 
+                                        idx={idx} 
+                                        amount={amount} 
+                                        setAmount={setAmount} 
+                                        style={style} 
+                                    />
+                                ))}
+                            </View>
+                        </LinearGradient>
 
-                        {/* ✅ Quick Amount Presets */}
-                        <Text style={s.presetLabel}>Quick Select</Text>
-                        <View style={s.presetsRow}>
-                            {PRESETS.map((val) => (
-                                <TouchableOpacity
-                                    key={val}
-                                    style={[
-                                        s.presetBtn,
-                                        Number(amount) === val && s.presetBtnActive,
-                                    ]}
-                                    activeOpacity={0.8}
-                                    onPress={() => setAmount(String(val))}
-                                >
-                                    <Text
-                                        style={[
-                                            s.presetText,
-                                            Number(amount) === val && s.presetTextActive,
-                                        ]}
-                                    >
-                                        ₱{val.toLocaleString()}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        <Text style={s.hint}>
-                            Minimum amount is ₱20.00
-                        </Text>
-                    </Card>
-
-                    <View style={{ marginTop: "auto", gap: 10, paddingBottom: 140, paddingTop: 20 }}>
-                        <PrimaryButton label="Continue to GCash" onPress={startTopup} />
                     </View>
                 </ScrollView>
-            </Screen>
-        </KeyboardAvoidingView>
+
+                <View style={style.footer}>
+                    <PrimaryButton
+                        label="Continue"
+                        onPress={startTopup}
+                        theme={theme}
+                    />
+                </View>
+            </View>
+        </Screen>
     );
 }
 
-const s = StyleSheet.create({
-    label: {
-        marginTop: 20,
-        color: "rgba(244,238,230,0.8)",
-        fontSize: 13,
-        fontWeight: "600",
+const createDynamicStyles = (theme, isDarkMode) => StyleSheet.create({
+    container: {
+        paddingTop: 10,
+        paddingBottom: 20,
     },
-    amountInput: {
-        marginTop: 10,
-        borderRadius: 14,
-        padding: 14,
+    mainCard: {
+        borderRadius: 24,
+        padding: 24,
+        marginBottom: 32,
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.10)",
-        backgroundColor: "rgba(0,0,0,0.18)",
-        color: "#F4EEE6",
-        fontWeight: "800",
-        fontSize: 18,
+        borderColor: theme.border,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: isDarkMode ? 0.3 : 0.12,
+        shadowRadius: 24,
+        elevation: 10,
     },
-    presetLabel: {
+    amountContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginTop: 16,
-        color: "rgba(244,238,230,0.5)",
-        fontSize: 12,
-        fontWeight: "600",
-        marginBottom: 8,
+        marginBottom: 20,
+    },
+    currencyLabel: {
+        fontSize: 38,
+        fontWeight: '900',
+        color: theme.warning,
+        marginRight: 8,
+    },
+    mainAmountInput: {
+        fontSize: 38,
+        fontWeight: '900',
+        color: theme.text,
+        flex: 1,
+    },
+    quickAmountTitle: {
+        fontSize: 11,
+        fontWeight: "800",
+        color: theme.textMuted,
+        letterSpacing: 1.5,
+        marginBottom: 12,
+        marginLeft: 4,
     },
     presetsRow: {
         flexDirection: "row",
         flexWrap: "wrap",
-        gap: 8,
+        justifyContent: "space-between",
+    },
+    presetWrapper: {
+        width: '31.5%',
+        marginBottom: 12,
     },
     presetBtn: {
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderRadius: 12,
-        backgroundColor: "rgba(255,255,255,0.06)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.10)",
+        paddingVertical: 14,
+        borderRadius: 16,
+        backgroundColor: isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+        borderWidth: 1.5,
+        borderColor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     presetBtnActive: {
-        backgroundColor: "rgba(242,233,78,0.15)",
-        borderColor: "rgba(242,233,78,0.4)",
+        backgroundColor: isDarkMode ? "rgba(255, 171, 0, 0.12)" : "rgba(255, 171, 0, 0.15)",
+        borderColor: theme.warning,
+        shadowColor: theme.warning,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: isDarkMode ? 0.4 : 0.2,
+        shadowRadius: 12,
+        elevation: 6,
     },
     presetText: {
-        color: "rgba(244,238,230,0.6)",
+        color: theme.textSecondary,
         fontWeight: "800",
-        fontSize: 14,
+        fontSize: 16,
+        letterSpacing: 0.5,
     },
     presetTextActive: {
-        color: "#F2E94E",
+        color: theme.warning,
+        fontWeight: "900",
+        textShadowColor: isDarkMode ? "rgba(255, 171, 0, 0.4)" : "transparent",
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 8,
     },
-    hint: {
-        marginTop: 12,
-        fontSize: 12,
-        color: "rgba(244,238,230,0.5)",
-    },
+    footer: {
+        paddingTop: 12,
+        paddingBottom: 110,
+        backgroundColor: 'transparent',
+    }
 });

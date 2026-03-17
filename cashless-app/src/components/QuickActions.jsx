@@ -1,7 +1,16 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
+import Animated, {
+  FadeInRight,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withSequence,
+  withTiming
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 export default function QuickActions({ items = [] }) {
   const { theme, isDarkMode } = useTheme();
@@ -17,78 +26,128 @@ export default function QuickActions({ items = [] }) {
         contentContainerStyle={styles.row}
       >
         {items.filter(it => it.show !== false).map((it, idx) => (
-          <TouchableOpacity
+          <ActionCard
             key={it.key ?? String(idx)}
-            activeOpacity={0.9}
-            onPress={it.onPress}
-            style={[styles.card, idx === 0 && styles.firstCard]}
-          >
-            <View style={styles.iconBox}>
-              {typeof it.icon === 'string' ? (
-                <Text style={styles.icon}>{it.icon}</Text>
-              ) : (
-                <HugeiconsIcon icon={it.icon} size={24} color={theme.text} />
-              )}
-            </View>
-
-            <Text style={styles.label} numberOfLines={2}>
-              {it.title}
-            </Text>
-          </TouchableOpacity>
+            item={it}
+            index={idx}
+            styles={styles}
+            theme={theme}
+            isDarkMode={isDarkMode}
+          />
         ))}
       </ScrollView>
     </View>
   );
 }
 
+function ActionCard({ item, index, styles, theme, isDarkMode }) {
+  const scale = useSharedValue(1);
+  const rotation = useSharedValue(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value },
+      { rotate: `${rotation.value}deg` }
+    ]
+  }));
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    scale.value = withSequence(
+      withSpring(0.92, { damping: 10, stiffness: 200 }),
+      withSpring(1, { damping: 10, stiffness: 200 }),
+    );
+    
+    rotation.value = withSequence(
+      withTiming(-5, { duration: 40 }),
+      withTiming(5, { duration: 40 }),
+      withTiming(-5, { duration: 40 }),
+      withTiming(0, { duration: 40 })
+    );
+    
+    // Add a slight delay to let the active animation play before navigating
+    setTimeout(() => {
+      if (item.onPress) item.onPress();
+    }, 160);
+  };
+
+  return (
+    <Animated.View
+      entering={FadeInRight.delay(index * 120).springify().damping(15)}
+    >
+      <Animated.View style={animatedStyle}>
+        <Pressable
+          onPress={handlePress}
+          style={({ pressed }) => [
+            styles.card,
+            index === 0 && styles.firstCard,
+            pressed && { opacity: 0.85 }
+          ]}
+        >
+          <View style={styles.iconBox}>
+            {typeof item.icon === 'string' ? (
+              <Text style={styles.icon}>{item.icon}</Text>
+            ) : (
+              <HugeiconsIcon icon={item.icon} size={24} color={isDarkMode ? "#fff" : theme.text} />
+            )}
+          </View>
+
+          <Text style={styles.label} numberOfLines={2}>
+            {item.title}
+          </Text>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 const createStyles = (theme, isDarkMode) => StyleSheet.create({
   wrap: { marginTop: 18 },
-  title: { color: theme.text, fontSize: 16, fontWeight: "900", marginBottom: 12 },
+  title: { color: theme.text, fontSize: 16, fontWeight: "900", marginBottom: 16, marginLeft: 4 },
 
-  // ✅ no gap (android safe)
   row: {
-    paddingLeft: 2,
-    paddingRight: 10,
+    paddingLeft: 4,
+    paddingRight: 20,
+    paddingBottom: 10, // room for shadow
   },
 
-  // ✅ slightly wider + consistent height
   card: {
-    width: 104, // Slightly adjusted from 108
-    height: 104, // Square-ish look now that sub is gone
-    borderRadius: 22,
-    backgroundColor: isDarkMode ? "rgba(255,255,255,0.06)" : theme.cardAlt || "#ffffff",
+    width: 106,
+    height: 110,
+    borderRadius: 24,
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: isDarkMode ? "rgba(255,255,255,0.10)" : theme.border,
+    borderColor: theme.border,
     paddingHorizontal: 8,
-    marginRight: 12,
+    marginRight: 14,
     alignItems: "center",
-    justifyContent: "center", // Center vertically
+    justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDarkMode ? 0 : 0.05,
-    shadowRadius: 4,
-    elevation: isDarkMode ? 0 : 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: isDarkMode ? 0.4 : 0.08,
+    shadowRadius: 12,
+    elevation: 8,
   },
   firstCard: { marginLeft: 0 },
 
   iconBox: {
-    width: 48,
-    height: 48,
+    width: 50,
+    height: 50,
     borderRadius: 18,
-    backgroundColor: isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.05)",
+    backgroundColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
     alignItems: "center",
     justifyContent: "center",
   },
   icon: { fontSize: 18 },
 
-  // ✅ 2 lines = looks like reference + prevents ugly wrap
   label: {
-    marginTop: 8,
+    marginTop: 10,
     color: theme.text,
     fontSize: 12,
-    fontWeight: "900",
+    fontWeight: "800",
     textAlign: "center",
     lineHeight: 14,
-    height: 28, // ✅ reserve 2 lines space
+    height: 28,
+    paddingHorizontal: 4,
   },
 });

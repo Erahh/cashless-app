@@ -510,13 +510,13 @@ export default function PhoneScreen({ navigation, route }) {
                 </View>
               ) : phoneStatus === 'checking' ? (
                 <View style={[styles.statusBadge, styles.statusCheckingBadge]}>
-                  <ActivityIndicator size="small" color={theme.textSecondary} style={{ marginRight: 8 }} />
+                  <ActivityIndicator size="small" color={theme.textSecondary} style={{ marginRight: 8, marginLeft: 4 }} />
                   <Text style={styles.statusCheckingText}>Verifying number...</Text>
                 </View>
               ) : phoneStatus === 'exists' ? (
                 <View style={[styles.statusBadge, isLogin ? styles.statusFoundBadge : styles.statusNotFoundBadge]}>
                   <View style={[styles.iconContainer, isLogin ? styles.iconContainerSuccess : styles.iconContainerError]}>
-                    <HugeiconsIcon icon={isLogin ? Tick01Icon : Cancel01Icon} size={14} color={isLogin ? (isDarkMode ? '#4ECDC4' : '#007A7A') : (isDarkMode ? '#FF6B6B' : '#B71C1C')} />
+                    <HugeiconsIcon icon={isLogin ? Tick01Icon : Cancel01Icon} size={16} color={isLogin ? (isDarkMode ? '#4ade80' : '#16a34a') : (isDarkMode ? '#FF6B6B' : '#B71C1C')} />
                   </View>
                   <Text style={isLogin ? styles.statusFoundText : styles.statusNotFoundText}>
                     {isLogin ? 'Account found — ready to login' : 'Number already registered'}
@@ -525,7 +525,7 @@ export default function PhoneScreen({ navigation, route }) {
               ) : phoneStatus === 'not_found' ? (
                 <View style={[styles.statusBadge, !isLogin ? styles.statusFoundBadge : styles.statusNotFoundBadge]}>
                   <View style={[styles.iconContainer, !isLogin ? styles.iconContainerSuccess : styles.iconContainerError]}>
-                    <HugeiconsIcon icon={!isLogin ? Tick01Icon : Cancel01Icon} size={14} color={!isLogin ? (isDarkMode ? '#4ECDC4' : '#007A7A') : (isDarkMode ? '#FF6B6B' : '#B71C1C')} />
+                    <HugeiconsIcon icon={!isLogin ? Tick01Icon : Cancel01Icon} size={16} color={!isLogin ? (isDarkMode ? '#4ade80' : '#16a34a') : (isDarkMode ? '#FF6B6B' : '#B71C1C')} />
                   </View>
                   <Text style={!isLogin ? styles.statusFoundText : styles.statusNotFoundText}>
                     {isLogin ? 'Number not registered' : 'Number available — ready to signup'}
@@ -792,22 +792,22 @@ const createStyles = (theme, isDarkMode) =>
     statusBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 14,
-      alignSelf: 'flex-start',
-      borderWidth: 1,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderRadius: 16,
+      alignSelf: 'stretch',
+      borderWidth: 1.5,
     },
     iconContainer: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
+      width: 26,
+      height: 26,
+      borderRadius: 13,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 10,
     },
     iconContainerSuccess: {
-      backgroundColor: isDarkMode ? 'rgba(78, 205, 196, 0.15)' : 'rgba(0, 139, 139, 0.1)',
+      backgroundColor: isDarkMode ? 'rgba(74, 222, 128, 0.2)' : 'rgba(22, 163, 74, 0.15)',
     },
     iconContainerError: {
       backgroundColor: isDarkMode ? 'rgba(255, 107, 107, 0.15)' : 'rgba(211, 47, 47, 0.1)',
@@ -821,17 +821,17 @@ const createStyles = (theme, isDarkMode) =>
     },
     statusCheckingText: {
       color: theme.textSecondary,
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
     },
     statusFoundBadge: {
-      backgroundColor: isDarkMode ? 'rgba(78, 205, 196, 0.06)' : 'rgba(0, 139, 139, 0.04)',
-      borderColor: isDarkMode ? 'rgba(78, 205, 196, 0.2)' : 'rgba(0, 139, 139, 0.12)',
+      backgroundColor: isDarkMode ? 'rgba(74, 222, 128, 0.12)' : 'rgba(22, 163, 74, 0.08)',
+      borderColor: isDarkMode ? 'rgba(74, 222, 128, 0.3)' : 'rgba(22, 163, 74, 0.25)',
     },
     statusFoundText: {
-      color: isDarkMode ? '#4ECDC4' : '#007A7A',
-      fontSize: 13,
-      fontWeight: '700',
+      color: isDarkMode ? '#4ade80' : '#16a34a',
+      fontSize: 14,
+      fontWeight: '800',
     },
     statusNotFoundBadge: {
       backgroundColor: isDarkMode ? 'rgba(255, 107, 107, 0.06)' : 'rgba(211, 47, 47, 0.04)',

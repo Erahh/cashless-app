@@ -247,7 +247,7 @@ export default function HomeScreen({ navigation, route }) {
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.smallLabel}>Available Balance</Text>
+            <Text style={[styles.smallLabel, { color: theme.text, opacity: 0.7, fontWeight: "600" }]}>Available Balance</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Text style={styles.balance}>₱{hideBalance ? "••••" : computed.balanceText}</Text>
               <TouchableOpacity onPress={toggleHideBalance} activeOpacity={0.7} style={{ padding: 4 }}>
@@ -583,28 +583,28 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 18,
   },
   walletBalanceInner: {
-    backgroundColor: theme.isDark ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.08)",
-    borderRadius: 18,
-    paddingVertical: 16,
+    backgroundColor: "rgba(0,0,0,0.7)", // Always dark for high contrast
+    borderRadius: 20,
+    paddingVertical: 18,
     paddingHorizontal: 22,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowRadius: 8,
+    elevation: 5,
   },
   walletBalanceLabel: {
-    color: theme.textMuted,
+    color: "rgba(255, 255, 255, 0.7)", // Constant light color on dark background
     fontSize: 13,
-    fontWeight: "500",
+    fontWeight: "600",
     letterSpacing: 0.3,
   },
   walletBalanceAmount: {
-    color: theme.text,
-    fontSize: 24,
+    color: "#FFFFFF", // Constant white on dark background
+    fontSize: 26,
     fontWeight: "900",
     letterSpacing: -1,
   },
@@ -697,6 +697,11 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: theme.isDark ? 0.2 : 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   arrow: { color: theme.textSecondary, fontSize: 26, marginLeft: 10 },
   cardLabel: { color: theme.textMuted, fontSize: 12, fontWeight: "600", marginBottom: 4 },
@@ -717,6 +722,11 @@ const createStyles = (theme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: theme.isDark ? 0.2 : 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   midCardIcon: {
     width: 56,
@@ -773,6 +783,11 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: theme.isDark ? 0.15 : 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   txLeft: { flexDirection: "row", alignItems: "center", flex: 1, marginRight: 12 },
   txTitle: { color: theme.text, fontWeight: "800" },

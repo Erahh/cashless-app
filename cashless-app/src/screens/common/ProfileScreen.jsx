@@ -446,7 +446,7 @@ function MenuItem({ icon, title, onPress, rightText, rightColor, titleColor, the
         <Text style={[menuStyles.title, { color: titleColor || theme.text }]}>{title}</Text>
       </View>
       <View style={menuStyles.right}>
-        {rightText && (
+        {!!rightText && (
           <Text style={[menuStyles.rightText, rightColor && { color: rightColor }]}>
             {rightText}
           </Text>

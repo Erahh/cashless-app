@@ -86,10 +86,10 @@ function OperatorContent() {
                 }}
             >
                 {/* Main Operator Flow */}
-                <Stack.Screen name="OperatorScan" component={withNavCapture(OperatorScanScreen)} />
-                <Stack.Screen name="OperatorSetup" component={withNavCapture(OperatorSetupScreen)} />
-                <Stack.Screen name="OperatorEarnings" component={withNavCapture(OperatorEarningsScreen)} />
-                <Stack.Screen name="OperatorMyQR" component={withNavCapture(OperatorMyQRScreen)} />
+                <Stack.Screen name="OperatorScan" component={withNavCapture(OperatorScanScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="OperatorSetup" component={withNavCapture(OperatorSetupScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="OperatorEarnings" component={withNavCapture(OperatorEarningsScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="OperatorMyQR" component={withNavCapture(OperatorMyQRScreen)} options={{ animation: "fade" }} />
 
                 {/* Shared */}
                 <Stack.Screen name="Profile" component={withNavCapture(ProfileScreen)} />

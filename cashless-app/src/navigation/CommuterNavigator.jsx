@@ -98,14 +98,14 @@ function CommuterContent() {
                 <Stack.Screen name="MyQR" component={withNavCapture(MyQRScreen)} options={{ animation: "slide_from_bottom" }} />
 
                 {/* Wallet (Non-tab) */}
-                <Stack.Screen name="SendLoad" component={withNavCapture(SendLoadScreen)} />
-                <Stack.Screen name="TopUp" component={withNavCapture(TopUpScreen)} />
-                <Stack.Screen name="TopUpCheckout" component={withNavCapture(TopUpCheckoutScreen)} />
+                <Stack.Screen name="SendLoad" component={withNavCapture(SendLoadScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="TopUp" component={withNavCapture(TopUpScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="TopUpCheckout" component={withNavCapture(TopUpCheckoutScreen)} options={{ animation: "fade" }} />
 
                 {/* QR + Pay (Non-tab) */}
-                <Stack.Screen name="CommuterScan" component={withNavCapture(CommuterScanScreen)} />
-                <Stack.Screen name="PayConfirm" component={withNavCapture(PayConfirmScreen)} />
-                <Stack.Screen name="NFCTapPay" component={withNavCapture(NFCTapPayScreen)} />
+                <Stack.Screen name="CommuterScan" component={withNavCapture(CommuterScanScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="PayConfirm" component={withNavCapture(PayConfirmScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="NFCTapPay" component={withNavCapture(NFCTapPayScreen)} options={{ animation: "fade" }} />
                 <Stack.Screen name="RegisterRFID" component={withNavCapture(RegisterRFIDScreen)} />
 
                 {/* Verification */}

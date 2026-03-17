@@ -14,7 +14,7 @@ function formatPHP(n) {
 export default function TransactionDetailsScreen({ route, navigation }) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
-  
+
   // Get item from params
   const { item } = route.params || {};
 
@@ -50,8 +50,8 @@ export default function TransactionDetailsScreen({ route, navigation }) {
     refNumber = `ERA-${rawId.substring(0, 12).toUpperCase()}`;
   }
 
-  const statusColor = item.status === "PENDING" ? "#F59E0B" : 
-                      item.status === "FAILED" ? "#EF4444" : "#10B981";
+  const statusColor = item.status === "PENDING" ? "#F59E0B" :
+    item.status === "FAILED" ? "#EF4444" : "#10B981";
 
   const copyRef = async () => {
     await Clipboard.setStringAsync(refNumber);
@@ -74,12 +74,12 @@ export default function TransactionDetailsScreen({ route, navigation }) {
         <View style={styles.amountCard}>
           <Text style={styles.amountLabel}>Amount</Text>
           <Text style={[styles.amountValue, { color: isDebit ? theme.danger : theme.success }]}>{amountText}</Text>
-          {(item.status || item.source === "topup") && (
-             <View style={[styles.statusBadge, { backgroundColor: statusColor + '15' }]}>
-               <Text style={[styles.statusText, { color: statusColor }]}>
-                 {String(item.status || "COMPLETED").toUpperCase()}
-               </Text>
-             </View>
+          {!!(item.status || item.source === "topup") && (
+            <View style={[styles.statusBadge, { backgroundColor: statusColor + '15' }]}>
+              <Text style={[styles.statusText, { color: statusColor }]}>
+                {String(item.status || "COMPLETED").toUpperCase()}
+              </Text>
+            </View>
           )}
         </View>
 
@@ -93,8 +93,8 @@ export default function TransactionDetailsScreen({ route, navigation }) {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Reference No.</Text>
             <TouchableOpacity style={styles.refContainer} activeOpacity={0.6} onPress={copyRef}>
-               <Text style={[styles.detailValue, styles.refValue]}>{refNumber}</Text>
-               <MaterialCommunityIcons name="content-copy" size={16} color={theme.accent || "#3B82F6"} style={{ marginLeft: 6}} />
+              <Text style={[styles.detailValue, styles.refValue]}>{refNumber}</Text>
+              <MaterialCommunityIcons name="content-copy" size={16} color={theme.accent || "#3B82F6"} style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           </View>
 
@@ -103,14 +103,14 @@ export default function TransactionDetailsScreen({ route, navigation }) {
             <Text style={styles.detailValue}>{dateString} {timeString}</Text>
           </View>
 
-          {item.meta && (
+          {!!item.meta && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Note / Reason</Text>
               <Text style={styles.detailValue}>{item.meta}</Text>
             </View>
           )}
 
-          {item.description && item.description !== item.label && (
+          {!!(item.description && item.description !== item.label) && (
             <View style={[styles.detailRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
               <Text style={styles.detailLabel}>Description</Text>
               <Text style={styles.detailValue}>{item.description}</Text>
@@ -170,7 +170,7 @@ const createStyles = (theme) => StyleSheet.create({
     padding: 20,
     paddingBottom: 100,
   },
-  
+
   /* Amount Card - Clean White & Shadow */
   amountCard: {
     backgroundColor: theme.isDark ? "#1E1E1E" : "#FFFFFF",
@@ -179,10 +179,10 @@ const createStyles = (theme) => StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
     shadowColor: theme.isDark ? "#000" : "#8A94A6", // soft shadow
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: theme.isDark ? 0.3 : 0.2,
+    shadowRadius: 24,
+    elevation: 10,
   },
   amountLabel: {
     color: theme.textSecondary,
@@ -209,7 +209,7 @@ const createStyles = (theme) => StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.5,
   },
-  
+
   /* Details Box - Clean White & Shadow */
   detailsBox: {
     backgroundColor: theme.isDark ? "#1E1E1E" : "#FFFFFF",
@@ -217,9 +217,9 @@ const createStyles = (theme) => StyleSheet.create({
     padding: 24,
     marginBottom: 20,
     shadowColor: theme.isDark ? "#000" : "#8A94A6",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: theme.isDark ? 0.25 : 0.15,
+    shadowRadius: 20,
     elevation: 8,
   },
   detailRow: {
@@ -250,7 +250,7 @@ const createStyles = (theme) => StyleSheet.create({
     fontFamily: "monospace",
     fontWeight: "700",
   },
-  
+
   /* Info Box */
   infoBox: {
     backgroundColor: theme.isDark ? "rgba(59, 130, 246, 0.1)" : "#EBF5FF",

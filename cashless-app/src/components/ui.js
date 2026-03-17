@@ -29,8 +29,8 @@ export function Screen({ title, subtitle, rightSlot, onBack, children, theme }) 
   );
 }
 
-export function Card({ children, style }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+export function Card({ children, style, theme }) {
+  return <View style={[styles.card, theme && { backgroundColor: theme.card, borderColor: theme.border }, style]}>{children}</View>;
 }
 
 export function PrimaryButton({ label, onPress, disabled, theme }) {
@@ -119,22 +119,32 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 12,
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 15,
+    elevation: 6,
   },
   primaryBtn: {
     backgroundColor: "#F2E94E", // yellow accent
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 20,
+    paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#F2E94E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   primaryBtnText: {
-    color: "#1b140f",
+    color: "#0B0E14",
     fontWeight: "900",
-    fontSize: 15,
-    letterSpacing: 0.2,
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
   ghostBtn: {
     borderRadius: 16,

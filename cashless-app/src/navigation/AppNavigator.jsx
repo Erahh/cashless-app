@@ -1,7 +1,10 @@
-import React, { useContext } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AppLockContext } from "../context/AppLockContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { View } from "react-native";
 
+import LandingScreen from "../screens/auth/LandingScreen";
 import AuthGateScreen from "../screens/auth/AuthGateScreen";
 import PhoneScreen from "../screens/auth/PhoneScreen";
 import OTPScreen from "../screens/auth/OTPScreen";
@@ -22,18 +25,41 @@ const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
   const { locked } = useContext(AppLockContext);
+  const [initialRoute, setInitialRoute] = useState(null); // null = loading
+
+  useEffect(() => {
+    if (locked) {
+      setInitialRoute("MPINUnlock");
+      return;
+    }
+    AsyncStorage.getItem("@era_onboarding_done")
+      .then((val) => {
+        setInitialRoute(val === "true" ? "AuthGate" : "Landing");
+      })
+      .catch(() => {
+        setInitialRoute("AuthGate");
+      });
+  }, [locked]);
+
+  // Render nothing until we know the initial route (avoids flicker)
+  if (!initialRoute) {
+    return <View style={{ flex: 1, backgroundColor: "#030614" }} />;
+  }
 
   return (
     <Stack.Navigator
       key={locked ? "locked" : "unlocked"}
-      screenOptions={{ headerShown: false, animation: "slide_from_right" }}
-      initialRouteName={locked ? "MPINUnlock" : "AuthGate"}
+      screenOptions={{ headerShown: false, animation: "fade" }}
+      initialRouteName={initialRoute}
     >
       {locked ? (
-        /* LOCK FLOW - Only show unlock screen when locked */
+        /* LOCK FLOW */
         <Stack.Screen name="MPINUnlock" component={MPINUnlockScreen} />
       ) : (
         <>
+          {/* ONBOARDING (shown only once) */}
+          <Stack.Screen name="Landing" component={LandingScreen} />
+
           {/* AUTH FLOW */}
           <Stack.Screen name="AuthGate" component={AuthGateScreen} />
           <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />

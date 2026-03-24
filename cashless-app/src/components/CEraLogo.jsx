@@ -336,11 +336,13 @@ const st = StyleSheet.create({
     sWrap: {
         height: 32,
         justifyContent: "center",
+        alignItems: "center",
     },
     sLayer: {
         position: "absolute",
         flexDirection: "row",
         alignItems: "center",
+        justifyContent: "center",
     },
 
     // State A small

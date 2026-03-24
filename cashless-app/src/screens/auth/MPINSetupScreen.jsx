@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { TapGlowOverlay } from "../../components/TapGlow";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
@@ -23,6 +24,7 @@ import { AppLockContext } from "../../context/AppLockContext";
 import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LockIcon, ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
+import AuthBackground from "../../components/AuthBackground";
 
 export default function MPINSetupScreen({ navigation, route }) {
   const { setLocked } = useContext(AppLockContext);
@@ -133,8 +135,7 @@ export default function MPINSetupScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+    <AuthBackground onBack={() => navigation.goBack()}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
@@ -254,7 +255,7 @@ export default function MPINSetupScreen({ navigation, route }) {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </AuthBackground>
   );
 }
 
@@ -263,7 +264,7 @@ const createStyles = (theme, isDarkMode) =>
     safe: { flex: 1, backgroundColor: theme.background },
     scrollContent: {
       padding: 24,
-      paddingTop: 32,
+      paddingTop: 120,
     },
     iconWrapper: {
       alignItems: "center",

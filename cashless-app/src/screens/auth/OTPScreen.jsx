@@ -9,8 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  TouchableWithoutFeedback,
-  Keyboard,
   ActivityIndicator,
   Animated,
 } from "react-native";
@@ -23,23 +21,10 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import CEraLogo from "../../components/CEraLogo";
 
-// ✅ Helper to normalize PH phone to E.164 format (+639...)
-function normalizePH(phone) {
-  let p = (phone || "").trim();
-  if (!p) return "";
-  // Strip everything except + and digits
-  p = p.replace(/[^\d+]/g, "");
-  if (p.startsWith("09")) return "+63" + p.slice(1);
-  if (p.startsWith("9") && p.length === 10) return "+63" + p;
-  if (p.startsWith("+63") === false && p.length === 10) return "+63" + p;
-  return p;
-}
-
 export default function OTPScreen({ navigation, route }) {
-  const { phone: rawPhone, isLogin, role } = route.params || {};
-  const phone = useMemo(() => normalizePH(rawPhone), [rawPhone]);
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { phone, isLogin, role } = route.params || {};
+  const { theme, isDarkMode } = useTheme();
+  const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
 
   const [otp, setOtp] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -49,18 +34,15 @@ export default function OTPScreen({ navigation, route }) {
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const inputRef = useRef(null);
 
-  // OTP is now pre-sent by PhoneScreen for both Login and Signup.
-  // We only need to focus the input here.
   useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 500);
+     const t = setTimeout(() => inputRef.current?.focus(), 500);
+     return () => clearTimeout(t);
   }, []);
 
-  // Auto-submit when 6 digits are entered
   useEffect(() => {
     if (otp.length === 6 && !verifying) {
       verifyOtp(otp);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp]);
 
   const triggerShake = () => {
@@ -68,139 +50,45 @@ export default function OTPScreen({ navigation, route }) {
     Animated.sequence([
       Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
     ]).start();
   };
 
-  const verifyOtp = async (codeToVerify) => {
+  const verifyOtp = async (code) => {
     try {
-      if (!phone) return Alert.alert("Error", "Missing phone number.");
-
       setVerifying(true);
       setErrorMsg("");
-      console.log(`[OTP] Verifying code ${codeToVerify} for phone ${phone}`);
-
-      const { data: authData, error } = await supabase.auth.verifyOtp({
-        phone,
-        token: codeToVerify,
-        type: "sms",
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone, token: code, type: "sms",
       });
+      if (error) throw error;
 
-      if (error) {
-        console.error("[OTP] Supabase verifyOtp error:", error);
-        throw error;
-      }
-
-      console.log("[OTP] Auth success, session in progress...");
-      const accessToken = authData?.session?.access_token;
-      if (!accessToken) throw new Error("Verification failed: No session established.");
-
-      // Register device (async)
-      (async () => {
-        try {
-          if (accessToken) {
-            const res = await fetch(`${API_BASE_URL}/me/register-device`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json",
-              },
-            });
-            const json = await res.json();
-            if (json.ok && json.device_token) {
-              await AsyncStorage.setItem("device_token", json.device_token);
-            }
-          }
-        } catch (deviceErr) {
-          console.warn("Device registration failed:", deviceErr.message);
-        }
-      })();
-
-      if (!isLogin) {
-        if (role === "operator") {
-          navigation.reset({ index: 0, routes: [{ name: "OperatorCode", params: { role, phone } }] });
-        } else {
-          navigation.reset({ index: 0, routes: [{ name: "PersonalInfo", params: { role, phone } }] });
-        }
+      const accessToken = data?.session?.access_token;
+      if (isLogin) {
+         navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
       } else {
-        // Seamlessly route fully set up users past the AuthGate/RoleGate splash screens
-        try {
-          const res = await fetch(`${API_BASE_URL}/me/status`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          if (res.ok) {
-            const statusData = await res.json();
-            if (statusData.account && statusData.account.account_active && statusData.account.pin_set) {
-              const roles = statusData.roles || {};
-              const target = !!roles.is_admin ? "AdminApp" : !!roles.is_operator ? "OperatorApp" : "CommuterApp";
-              navigation.reset({ index: 0, routes: [{ name: target }] });
-              return;
-            }
-          }
-        } catch (e) {
-          console.warn("[OTP] Seamless login check failed:", e);
-        }
-        
-        // Fallback to AuthGate if something failed or user needs setup (MPIN, Profile, etc.)
-        navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
+         navigation.reset({ index: 0, routes: [{ name: "PersonalInfo", params: { role, phone } }] });
       }
     } catch (e) {
-      setErrorMsg(e.message || "Invalid OTP. Please try again.");
-      setOtp("");
+      setErrorMsg(e.message || "Invalid OTP");
       triggerShake();
-      setVerifying(false); // Make editable before focusing
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setOtp("");
     } finally {
       setVerifying(false);
     }
   };
 
-  const resend = async () => {
-    try {
-      if (!phone) return Alert.alert("Error", "Missing phone number.");
-      setResending(true);
-      setErrorMsg("");
-      setOtp(""); // Clear current entry so they can type the new one
-      const { error } = await supabase.auth.signInWithOtp({ phone });
-      if (error) throw error;
-      Alert.alert("Success", "OTP resent successfully!");
-      // Refocus input
-      inputRef.current?.focus();
-    } catch (e) {
-      Alert.alert("Error", e.message || "Failed to resend OTP");
-    } finally {
-      setResending(false);
-    }
-  };
-
-  const maskedPhone = phone
-    ? phone.slice(0, -3).replace(/\d/g, "•") + phone.slice(-3)
-    : "";
-
-  // Render OTP boxes
   const renderOtpBoxes = () => {
     const boxes = [];
     for (let i = 0; i < 6; i++) {
       const filled = i < otp.length;
-      // isActive = current cursor position (only when not all 6 filled)
       const isActive = i === otp.length && otp.length < 6;
       boxes.push(
-        <Animated.View
-          key={i}
-          style={[
-            styles.otpBox,
-            filled && styles.otpBoxFilled,
-            isActive && styles.otpBoxActive,
-            errorMsg && styles.otpBoxError,
-            { transform: [{ translateX: shakeAnim }] },
-          ]}
-        >
+        <Animated.View key={i} style={[styles.otpBox, filled && styles.otpBoxFilled, isActive && styles.otpBoxActive, { transform: [{ translateX: shakeAnim }] }]}>
           <Text style={[styles.otpDigit, filled && styles.otpDigitFilled]}>
-            {filled ? "•" : ""}
+            {filled ? otp[i] : ""}
           </Text>
-          {isActive && !verifying && <View style={styles.cursor} />}
+          {isActive && <View style={styles.cursor} />}
         </Animated.View>
       );
     }
@@ -208,94 +96,28 @@ export default function OTPScreen({ navigation, route }) {
   };
 
   return (
-    <AuthBackground>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header with Back */}
-          <View style={styles.headerRow}>
-            <TouchableOpacity
-              style={styles.backBtn}
-              onPress={() => navigation.goBack()}
-              activeOpacity={0.7}
-            >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
-            </TouchableOpacity>
-            <CEraLogo size="small" />
-          </View>
-
-          {/* Main Content */}
-          <View style={styles.container}>
+    <AuthBackground onBack={navigation?.canGoBack() ? () => navigation.goBack() : null}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={[styles.container, { marginTop: Platform.OS === 'ios' ? 120 : 100 }]}>
             <Text style={styles.title}>Verify OTP</Text>
-            <Text style={styles.subtitle}>
-              We sent a 6-digit code to{"\n"}
-              <Text style={styles.phoneHighlight}>{maskedPhone}</Text>
-            </Text>
-
-            {/* OTP Boxes */}
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={() => inputRef.current?.focus()}
-              style={styles.otpRow}
-            >
+            <Text style={styles.subtitle}>Enter the 6-digit code sent to {phone}</Text>
+            
+            <TouchableOpacity activeOpacity={1} onPress={() => inputRef.current?.focus()} style={styles.otpRow}>
               {renderOtpBoxes()}
             </TouchableOpacity>
 
-            {/* Hidden input — zero-sized to stay offscreen but focusable */}
             <TextInput
               ref={inputRef}
               value={otp}
-              onChangeText={(text) => {
-                setErrorMsg("");
-                setOtp(text.replace(/[^\d]/g, "").slice(0, 6));
-              }}
-              editable={!verifying}
+              onChangeText={(t) => setOtp(t.replace(/[^\d]/g, "").slice(0, 6))}
               keyboardType="number-pad"
               maxLength={6}
-              autoFocus
-              caretHidden
               style={styles.hiddenInput}
             />
 
-            {/* Status */}
-            <View style={styles.statusContainer}>
-              {verifying ? (
-                <View style={styles.loadingWrapper}>
-                  <ActivityIndicator color={theme.accent} size="small" />
-                  <Text style={[styles.loadingText, { color: theme.accent }]}>Verifying...</Text>
-                </View>
-              ) : errorMsg ? (
-                <Text style={styles.errorText}>{errorMsg}</Text>
-              ) : null}
-            </View>
-
-            {/* Manual Verify button (shown when 6 digits are entered but not yet verifying) */}
-            {otp.length === 6 && !verifying && (
-              <TouchableOpacity
-                style={styles.verifyBtn}
-                onPress={() => verifyOtp(otp)}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.verifyBtnText}>Verify OTP</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Resend */}
-            <View style={styles.resendContainer}>
-              <Text style={styles.resendText}>Didn't receive the code? </Text>
-              <TouchableOpacity onPress={resend} disabled={resending || verifying} activeOpacity={0.8}>
-                <Text style={[styles.resendLink, (resending || verifying) && { opacity: 0.5 }]}>
-                  {resending ? "Sending..." : "Resend OTP"}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
+            {verifying && <ActivityIndicator color={theme.accent} style={{ marginTop: 20 }} />}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -303,160 +125,18 @@ export default function OTPScreen({ navigation, route }) {
   );
 }
 
-const createStyles = (theme) =>
-  StyleSheet.create({
-    scrollContent: {
-      flexGrow: 1,
-    },
-    headerRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginTop: 8,
-      marginBottom: 20,
-    },
-    backBtn: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    logo: {
-      color: theme.text,
-      fontSize: 22,
-      fontWeight: "900",
-      letterSpacing: 2,
-    },
-    container: {
-      flex: 1,
-      paddingTop: 20,
-    },
-    title: {
-      color: theme.text,
-      fontSize: 32,
-      fontWeight: "900",
-      marginBottom: 10,
-      letterSpacing: -0.5,
-    },
-    subtitle: {
-      color: theme.textSecondary,
-      fontSize: 15,
-      lineHeight: 24,
-      marginBottom: 36,
-    },
-    phoneHighlight: {
-      color: theme.text,
-      fontWeight: "700",
-    },
-    // OTP Boxes
-    otpRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      gap: 6,
-    },
-    otpBox: {
-      flex: 1,
-      maxWidth: 54,
-      height: 58,
-      borderRadius: 14,
-      borderWidth: 1.5,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    otpBoxFilled: {
-      borderColor: theme.accent,
-      backgroundColor: theme.isDark
-        ? "rgba(247, 227, 83, 0.06)"
-        : "rgba(247, 227, 83, 0.1)",
-    },
-    otpBoxActive: {
-      borderColor: theme.accent,
-      borderWidth: 2,
-    },
-    otpBoxError: {
-      borderColor: theme.danger,
-      backgroundColor: theme.dangerBg,
-    },
-    otpDigit: {
-      color: theme.textMuted,
-      fontSize: 24,
-      fontWeight: "800",
-    },
-    otpDigitFilled: {
-      color: theme.text,
-    },
-    cursor: {
-      position: "absolute",
-      bottom: 12,
-      width: 20,
-      height: 2,
-      backgroundColor: theme.accent,
-      borderRadius: 1,
-    },
-    hiddenInput: {
-      width: 1,
-      height: 1,
-      opacity: 0,
-      position: "absolute",
-    },
-    statusContainer: {
-      height: 36,
-      marginTop: 16,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    loadingWrapper: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    loadingText: {
-      fontSize: 14,
-      fontWeight: "600",
-    },
-    errorText: {
-      color: theme.danger,
-      fontSize: 14,
-      fontWeight: "600",
-    },
-    resendContainer: {
-      flexDirection: "row",
-      justifyContent: "center",
-      alignItems: "center",
-      marginTop: 24,
-    },
-    resendText: {
-      color: theme.textSecondary,
-      fontSize: 14,
-    },
-    resendLink: {
-      color: theme.text,
-      fontSize: 14,
-      fontWeight: "800",
-    },
-    verifyBtn: {
-      height: 52,
-      borderRadius: 16,
-      backgroundColor: theme.isDark ? theme.accent : theme.primary,
-      alignItems: "center",
-      justifyContent: "center",
-      marginTop: 8,
-      marginBottom: 4,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 4,
-    },
-    verifyBtnText: {
-      color: theme.isDark ? "#0B0E14" : "#FFFFFF",
-      fontWeight: "900",
-      fontSize: 16,
-    },
-  });
+const createStyles = (theme, isDarkMode) => StyleSheet.create({
+  scrollContent: { flexGrow: 1 },
+  container: { flex: 1, paddingHorizontal: 0 },
+  title: { fontSize: 32, fontWeight: "900", color: theme.text, marginBottom: 8, textAlign: 'center' },
+  subtitle: { fontSize: 16, color: theme.textSecondary, marginBottom: 40, textAlign: 'center' },
+  otpRow: { flexDirection: "row", justifyContent: "center", gap: 10, marginBottom: 24 },
+  otpBox: { width: 44, height: 56, borderRadius: 12, borderWidth: 1.5, borderColor: theme.border, backgroundColor: theme.card, alignItems: "center", justifyContent: "center" },
+  otpBoxFilled: { borderColor: theme.accent },
+  otpBoxActive: { borderColor: theme.accent, borderWidth: 2.5 },
+  otpDigit: { fontSize: 22, fontWeight: "800", color: theme.text },
+  otpDigitFilled: { color: theme.text },
+  cursor: { position: "absolute", bottom: 12, width: 16, height: 2, backgroundColor: theme.accent },
+  hiddenInput: { position: "absolute", width: 1, height: 1, opacity: 0 },
+  errorText: { color: theme.danger, marginTop: 20, fontWeight: "600" }
+});

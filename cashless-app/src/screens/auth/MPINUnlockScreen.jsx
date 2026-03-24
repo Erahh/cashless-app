@@ -245,7 +245,7 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
     flexGrow: 1,
     justifyContent: "space-between",
     paddingHorizontal: 24,
-    paddingTop: 40,
+    paddingTop: 120,
     paddingBottom: 24,
   },
   topSection: {

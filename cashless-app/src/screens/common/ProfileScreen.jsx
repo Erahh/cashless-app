@@ -1,20 +1,19 @@
 import React, { useEffect, useState, useMemo, useContext } from "react";
 import { AppLockContext } from "../../context/AppLockContext";
 import { useTheme } from "../../context/ThemeContext";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
   Switch,
   Alert,
-  SafeAreaView,
   StyleSheet,
   Image,
   Linking,
-  StatusBar,
-} from "react-native";
+  StatusBar } from "react-native";
+
 import { supabase } from "../../api/supabase";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {

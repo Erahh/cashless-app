@@ -1,15 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  SafeAreaView,
-  ScrollView,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
-} from "react-native";
+  Alert } from "react-native";
+
 import {
   approveGuardianRequest,
   fetchMyGuardianData,

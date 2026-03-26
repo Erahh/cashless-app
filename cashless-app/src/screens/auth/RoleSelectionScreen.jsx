@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     Dimensions,
     Modal,
-    Pressable,
+    Pressable
 } from "react-native";
+
 import { useTheme } from "../../context/ThemeContext";
 import AuthBackground from "../../components/AuthBackground";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -18,10 +19,20 @@ import CEraLogo from "../../components/CEraLogo";
 export default function RoleSelectionScreen({ navigation }) {
     const { theme, isDarkMode } = useTheme();
     const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
-    const [loginModalVisible, setLoginModalVisible] = useState(false);
+
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     const selectRole = (role) => {
-        navigation.navigate("PhoneScreen", { role });
+        navigation.navigate("PhoneScreen", { mode: "register", role });
+    };
+
+    const handleLoginSelect = (role) => {
+        setShowLoginModal(false);
+        navigation.navigate("PhoneScreen", { mode: "login", role });
+    };
+
+    const handleLogin = () => {
+        setShowLoginModal(true);
     };
 
     return (
@@ -72,71 +83,63 @@ export default function RoleSelectionScreen({ navigation }) {
                             Already have an account?{" "}
                             <Text
                                 style={styles.loginLink}
-                                onPress={() => setLoginModalVisible(true)}
+                                onPress={handleLogin}
                             >
                                 Log In
                             </Text>
                         </Text>
                     </View>
-
-                    <Modal
-                        visible={loginModalVisible}
-                        transparent={true}
-                        animationType="slide"
-                        onRequestClose={() => setLoginModalVisible(false)}
-                    >
-                        <Pressable style={styles.modalOverlay} onPress={() => setLoginModalVisible(false)}>
-                            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-                                <View style={styles.modalHeader}>
-                                    <View style={styles.modalHandle} />
-                                    <Text style={styles.modalTitle}>Welcome Back</Text>
-                                    <Text style={styles.modalSubtitle}>Select your account type to log in</Text>
-                                </View>
-
-                                <View style={styles.modalOptions}>
-                                    <TouchableOpacity 
-                                        activeOpacity={0.8}
-                                        style={styles.modalOptionBtn}
-                                        onPress={() => {
-                                            setLoginModalVisible(false);
-                                            navigation.navigate("PhoneScreen", { mode: "login", role: "commuter" });
-                                        }}
-                                    >
-                                        <View style={[styles.modalIconWrap, { backgroundColor: "rgba(76, 175, 80, 0.1)" }]}>
-                                            <HugeiconsIcon icon={UserIcon} size={28} color={theme.success} />
-                                        </View>
-                                        <Text style={styles.modalOptionText}>Commuter</Text>
-                                        <HugeiconsIcon icon={ArrowRight01Icon} size={24} color={theme.textMuted} />
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity 
-                                        activeOpacity={0.8}
-                                        style={styles.modalOptionBtn}
-                                        onPress={() => {
-                                            setLoginModalVisible(false);
-                                            navigation.navigate("PhoneScreen", { mode: "login", role: "operator" });
-                                        }}
-                                    >
-                                        <View style={[styles.modalIconWrap, { backgroundColor: "rgba(247, 227, 83, 0.1)" }]}>
-                                            <HugeiconsIcon icon={Bus01Icon} size={28} color={theme.accent} />
-                                        </View>
-                                        <Text style={styles.modalOptionText}>Operator</Text>
-                                        <HugeiconsIcon icon={ArrowRight01Icon} size={24} color={theme.textMuted} />
-                                    </TouchableOpacity>
-                                </View>
-                                
-                                <TouchableOpacity 
-                                    activeOpacity={0.8}
-                                    style={styles.modalCancelBtn}
-                                    onPress={() => setLoginModalVisible(false)}
-                                >
-                                    <Text style={styles.modalCancelText}>Cancel</Text>
-                                </TouchableOpacity>
-                            </Pressable>
-                        </Pressable>
-                    </Modal>
                 </View>
             </SafeAreaView>
+
+            <Modal
+                visible={showLoginModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowLoginModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <Pressable style={{ flex: 1 }} onPress={() => setShowLoginModal(false)} />
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <View style={styles.modalHandle} />
+                            <Text style={styles.modalTitle}>Choose Account Type</Text>
+                            <Text style={styles.modalSubtitle}>Which portal would you like to access?</Text>
+                        </View>
+
+                        <View style={styles.modalOptions}>
+                            <TouchableOpacity
+                                style={styles.modalOptionBtn}
+                                onPress={() => handleLoginSelect("commuter")}
+                            >
+                                <View style={[styles.modalIconWrap, { backgroundColor: "rgba(76, 175, 80, 0.1)" }]}>
+                                    <HugeiconsIcon icon={UserIcon} size={28} color={theme.success} />
+                                </View>
+                                <Text style={styles.modalOptionText}>Commuter Login</Text>
+                                <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.textMuted} />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.modalOptionBtn}
+                                onPress={() => handleLoginSelect("operator")}
+                            >
+                                <View style={[styles.modalIconWrap, { backgroundColor: "rgba(247, 227, 83, 0.1)" }]}>
+                                    <HugeiconsIcon icon={Bus01Icon} size={28} color={theme.accent} />
+                                </View>
+                                <Text style={styles.modalOptionText}>Operator Portal</Text>
+                                <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={theme.textMuted} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.modalCancelBtn}
+                            onPress={() => setShowLoginModal(false)}
+                        >
+                            <Text style={styles.modalCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </AuthBackground>
     );
 }

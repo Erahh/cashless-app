@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
-} from "react-native";
+  Alert } from "react-native";
+
 import { adminGetUnpaidSettlements, adminMarkSettlementPaid } from "../../api/adminApi";
 
 export default function AdminPayoutScreen({ navigation }) {

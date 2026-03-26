@@ -1,17 +1,16 @@
 import React, { useState } from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   Alert,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Modal,
-  Dimensions
-} from "react-native";
+  Dimensions } from "react-native";
+
 import { savePassengerProfile } from "../../api/passengerLocal";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {

@@ -1,15 +1,14 @@
 import React, { useState, useContext, useEffect } from "react";
-import {
-    View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
     Text,
     Alert,
     Image,
     TouchableOpacity,
     ActivityIndicator,
     StyleSheet,
-    SafeAreaView,
-    ScrollView,
-} from "react-native";
+    ScrollView } from "react-native";
+
 import * as ImagePicker from "expo-image-picker";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, ArrowRight01Icon, Camera01Icon, Image01Icon, CheckmarkCircle01Icon, IdeaIcon } from "@hugeicons/core-free-icons";

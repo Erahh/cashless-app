@@ -1,18 +1,17 @@
 import React, { useState, useContext, useMemo } from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   TextInput,
   TouchableOpacity,
   Alert,
-  SafeAreaView,
   StyleSheet,
   ActivityIndicator,
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+  Platform } from "react-native";
+
 import { TapGlowOverlay } from "../../components/TapGlow";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../../api/supabase";

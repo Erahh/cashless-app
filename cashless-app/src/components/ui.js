@@ -1,5 +1,7 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform, SafeAreaView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 

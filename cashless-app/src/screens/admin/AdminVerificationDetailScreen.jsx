@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Image,
   Alert,
-  TextInput,
-} from "react-native";
+  TextInput } from "react-native";
+
 import { approveVerification, rejectVerification, fetchVerificationFiles } from "../../api/adminApi";
 
 export default function AdminVerificationDetailScreen({ navigation, route }) {

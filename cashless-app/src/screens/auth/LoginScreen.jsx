@@ -1,14 +1,13 @@
 import React, { useMemo, useState } from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   TextInput,
   TouchableOpacity,
   Alert,
-  SafeAreaView,
   StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from "react-native";
+
 import { supabase } from "../../api/supabase";
 
 function normalizePHPhone(input) {

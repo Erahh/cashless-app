@@ -47,20 +47,22 @@ function PresetButton({ val, idx, amount, setAmount, style }) {
     return (
         <Animated.View 
             entering={FadeInUp.delay(idx * 70).springify().damping(15)}
-            style={[style.presetWrapper, animatedStyle]}
+            style={style.presetWrapper}
         >
-            <Pressable
-                onPress={handlePress}
-                style={({ pressed }) => [
-                    style.presetBtn,
-                    isActive && style.presetBtnActive,
-                    pressed && { opacity: 0.85 }
-                ]}
-            >
-                <Text style={[style.presetText, isActive && style.presetTextActive]}>
-                    ₱{val.toLocaleString()}
-                </Text>
-            </Pressable>
+            <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+                <Pressable
+                    onPress={handlePress}
+                    style={({ pressed }) => [
+                        style.presetBtn,
+                        isActive && style.presetBtnActive,
+                        pressed && { opacity: 0.85 }
+                    ]}
+                >
+                    <Text style={[style.presetText, isActive && style.presetTextActive]}>
+                        ₱{val.toLocaleString()}
+                    </Text>
+                </Pressable>
+            </Animated.View>
         </Animated.View>
     );
 }

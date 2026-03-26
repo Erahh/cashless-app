@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import {
-    View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
     Text,
     StyleSheet,
     TouchableOpacity,
@@ -9,9 +9,8 @@ import {
     Alert,
     TextInput,
     Modal,
-    SafeAreaView,
-    RefreshControl,
-} from "react-native";
+    RefreshControl } from "react-native";
+
 import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { QrCodeIcon, WalletAdd01Icon, ArrowLeft01Icon, InvoiceIcon } from "@hugeicons/core-free-icons";

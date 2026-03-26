@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   Alert,
   ScrollView,
@@ -9,10 +9,9 @@ import {
   Modal,
   StyleSheet,
   TextInput,
-  SafeAreaView,
   StatusBar,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from "react-native";
+
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 

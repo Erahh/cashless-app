@@ -18,7 +18,7 @@ import { API_BASE_URL } from "../../config/api";
 import AuthBackground from "../../components/AuthBackground";
 import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { ArrowLeft01Icon, Cancel01Icon, Tick01Icon, Alert01Icon, Search01Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, Cancel01Icon, Tick01Icon, Alert01Icon, Search01Icon, UserIcon, Bus01Icon } from "@hugeicons/core-free-icons";
 import CEraLogo from "../../components/CEraLogo";
 
 const COUNTRY_CODES = [
@@ -38,15 +38,54 @@ function buildE164(rawDigits) {
 
 export default function PhoneScreen({ navigation, route }) {
   const { role: passedRole, mode: passedMode } = route.params || {};
-  const [isLogin, setIsLogin] = useState(passedMode === "login" || passedRole === "commuter" || passedRole === "operator" || !passedRole);
+  const [isLogin, setIsLogin] = useState(passedMode === "login");
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
   const [showPicker, setShowPicker] = useState(false);
   const [rawPhone, setRawPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [dbCarriers, setDbCarriers] = useState(null);
-  const [phoneStatus, setPhoneStatus] = useState(null); 
+  const [phoneStatus, setPhoneStatus] = useState(null); // { exists: bool, is_operator: bool, is_admin: bool, loading: bool }
   const { theme, isDarkMode } = useTheme();
   const phoneInputRef = useRef(null);
+
+  // Debounced Phone Check
+  useEffect(() => {
+    const clean = rawPhone.replace(/[^\d]/g, "");
+    if (clean.length === 10) {
+      const timer = setTimeout(() => {
+        checkPhoneStatus(clean);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setPhoneStatus(null);
+    }
+  }, [rawPhone]);
+
+  const checkPhoneStatus = async (num) => {
+    setPhoneStatus({ loading: true });
+    try {
+      const full = buildE164(num);
+      const resp = await fetch(`${API_BASE_URL}/auth/check-phone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: full })
+      });
+      const json = await resp.json();
+      if (json.ok) {
+        setPhoneStatus({
+          exists: json.exists,
+          is_operator: json.is_operator,
+          is_admin: json.is_admin,
+          loading: false
+        });
+      } else {
+        setPhoneStatus(null);
+      }
+    } catch (e) {
+      console.warn("Check phone error", e.message);
+      setPhoneStatus(null);
+    }
+  };
 
   useEffect(() => {
     const fetchCarriers = async () => {
@@ -71,20 +110,92 @@ export default function PhoneScreen({ navigation, route }) {
     try {
       const clean = rawPhone.replace(/[^\d]/g, "");
       if (clean.length < 10) return Alert.alert("Invalid Phone", "Please enter a valid 10-digit number.");
-      
+
       const fullPhone = buildE164(clean);
+
+      // 1. Ensure we have the phone status
+      let currentStatus = phoneStatus;
+      if (!currentStatus || currentStatus.loading) {
+        setLoading(true);
+        const resp = await fetch(`${API_BASE_URL}/auth/check-phone`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: fullPhone })
+        });
+        const json = await resp.json();
+        if (json.ok) currentStatus = json;
+        setLoading(false);
+      }
+
+      // 2. Validate currentStatus exists
+      if (currentStatus) {
+         console.log("[DEBUG] Role check:", { passedRole, consumes: currentStatus });
+
+         // A. REGISTRATION MODE CHECK: Block if already exists
+         if (!isLogin && currentStatus.exists) {
+            setLoading(false);
+            Alert.alert(
+              "Account Exists",
+              "This phone number is already registered. Would you like to log in instead?",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Log In", onPress: () => setIsLogin(true) }
+              ]
+            );
+            return;
+         }
+
+         // B. LOGIN MODE CHECK: Block if doesn't exist
+         if (isLogin && !currentStatus.exists) {
+            setLoading(false);
+            Alert.alert(
+              "Number Not Found",
+              "This phone number is not registered. Would you like to create a new account?",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Register", onPress: () => setIsLogin(false) }
+              ]
+            );
+            return;
+         }
+
+         // C. ROLE RESTRICTION CHECK (Login Only)
+         if (isLogin) {
+           const isAdmin = !!currentStatus.is_admin;
+           const isOperator = !!currentStatus.is_operator;
+           const targetRole = passedRole || "commuter"; // Default if missing
+
+           console.log(`[DEBUG] Login role validation: Target=${targetRole}, isOp=${isOperator}, isAdmin=${isAdmin}`);
+
+           if (targetRole === "operator") {
+             if (!isOperator && !isAdmin) {
+                setLoading(false);
+                Alert.alert("Access Restricted", "This account is not registered as an Operator. Please use the Commuter login.");
+                return;
+             }
+           } else {
+             // Commuter portal (or default)
+             if (isOperator && !isAdmin) {
+                setLoading(false);
+                Alert.alert("Operator Account", "This account is registered as an Operator. Please use the Operator login portal.");
+                return;
+             }
+           }
+         }
+      }
+
       setLoading(true);
-      
+
       const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
       if (error) {
         setLoading(false);
         return Alert.alert("Verification Error", error.message);
       }
 
-      navigation.navigate("OTPScreen", { 
-        phone: fullPhone, 
-        isLogin, 
-        role: passedRole 
+      navigation.navigate("OTPScreen", {
+        phone: fullPhone,
+        isLogin,
+        role: passedRole
       });
     } catch (e) {
       Alert.alert("Error", e.message || "Something went wrong");
@@ -123,12 +234,49 @@ export default function PhoneScreen({ navigation, route }) {
                   keyboardType="phone-pad"
                   value={rawPhone}
                   onChangeText={setRawPhone}
-                  maxLength={13}
+                   maxLength={10}
                 />
+                <View style={styles.indicatorWrap}>
+                  {phoneStatus?.loading ? (
+                    <ActivityIndicator size="small" color={theme.accent} />
+                  ) : phoneStatus?.exists ? (
+                    <HugeiconsIcon icon={Tick01Icon} size={20} color={theme.success} />
+                  ) : rawPhone.length >= 10 ? (
+                    <HugeiconsIcon icon={Alert01Icon} size={20} color={theme.textMuted} />
+                  ) : null}
+                </View>
               </View>
+              {phoneStatus && !phoneStatus.loading && (
+                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, marginLeft: 4 }}>
+                   <HugeiconsIcon 
+                      icon={phoneStatus.is_operator || phoneStatus.is_admin ? Bus01Icon : UserIcon} 
+                      size={16} 
+                      color={(passedRole === "operator" && !phoneStatus.is_operator && !phoneStatus.is_admin && isLogin) || 
+                             (passedRole === "commuter" && phoneStatus.is_operator && isLogin) 
+                             ? "#ff4444" 
+                             : phoneStatus.exists ? theme.success : theme.textSecondary } 
+                   />
+                  <Text style={[
+                    styles.statusText, 
+                    { 
+                      marginTop: 0,
+                      marginLeft: 6,
+                      color: (passedRole === "operator" && !phoneStatus.is_operator && !phoneStatus.is_admin && isLogin) || 
+                             (passedRole === "commuter" && phoneStatus.is_operator && isLogin) 
+                             ? "#ff4444" 
+                             : phoneStatus.exists ? theme.success : theme.textSecondary 
+                    }
+                  ]}>
+                    {phoneStatus.exists 
+                      ? (phoneStatus.is_operator || phoneStatus.is_admin ? "Operator Account" : "Commuter Account") 
+                      + (isLogin && ((passedRole === "operator" && !phoneStatus.is_operator && !phoneStatus.is_admin) || (passedRole === "commuter" && phoneStatus.is_operator)) ? " (Restricted)" : "")
+                      : "Unregistered Number"}
+                  </Text>
+                </View>
+              )}
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.nextBtn, (loading || rawPhone.length < 10) && styles.btnDisabled]}
               onPress={handleNext}
               disabled={loading || rawPhone.length < 10}
@@ -152,8 +300,8 @@ export default function PhoneScreen({ navigation, route }) {
               data={COUNTRY_CODES}
               keyExtractor={(item) => item.code}
               renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={styles.countryItem} 
+                <TouchableOpacity
+                  style={styles.countryItem}
                   onPress={() => { setSelectedCountry(item); setShowPicker(false); }}
                 >
                   <Text style={styles.countryFlag}>{item.flag}</Text>
@@ -211,6 +359,16 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
   },
   btnDisabled: { opacity: 0.5 },
   nextBtnText: { color: isDarkMode ? "#000" : "#fff", fontSize: 18, fontWeight: "800" },
+  indicatorWrap: {
+    justifyContent: "center",
+    paddingRight: 16,
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: "800",
+    marginTop: 8,
+    marginLeft: 4,
+  },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalContent: { borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: "70%" },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 24 },

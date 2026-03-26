@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  SafeAreaView,
-  ScrollView,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
-} from "react-native";
+  Alert } from "react-native";
+
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, RefreshIcon, AnalyticsUpIcon, ArrowRight01Icon, WalletAdd01Icon, FlashIcon, QrCodeIcon } from "@hugeicons/core-free-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";

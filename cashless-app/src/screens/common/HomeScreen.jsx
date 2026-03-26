@@ -1,19 +1,18 @@
 import React, { useMemo, useEffect, useState, useRef } from "react";
 import { fetchNotifications } from "../../api/notificationsApi";
 import { useTheme } from "../../context/ThemeContext";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
   RefreshControl,
   Platform,
-  StatusBar,
-} from "react-native";
+  StatusBar } from "react-native";
+
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
 import QuickActions from "../../components/QuickActions";

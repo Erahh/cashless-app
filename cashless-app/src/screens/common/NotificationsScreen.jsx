@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  SafeAreaView,
-  ScrollView,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView,
   View,
   Text,
   StyleSheet,
@@ -9,8 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  TouchableWithoutFeedback,
-} from "react-native";
+  TouchableWithoutFeedback } from "react-native";
+
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, RefreshIcon, ArrowRight01Icon, MoreVerticalCircle01Icon, Notification03Icon } from "@hugeicons/core-free-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";

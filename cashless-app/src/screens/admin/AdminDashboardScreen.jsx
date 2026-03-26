@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+
 import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { QrCodeIcon, UserIcon, AnalyticsUpIcon } from "@hugeicons/core-free-icons";

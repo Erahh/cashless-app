@@ -30,6 +30,7 @@ export default function OTPScreen({ navigation, route }) {
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [timer, setTimer] = useState(60);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const inputRef = useRef(null);
@@ -44,6 +45,19 @@ export default function OTPScreen({ navigation, route }) {
       verifyOtp(otp);
     }
   }, [otp]);
+
+  // Countdown Timer Effect
+  useEffect(() => {
+    let interval = null;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
 
   const triggerShake = () => {
     shakeAnim.setValue(0);
@@ -75,6 +89,23 @@ export default function OTPScreen({ navigation, route }) {
       setOtp("");
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (timer > 0 || resending) return;
+    try {
+      setResending(true);
+      setErrorMsg("");
+      const { error } = await supabase.auth.signInWithOtp({ phone });
+      if (error) throw error;
+      setTimer(60);
+      setOtp("");
+      Alert.alert("Success", "A new code has been sent to your phone.");
+    } catch (e) {
+      setErrorMsg(e.message || "Failed to resend code");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -118,6 +149,23 @@ export default function OTPScreen({ navigation, route }) {
 
             {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
             {verifying && <ActivityIndicator color={theme.accent} style={{ marginTop: 20 }} />}
+
+            <View style={styles.resendSection}>
+              <Text style={styles.resendLabel}>Didn't receive the code?</Text>
+              <TouchableOpacity 
+                onPress={handleResend} 
+                disabled={timer > 0 || resending}
+                style={[styles.resendBtn, (timer > 0 || resending) && styles.resendBtnDisabled]}
+              >
+                 {resending ? (
+                   <ActivityIndicator size="small" color={theme.accent} />
+                 ) : (
+                   <Text style={[styles.resendBtnText, timer > 0 && { color: theme.textSecondary }]}>
+                     {timer > 0 ? `Resend in ${timer}s` : "Resend Now"}
+                   </Text>
+                 )}
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -138,5 +186,10 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
   otpDigitFilled: { color: theme.text },
   cursor: { position: "absolute", bottom: 12, width: 16, height: 2, backgroundColor: theme.accent },
   hiddenInput: { position: "absolute", width: 1, height: 1, opacity: 0 },
-  errorText: { color: theme.danger, marginTop: 20, fontWeight: "600" }
+  errorText: { color: theme.danger || "#ff4444", marginTop: 20, fontWeight: "600", textAlign: 'center' },
+  resendSection: { marginTop: 40, alignItems: "center" },
+  resendLabel: { fontSize: 14, color: theme.textSecondary, marginBottom: 12 },
+  resendBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1, borderColor: theme.border },
+  resendBtnDisabled: { opacity: 0.7, borderColor: "transparent" },
+  resendBtnText: { fontSize: 16, fontWeight: "800", color: theme.accent }
 });

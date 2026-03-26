@@ -1,13 +1,12 @@
 import React from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Alert,
-  ScrollView,
-} from "react-native";
+  ScrollView } from "react-native";
+
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, ArrowRight01Icon, CheckmarkCircle01Icon, Shield01Icon, Clock01Icon, NoteIcon } from "@hugeicons/core-free-icons";
 import { useTheme } from "../../context/ThemeContext";

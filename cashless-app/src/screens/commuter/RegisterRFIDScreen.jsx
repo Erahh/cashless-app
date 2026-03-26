@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
-import {
-    View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
     Text,
     StyleSheet,
     TouchableOpacity,
     Alert,
-    ActivityIndicator,
-    SafeAreaView,
-} from "react-native";
+    ActivityIndicator } from "react-native";
+
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
 

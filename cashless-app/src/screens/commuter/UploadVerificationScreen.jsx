@@ -1,16 +1,15 @@
 import React, { useState, useContext, useEffect } from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   Alert,
   Image,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
-  Dimensions
-} from "react-native";
+  Dimensions } from "react-native";
+
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";

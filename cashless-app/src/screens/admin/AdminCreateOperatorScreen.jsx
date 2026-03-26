@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Alert, TouchableOpacity, StyleSheet, SafeAreaView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, TextInput, Alert, TouchableOpacity, StyleSheet } from "react-native";
+
 import { createOperatorByPhone } from "../../api/adminApi";
 
 export default function AdminCreateOperatorScreen({ navigation }) {

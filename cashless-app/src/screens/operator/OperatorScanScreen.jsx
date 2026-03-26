@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
-  Alert,
-} from "react-native";
+  Alert } from "react-native";
+
 import { useCameraPermissions } from "expo-camera";
 import QRScanView from "../../components/QRScanView";
 import AsyncStorage from "@react-native-async-storage/async-storage";

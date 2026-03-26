@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
-  ScrollView,
-} from "react-native";
+  ScrollView } from "react-native";
+
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, RefreshIcon, ScanIcon, WalletAdd01Icon, FlashIcon, Wifi01Icon } from "@hugeicons/core-free-icons";
 import QRCode from "react-native-qrcode-svg";

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, RefreshControl, Alert, SafeAreaView, TouchableOpacity, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, ScrollView, RefreshControl, Alert, TouchableOpacity, StyleSheet } from "react-native";
+
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, RefreshIcon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";

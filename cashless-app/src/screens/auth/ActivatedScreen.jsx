@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo } from "react";
-import {
-  View,
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   StyleSheet,
-  StatusBar,
-} from "react-native";
+  StatusBar } from "react-native";
+
 import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { CheckmarkCircle01Icon } from "@hugeicons/core-free-icons";

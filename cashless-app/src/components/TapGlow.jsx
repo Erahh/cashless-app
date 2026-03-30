@@ -197,30 +197,13 @@ export function useTapGlow() {
   const containerRef = useRef(null);
 
   const onTap = useCallback((e) => {
-    // pageX/pageY are screen absolute. 
-    // To make them accurate in the overlay, we need to ensure the overlay 
-    // is ALSO screen absolute. Since TapGlowOverlay is flex:1 / absoluteFill 
-    // inside a view that might be offset by SafeAreaView, we need to subtract that.
-    
-    const { pageX, pageY, locationX, locationY, target } = e.nativeEvent;
-    
-    // If we're capturing on a container that represents the whole screen but 
-    // is nested in a SafeAreaView, using pageX/pageY minus the status bar might be needed.
-    // However, on iOS, locationX/pageY are more reliable if captured on a full-width View.
-    
-    // Most robust for nested touch:
-    // We'll use the touch coordinates relative to the target container.
-    // However, locationX/Y is relative to the element you touched (e.g. a button).
-    // So if you touch a button at (10,10) inside a screen at (0,150), 
-    // locationX is 10, pageX is 10.
-    
-    // We will use pageX/pageY and adjust for the container offset.
-    // In most screens, we wrap the whole screen in a flex:1 View.
-    
+    if (!e || !e.nativeEvent) return;
+    const { pageX, pageY } = e.nativeEvent;
+
     const newTap = {
-      id: Math.random().toString(36).substr(2, 9),
-      x: pageX,
-      y: pageY - (Platform.OS === 'android' ? 0 : 0), // Base screen-absolute
+      id: Math.random().toString(36).substring(2, 11),
+      x: pageX || 0,
+      y: pageY || 0,
     };
 
     setTaps((prev) => [...prev, newTap]);

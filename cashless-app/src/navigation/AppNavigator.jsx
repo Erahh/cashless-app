@@ -28,21 +28,35 @@ export default function AppNavigator() {
   const [initialRoute, setInitialRoute] = useState(null); // null = loading
 
   useEffect(() => {
+    let isMounted = true;
+
     if (locked) {
       setInitialRoute("MPINUnlock");
       return;
     }
+
     AsyncStorage.getItem("@era_onboarding_done")
       .then((val) => {
+        if (!isMounted) return;
         setInitialRoute(val === "true" ? "AuthGate" : "Landing");
       })
       .catch(() => {
+        if (!isMounted) return;
         setInitialRoute("AuthGate");
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, [locked]);
 
+  // Derive initial route dynamically to avoid race conditions when switching auth contexts
+  const safeRoute = locked
+    ? "MPINUnlock"
+    : (initialRoute === "MPINUnlock" || initialRoute === null ? null : initialRoute);
+
   // Render nothing until we know the initial route (avoids flicker)
-  if (!initialRoute) {
+  if (!safeRoute) {
     return <View style={{ flex: 1, backgroundColor: "#030614" }} />;
   }
 
@@ -50,7 +64,7 @@ export default function AppNavigator() {
     <Stack.Navigator
       key={locked ? "locked" : "unlocked"}
       screenOptions={{ headerShown: false, animation: "fade" }}
-      initialRouteName={initialRoute}
+      initialRouteName={safeRoute}
     >
       {locked ? (
         /* LOCK FLOW */

@@ -35,7 +35,10 @@ export default function AppNavigator() {
       return;
     }
 
-    AsyncStorage.getItem("@era_onboarding_done")
+    // Uncomment the line below to reset the landing page so you can test it again:
+    // AsyncStorage.removeItem("hasLaunched");
+
+    AsyncStorage.getItem("hasLaunched")
       .then((val) => {
         if (!isMounted) return;
         setInitialRoute(val === "true" ? "AuthGate" : "Landing");

@@ -98,7 +98,7 @@ export default function TransactionsScreen({ navigation }) {
           <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Transactions</Text>
-        <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => load(10)} activeOpacity={0.9}>
           <HugeiconsIcon icon={RefreshIcon} size={18} color={theme.text} />
         </TouchableOpacity>
       </View>
@@ -108,10 +108,8 @@ export default function TransactionsScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-
         <Card>
-          <Pill text={loading ? "Loading..." : `${items.length} records`} />
-
+          <Pill theme={theme} text={loading ? "Loading..." : `${items.length} records`} />
           <ScrollView
             style={{ marginTop: 14 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -141,18 +139,20 @@ export default function TransactionsScreen({ navigation }) {
 
                     <View style={styles.itemContent}>
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <Text style={styles.txTitle} numberOfLines={1}>{tString}</Text>
-                        <Text style={[styles.txAmount, { color: isDebit ? theme.danger : theme.success }]}>{amountText}</Text>
+                        <Text style={styles.txTitle} numberOfLines={1}>{String(tString)}</Text>
+                        <Text style={[styles.txAmount, { color: isDebit ? theme.danger : theme.success }]}>{String(amountText)}</Text>
                       </View>
 
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 6 }}>
                         <View>
-                          <Text style={styles.txDate}>{dateString} • {timeString}</Text>
+                          <Text style={styles.txDate}>{`${dateString} • ${timeString}`}</Text>
                           {it.meta ? (
-                            <Text style={styles.txMeta}>{it.meta}</Text>
+                            <Text style={styles.txMeta}>{String(it.meta)}</Text>
                           ) : null}
                         </View>
-                        <Text style={styles.txBadge}>{badgeFor(it)}</Text>
+                        {badgeFor(it) ? (
+                          <Text style={styles.txBadge}>{String(badgeFor(it))}</Text>
+                        ) : null}
                       </View>
                     </View>
                   </View>
@@ -172,7 +172,6 @@ export default function TransactionsScreen({ navigation }) {
                 <HugeiconsIcon icon={ArrowRight01Icon} size={16} color={theme.text} />
               </TouchableOpacity>
             )}
-
             <View style={{ height: 120 }} />
           </ScrollView>
         </Card>

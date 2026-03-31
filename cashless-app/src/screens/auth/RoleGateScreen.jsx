@@ -1,7 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, StyleSheet, Alert } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import { View, Text, ActivityIndicator, StyleSheet, Alert, Dimensions, Animated } from "react-native";
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
+import { TapGlowOverlay, useTapGlow } from "../../components/TapGlow";
+import { useTheme } from "../../context/ThemeContext";
+import { LinearGradient } from "expo-linear-gradient";
+
+const { width, height } = Dimensions.get("window");
+const GRID_SIZE = 30;
 
 // ✅ Helper for timeout logic (increased for Render cold starts)
 async function fetchWithTimeout(url, options = {}, ms = 60000) {
@@ -14,8 +20,28 @@ async function fetchWithTimeout(url, options = {}, ms = 60000) {
     }
 }
 
+const useFloat = (duration = 3000, offset = 10) => {
+    const anim = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(anim, { toValue: 1, duration, useNativeDriver: true }),
+                Animated.timing(anim, { toValue: 0, duration, useNativeDriver: true }),
+            ])
+        ).start();
+    }, []);
+    return anim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, offset],
+    });
+};
+
 export default function RoleGateScreen({ navigation }) {
     const [message, setMessage] = useState("Checking your account...");
+    const { taps, onTap } = useTapGlow();
+    const { isDarkMode, theme } = useTheme();
+
+    const floatAnim = useFloat(3500, -15);
 
     useEffect(() => {
         let alive = true;
@@ -87,10 +113,72 @@ export default function RoleGateScreen({ navigation }) {
         };
     }, [navigation]);
 
+    const bgColor = isDarkMode ? theme.background : "#F9F6EE";
+    const gridColor = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
+    const textColor = isDarkMode ? theme.textSecondary : "#4A4A4A";
+    const spinnerColor = isDarkMode ? theme.accent : "#121417";
+    
+    // Dynamic shadow for glowing card effect
+    const cardShadowColor = isDarkMode ? "#F9F6EE" : "#000000";
+    const cardShadowOpacity = isDarkMode ? 0.35 : 0.2;
+
+    // Render a subtle grid like in the reference image
+    const renderGrid = () => {
+        const columns = Math.ceil(width / GRID_SIZE);
+        const rows = Math.ceil(height / GRID_SIZE);
+        return (
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                {[...Array(columns)].map((_, i) => (
+                    <View key={`v-${i}`} style={[styles.gridLineV, { left: i * GRID_SIZE, backgroundColor: gridColor }]} />
+                ))}
+                {[...Array(rows)].map((_, i) => (
+                    <View key={`h-${i}`} style={[styles.gridLineH, { top: i * GRID_SIZE, backgroundColor: gridColor }]} />
+                ))}
+            </View>
+        );
+    };
+
     return (
-        <View style={styles.container}>
-            <ActivityIndicator size="large" color="#FFD36A" />
-            <Text style={styles.message}>{message}</Text>
+        <View style={[styles.container, { backgroundColor: bgColor }]} onTouchStart={onTap}>
+            {/* Background Grid */}
+            <View style={styles.bgContainer}>
+                {renderGrid()}
+            </View>
+
+            {/* Glowing Commuter Card Illustration */}
+            <View style={styles.illustrationWrap}>
+                <Animated.View 
+                    style={[
+                        styles.cardFront, 
+                        { 
+                            transform: [{ translateY: floatAnim }, { rotate: "3deg" }],
+                            shadowColor: cardShadowColor,
+                            shadowOpacity: cardShadowOpacity,
+                            shadowRadius: 25,
+                            elevation: 20
+                        }
+                    ]}
+                >
+                    <LinearGradient colors={["#2C2C2C", "#121417"]} style={styles.cardGrade}>
+                        <View style={styles.cardHeader}>
+                            <View style={styles.chipSilverGold} />
+                            <View style={styles.masterCircle} />
+                        </View>
+                        <Text style={styles.cardPassText}>COMMUTER PASS</Text>
+                        <View style={styles.cardBottomRow}>
+                            <Text style={styles.cardNumber}>••••  ••••  ••••  8829</Text>
+                        </View>
+                    </LinearGradient>
+                </Animated.View>
+            </View>
+
+            <View style={styles.loadingFooter}>
+                <ActivityIndicator size="large" color={spinnerColor} />
+                <Text style={[styles.message, { color: textColor }]}>{message}</Text>
+            </View>
+
+            {/* TapGlow overlay */}
+            <TapGlowOverlay taps={taps} />
         </View>
     );
 }
@@ -98,15 +186,53 @@ export default function RoleGateScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#0B0E14",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    bgContainer: {
+        ...StyleSheet.absoluteFillObject,
+        opacity: 0.4,
+    },
+    gridLineV: {
+        position: 'absolute',
+        width: 1,
+        height: '100%',
+    },
+    gridLineH: {
+        position: 'absolute',
+        height: 1,
+        width: '100%',
+    },
+    illustrationWrap: {
+        width: '100%',
+        height: 220,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 40,
+        zIndex: 10,
+    },
+    cardFront: {
+        width: 250,
+        height: 150,
+        borderRadius: 18,
+    },
+    cardGrade: { flex: 1, borderRadius: 18, padding: 18, justifyContent: "space-between" },
+    cardHeader: { flexDirection: "row", justifyContent: "space-between" },
+    chipSilverGold: { width: 36, height: 28, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 4 },
+    masterCircle: { width: 32, height: 22, flexDirection: "row" },
+    cardPassText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900", letterSpacing: 2, opacity: 0.8 },
+    cardBottomRow: {},
+    cardNumber: { color: "#FFFFFF", fontSize: 15, fontWeight: "500", letterSpacing: 1.5, opacity: 0.6 },
+    loadingFooter: {
         alignItems: "center",
         justifyContent: "center",
     },
     message: {
-        color: "rgba(255,255,255,0.7)",
-        marginTop: 16,
-        fontSize: 14,
+        marginTop: 20,
+        fontSize: 15,
         textAlign: "center",
         paddingHorizontal: 40,
+        fontWeight: "600",
+        letterSpacing: 0.5,
     },
 });

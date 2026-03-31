@@ -466,22 +466,26 @@ export default function HomeScreen({ navigation, route }) {
             });
 
             return (
-              <View key={tx.id} style={styles.txRow}>
+              <TouchableOpacity
+                key={tx.id}
+                style={styles.txRow}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate("TransactionDetails", { item: tx })}
+              >
                 <View style={styles.txLeft}>
                   <View style={{ marginRight: 12 }}>
                     <TxIcon title={title} type={tx.kind} source={tx.source} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.txTitle}>{title}</Text>
-                    <Text style={styles.txMeta}>{meta}</Text>
-                    <Text style={styles.txTime}>{dateStr} • {timeStr}</Text>
+                    <Text style={styles.txTitle}>{String(title)}</Text>
+                    <Text style={styles.txMeta}>{String(meta)}</Text>
+                    <Text style={styles.txTime}>{`${dateStr} • ${timeStr}`}</Text>
                   </View>
                 </View>
-
                 <Text style={[styles.txAmount, isDebit ? styles.txNeg : styles.txPos]}>
-                  {sign}₱{Math.abs(amount).toFixed(2)}
+                  {`${sign}₱${Math.abs(amount).toFixed(2)}`}
                 </Text>
-              </View>
+              </TouchableOpacity>
             );
           })}
 
@@ -491,8 +495,8 @@ export default function HomeScreen({ navigation, route }) {
             </Text>
           ) : null}
         </View>
-      </ScrollView >
-    </SafeAreaView >
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

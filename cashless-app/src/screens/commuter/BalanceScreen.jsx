@@ -183,15 +183,15 @@ export default function BalanceScreen({ navigation }) {
                       </View>
                       <View style={styles.txInfo}>
                         <Text style={styles.txType}>
-                          {txType}
+                          {String(txType)}
                         </Text>
                         <Text style={styles.txName}>
-                          {txName}
+                          {String(txName)}
                         </Text>
                       </View>
                     </View>
                     <Text style={[styles.txAmount, isCredit ? styles.txAmountPos : styles.txAmountNeg]}>
-                      {isCredit ? "+" : "-"}₱{Number(x.amount || 0).toFixed(2)}
+                      {`${isCredit ? "+" : "-"}₱${Number(x.amount || 0).toFixed(2)}`}
                     </Text>
                   </View>
                 );

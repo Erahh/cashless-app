@@ -1,6 +1,7 @@
 import React, { useState, useContext, useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View,
+import {
+  View,
   Text,
   TextInput,
   TouchableOpacity,
@@ -10,9 +11,8 @@ import { View,
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
-  Platform } from "react-native";
-
-import { TapGlowOverlay } from "../../components/TapGlow";
+  Platform,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";

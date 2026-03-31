@@ -68,7 +68,7 @@ export default function TransactionDetailsScreen({ route, navigation }) {
           <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Transaction Details</Text>
-        <View style={{ width: 40 }} /> {/* Spacer */}
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -126,8 +126,9 @@ export default function TransactionDetailsScreen({ route, navigation }) {
           <View style={{ flex: 1 }}>
             <Text style={styles.infoTitle}>Need Help?</Text>
             <Text style={styles.infoText}>
-              If you encounter delays or issues with this transaction, please provide the {" "}
-              <Text style={{ fontWeight: "700", color: theme.text }}>Reference Number</Text> to our support team. Refunds and transfers may take up to 24 hours to process.
+              {"If you encounter delays or issues with this transaction, please provide the "}
+              <Text style={{ fontWeight: "700", color: theme.text }}>Reference Number</Text>
+              {" to our support team. Refunds and transfers may take up to 24 hours to process."}
             </Text>
           </View>
         </View>

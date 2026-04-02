@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Linking, Alert } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 
 /**
@@ -22,6 +23,17 @@ export default function QRScanView({
     const [permission, requestPermission] = useCameraPermissions();
     const [busy, setBusy] = useState(false);
     const [requesting, setRequesting] = useState(false);
+    const isFocused = useIsFocused();
+    const [shouldRender, setShouldRender] = useState(false);
+
+    useEffect(() => {
+        if (isFocused) {
+            const timer = setTimeout(() => setShouldRender(true), 300);
+            return () => clearTimeout(timer);
+        } else {
+            setShouldRender(false);
+        }
+    }, [isFocused]);
 
     // Debounce so same QR doesn't fire repeatedly
     const lastValueRef = useRef("");
@@ -87,13 +99,17 @@ export default function QRScanView({
     // If parent handles permission UI, just render camera
     if (!managedPermission) {
         return (
-            <View style={[styles.wrap, style]}>
-                <CameraView
-                    style={StyleSheet.absoluteFillObject}
-                    facing="back"
-                    barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                    onBarcodeScanned={handleBarcodeScanned}
-                />
+            <View style={[styles.wrap, style, { backgroundColor: "#000" }]}>
+                {(isFocused && shouldRender) && (
+                    <CameraView
+                        key={isFocused ? "active" : "inactive"}
+                        style={[StyleSheet.absoluteFillObject, { flex: 1 }]}
+                        facing="back"
+                        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                        onBarcodeScanned={handleBarcodeScanned}
+                        onMountError={(e) => Alert.alert("Camera Error", e.message)}
+                    />
+                )}
                 {children}
             </View>
         );
@@ -139,13 +155,17 @@ export default function QRScanView({
     }
 
     return (
-        <View style={[styles.wrap, style]}>
-            <CameraView
-                style={StyleSheet.absoluteFillObject}
-                facing="back"
-                barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                onBarcodeScanned={handleBarcodeScanned}
-            />
+        <View style={[styles.wrap, style, { backgroundColor: "#000" }]}>
+            {(isFocused && shouldRender) && (
+                <CameraView
+                    key={isFocused ? "active" : "inactive"}
+                    style={[StyleSheet.absoluteFillObject, { flex: 1 }]}
+                    facing="back"
+                    barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                    onBarcodeScanned={handleBarcodeScanned}
+                    onMountError={(e) => Alert.alert("Camera Error", e.message)}
+                />
+            )}
 
             {/* Default overlay if no children provided */}
             {children ? (
@@ -166,7 +186,7 @@ const styles = StyleSheet.create({
         height: 360,
         borderRadius: 22,
         overflow: "hidden",
-        backgroundColor: "rgba(255,255,255,0.06)",
+        backgroundColor: "transparent",
     },
     defaultOverlay: {
         ...StyleSheet.absoluteFillObject,

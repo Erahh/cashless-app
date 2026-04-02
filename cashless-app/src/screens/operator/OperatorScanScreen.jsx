@@ -177,9 +177,14 @@ export default function OperatorScanScreen({ navigation }) {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.smallBtn} onPress={() => navigation.navigate("Earnings")}>
-          <Text style={styles.smallBtnText}>Earnings</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <TouchableOpacity style={styles.smallBtn} onPress={() => navigation.navigate("OperatorTerminalMode")}>
+            <Text style={styles.smallBtnText}>Terminal</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.smallBtn} onPress={() => navigation.navigate("OperatorEarnings")}>
+            <Text style={styles.smallBtnText}>Earnings</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <QRScanView
@@ -237,7 +242,7 @@ export default function OperatorScanScreen({ navigation }) {
 
               <TouchableOpacity
                 style={[styles.secondaryBtn, { flex: 1 }]}
-                onPress={() => navigation.navigate("Transactions")}
+                onPress={() => navigation.navigate("OperatorEarnings")}
               >
                 <Text style={styles.secondaryBtnText}>History</Text>
               </TouchableOpacity>

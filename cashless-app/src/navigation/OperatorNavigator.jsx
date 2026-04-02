@@ -11,6 +11,7 @@ import OperatorSetupScreen from "../screens/operator/OperatorSetupScreen";
 import OperatorEarningsScreen from "../screens/operator/OperatorEarningsScreen";
 import OperatorMyQRScreen from "../screens/operator/OperatorMyQRScreen";
 import OperatorApplyScreen from "../screens/operator/OperatorApplyScreen";
+import OperatorTerminalModeScreen from "../screens/operator/OperatorTerminalModeScreen";
 import NotificationsScreen from "../screens/common/NotificationsScreen";
 import ProfileScreen from "../screens/common/ProfileScreen";
 
@@ -47,6 +48,11 @@ function OperatorBottomNav() {
         if (!nav) return;
         nav.navigate(route);
     }, [navRef]);
+
+    // Hide nav if we are in Terminal Mode
+    if (activeRoute === "OperatorTerminalMode") {
+        return null;
+    }
 
     return (
         <BottomNav
@@ -103,6 +109,7 @@ function OperatorContent() {
                 <Stack.Screen name="UploadVerification" component={withNavCapture(UploadVerificationScreen)} />
                 <Stack.Screen name="VerificationSubmitted" component={withNavCapture(VerificationSubmittedScreen)} />
                 <Stack.Screen name="OperatorApply" component={withNavCapture(OperatorApplyScreen)} />
+                <Stack.Screen name="OperatorTerminalMode" component={withNavCapture(OperatorTerminalModeScreen)} options={{ animation: "fade" }} />
             </Stack.Navigator>
             <OperatorBottomNav />
         </View>

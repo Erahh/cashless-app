@@ -10,6 +10,7 @@ import OperatorScanScreen from "../screens/operator/OperatorScanScreen";
 import OperatorSetupScreen from "../screens/operator/OperatorSetupScreen";
 import OperatorEarningsScreen from "../screens/operator/OperatorEarningsScreen";
 import OperatorMyQRScreen from "../screens/operator/OperatorMyQRScreen";
+import OperatorTransactionsScreen from "../screens/operator/OperatorTransactionsScreen";
 import OperatorApplyScreen from "../screens/operator/OperatorApplyScreen";
 import OperatorTerminalModeScreen from "../screens/operator/OperatorTerminalModeScreen";
 import NotificationsScreen from "../screens/common/NotificationsScreen";
@@ -34,9 +35,9 @@ function withNavCapture(ScreenComponent) {
 }
 
 const OPERATOR_TABS = [
-    { key: "OperatorMyQR", label: "My QR", icon: QrCodeIcon, route: "OperatorMyQR" },
     { key: "OperatorEarnings", label: "Earnings", icon: InvoiceIcon, route: "OperatorEarnings" },
-    { key: "Notifications", label: "Alerts", icon: Notification01Icon, route: "Notifications" },
+    { key: "OperatorMyQR", label: "My QR", icon: QrCodeIcon, route: "OperatorMyQR" },
+    { key: "Transactions", label: "Transactions", icon: InvoiceIcon, route: "OperatorTransactions" },
     { key: "Profile", label: "Profile", icon: UserIcon, route: "Profile" },
 ];
 
@@ -96,6 +97,7 @@ function OperatorContent() {
                 <Stack.Screen name="OperatorSetup" component={withNavCapture(OperatorSetupScreen)} options={{ animation: "fade" }} />
                 <Stack.Screen name="OperatorEarnings" component={withNavCapture(OperatorEarningsScreen)} options={{ animation: "fade" }} />
                 <Stack.Screen name="OperatorMyQR" component={withNavCapture(OperatorMyQRScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="OperatorTransactions" component={withNavCapture(OperatorTransactionsScreen)} options={{ animation: "fade" }} />
 
                 {/* Shared */}
                 <Stack.Screen name="Profile" component={withNavCapture(ProfileScreen)} />

@@ -1,21 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View,
+import {
+  View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert } from "react-native";
+  Alert
+} from "react-native";
 
 import { useCameraPermissions } from "expo-camera";
 import QRScanView from "../../components/QRScanView";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
+import { useTheme } from "../../context/ThemeContext";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 const KEY = "operator_selected_vehicle";
 
 export default function OperatorScanScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -170,11 +177,16 @@ export default function OperatorScanScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.topBar}>
-        <View>
-          <Text style={styles.title}>Operator Scan</Text>
-          <Text style={styles.subtitle}>
-            Point camera at commuter QR to collect fare
-          </Text>
+        <View style={styles.topBarTitleContainer}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.title}>Operator Scan</Text>
+            <Text style={styles.subtitle}>
+              Point camera at commuter QR to collect fare
+            </Text>
+          </View>
         </View>
 
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -270,8 +282,8 @@ export default function OperatorScanScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0B0E14" },
+const createStyles = (theme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.background },
   content: { padding: 18 },
 
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -285,19 +297,32 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  topBarTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: theme.card,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-  title: { color: "#fff", fontSize: 22, fontWeight: "900" },
-  subtitle: { color: "rgba(255,255,255,0.6)", marginTop: 4 },
+  title: { color: theme.text, fontSize: 22, fontWeight: "900" },
+  subtitle: { color: theme.textSecondary, marginTop: 4, fontSize: 12 },
 
   smallBtn: {
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.07)",
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: theme.border,
   },
-  smallBtnText: { color: "rgba(255,255,255,0.85)", fontWeight: "800" },
+  smallBtnText: { color: theme.text, fontWeight: "800" },
 
   cameraWrap: {
     flex: 1,
@@ -305,8 +330,8 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    borderColor: theme.border,
+    backgroundColor: theme.cardAlt,
   },
 
   overlay: {
@@ -319,39 +344,39 @@ const styles = StyleSheet.create({
     height: 240,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: "rgba(255, 211, 106, 0.95)",
+    borderColor: theme.warningBg,
     backgroundColor: "rgba(0,0,0,0.10)",
   },
-  overlayText: { color: "rgba(255,255,255,0.8)", marginTop: 14, fontWeight: "800" },
+  overlayText: { color: "#fff", marginTop: 14, fontWeight: "800" },
 
   bottomSheet: {
     padding: 18,
     paddingBottom: 110,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
-    backgroundColor: "rgba(11,14,20,0.98)",
+    borderTopColor: theme.border,
+    backgroundColor: theme.background,
   },
 
-  cardTitle: { color: "#fff", fontSize: 18, fontWeight: "900" },
-  cardLine: { color: "rgba(255,255,255,0.65)", marginTop: 8 },
-  white: { color: "#fff", fontWeight: "900" },
-  dim: { color: "rgba(255,255,255,0.65)", marginTop: 10 },
+  cardTitle: { color: theme.text, fontSize: 18, fontWeight: "900" },
+  cardLine: { color: theme.textSecondary, marginTop: 8 },
+  white: { color: theme.text, fontWeight: "900" },
+  dim: { color: theme.textSecondary, marginTop: 10 },
 
   primaryBtn: {
-    backgroundColor: "#FFD36A",
+    backgroundColor: theme.accent,
     paddingVertical: 12,
     borderRadius: 14,
     alignItems: "center",
   },
-  primaryBtnText: { color: "#0B0E14", fontWeight: "900" },
+  primaryBtnText: { color: "#fff", fontWeight: "900" },
 
   secondaryBtn: {
     paddingVertical: 12,
     borderRadius: 14,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    borderColor: theme.border,
+    backgroundColor: theme.card,
   },
-  secondaryBtnText: { color: "rgba(255,255,255,0.85)", fontWeight: "900" },
+  secondaryBtnText: { color: theme.text, fontWeight: "900" },
 });

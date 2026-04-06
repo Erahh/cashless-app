@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View,
     Text,
@@ -33,7 +33,8 @@ const { width } = Dimensions.get("window");
 
 export default function OperatorApplyScreen({ navigation }) {
     const { setLockSuppressed } = useContext(AppLockContext);
-    const { theme, isDarkMode } = useTheme();
+    const { theme } = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
 
     const [licenseNo, setLicenseNo] = useState("");
     const [experience, setExperience] = useState("");
@@ -137,34 +138,34 @@ export default function OperatorApplyScreen({ navigation }) {
     const progress = (!front && !back) ? 0 : (front && !back) ? 50 : (front && back) ? 100 : 0;
 
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+        <SafeAreaView style={styles.safe}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <TouchableOpacity
-                        style={[styles.backBtn, { backgroundColor: theme.card }]}
+                        style={styles.backBtn}
                         onPress={() => navigation.goBack()}
                     >
                         <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color={theme.text} />
                     </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: theme.text }]}>Apply as Operator</Text>
+                    <Text style={styles.headerTitle}>Apply as Operator</Text>
                 </View>
 
                 <View style={styles.progressContainer}>
-                    <View style={[styles.progressBg, { backgroundColor: theme.border }]}>
-                        <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: theme.accent }]} />
+                    <View style={styles.progressBg}>
+                        <View style={[styles.progressFill, { width: `${progress}%` }]} />
                     </View>
-                    <Text style={[styles.progressText, { color: theme.textMuted }]}>{progress}% Documents Ready</Text>
+                    <Text style={styles.progressText}>{progress}% Documents Ready</Text>
                 </View>
 
                 <View style={styles.formSection}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Driver Information</Text>
+                    <Text style={styles.sectionTitle}>Driver Information</Text>
 
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.textSecondary }]}>Driver's License Number</Text>
-                        <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                        <Text style={styles.label}>Driver's License Number</Text>
+                        <View style={styles.inputWrapper}>
                             <HugeiconsIcon icon={Shield01Icon || User01Icon} size={20} color={theme.textMuted} style={styles.inputIcon} />
                             <TextInput
-                                style={[styles.input, { color: theme.text }]}
+                                style={styles.input}
                                 placeholder="N01-XX-XXXXXX"
                                 placeholderTextColor={theme.textMuted}
                                 value={licenseNo}
@@ -174,11 +175,11 @@ export default function OperatorApplyScreen({ navigation }) {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.textSecondary }]}>Years of Experience</Text>
-                        <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                        <Text style={styles.label}>Years of Experience</Text>
+                        <View style={styles.inputWrapper}>
                             <HugeiconsIcon icon={Clock01Icon} size={20} color={theme.textMuted} style={styles.inputIcon} />
                             <TextInput
-                                style={[styles.input, { color: theme.text }]}
+                                style={styles.input}
                                 placeholder="e.g. 5"
                                 placeholderTextColor={theme.textMuted}
                                 keyboardType="numeric"
@@ -189,11 +190,11 @@ export default function OperatorApplyScreen({ navigation }) {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.textSecondary }]}>Primary Vehicle Operated</Text>
-                        <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                        <Text style={styles.label}>Primary Vehicle Operated</Text>
+                        <View style={styles.inputWrapper}>
                             <HugeiconsIcon icon={DeliveryTruck01Icon || User01Icon} size={20} color={theme.textMuted} style={styles.inputIcon} />
                             <TextInput
-                                style={[styles.input, { color: theme.text }]}
+                                style={styles.input}
                                 placeholder="e.g. Jeepney, Bus, Tricycle"
                                 placeholderTextColor={theme.textMuted}
                                 value={vehicleType}
@@ -204,11 +205,11 @@ export default function OperatorApplyScreen({ navigation }) {
                 </View>
 
                 <View style={styles.uploadSection}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Requirements</Text>
-                    <Text style={[styles.sub, { color: theme.textSecondary }]}>Upload clear photos of your Professional Driver's License.</Text>
+                    <Text style={styles.sectionTitle}>Requirements</Text>
+                    <Text style={styles.sub}>Upload clear photos of your Professional Driver's License.</Text>
 
                     <TouchableOpacity
-                        style={[styles.uploadCard, { borderColor: theme.accent + "40", backgroundColor: theme.accent + "10" }]}
+                        style={styles.uploadCard}
                         onPress={() => pickImage(setFront)}
                     >
                         {front ? (
@@ -216,19 +217,19 @@ export default function OperatorApplyScreen({ navigation }) {
                                 <Image source={{ uri: front.uri }} style={styles.image} />
                                 <View style={styles.overlay}>
                                     <HugeiconsIcon icon={CheckmarkCircle01Icon} size={32} color={theme.success} />
-                                    <Text style={[styles.overlayText, { color: theme.success }]}>License Front Uploaded</Text>
+                                    <Text style={styles.overlayText}>License Front Uploaded</Text>
                                 </View>
                             </View>
                         ) : (
                             <View style={styles.placeholder}>
                                 <HugeiconsIcon icon={Camera01Icon} size={32} color={theme.accent} />
-                                <Text style={[styles.uploadLabel, { color: theme.text }]}>License Front</Text>
+                                <Text style={styles.uploadLabel}>License Front</Text>
                             </View>
                         )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.uploadCard, { borderColor: theme.accent + "40", backgroundColor: theme.accent + "10", marginTop: 16 }]}
+                        style={[styles.uploadCard, { marginTop: 16 }]}
                         onPress={() => pickImage(setBack)}
                     >
                         {back ? (
@@ -236,27 +237,27 @@ export default function OperatorApplyScreen({ navigation }) {
                                 <Image source={{ uri: back.uri }} style={styles.image} />
                                 <View style={styles.overlay}>
                                     <HugeiconsIcon icon={CheckmarkCircle01Icon} size={32} color={theme.success} />
-                                    <Text style={[styles.overlayText, { color: theme.success }]}>License Back Uploaded</Text>
+                                    <Text style={styles.overlayText}>License Back Uploaded</Text>
                                 </View>
                             </View>
                         ) : (
                             <View style={styles.placeholder}>
                                 <HugeiconsIcon icon={Camera01Icon} size={32} color={theme.accent} />
-                                <Text style={[styles.uploadLabel, { color: theme.text }]}>License Back</Text>
+                                <Text style={styles.uploadLabel}>License Back</Text>
                             </View>
                         )}
                     </TouchableOpacity>
                 </View>
 
-                <View style={[styles.infoCard, { backgroundColor: (theme?.accent || '#F7E353') + "15", borderColor: (theme?.accent || '#F7E353') + "30" }]}>
+                <View style={styles.infoCard}>
                     <HugeiconsIcon icon={Shield01Icon || InformationCircleIcon || User01Icon} size={20} color={theme.accent} />
-                    <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                    <Text style={styles.infoText}>
                         Your data is encrypted. Admins will review your license to grant operator access.
                     </Text>
                 </View>
 
                 <TouchableOpacity
-                    style={[styles.submitBtn, { backgroundColor: theme.accent }, (!front || !back || !licenseNo || loading) && styles.disabled]}
+                    style={[styles.submitBtn, (!front || !back || !licenseNo || loading) && styles.disabled]}
                     onPress={handleSubmit}
                     disabled={!front || !back || !licenseNo || loading}
                 >
@@ -269,40 +270,40 @@ export default function OperatorApplyScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
-    safe: { flex: 1 },
+const createStyles = (theme) => StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.background },
     content: { padding: 20 },
     header: { flexDirection: "row", alignItems: "center", marginBottom: 20, gap: 16 },
-    backBtn: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-    headerTitle: { fontSize: 20, fontWeight: "900" },
+    backBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border, alignItems: "center", justifyContent: "center" },
+    headerTitle: { fontSize: 20, fontWeight: "900", color: theme.text },
 
     progressContainer: { marginBottom: 24 },
-    progressBg: { height: 6, borderRadius: 3 },
-    progressFill: { height: "100%", borderRadius: 3 },
-    progressText: { marginTop: 8, fontSize: 12, fontWeight: "700" },
+    progressBg: { height: 6, borderRadius: 3, backgroundColor: theme.border },
+    progressFill: { height: "100%", borderRadius: 3, backgroundColor: theme.accent },
+    progressText: { marginTop: 8, fontSize: 12, fontWeight: "700", color: theme.textMuted },
 
     formSection: { marginBottom: 24 },
-    sectionTitle: { fontSize: 18, fontWeight: "900", marginBottom: 16 },
+    sectionTitle: { fontSize: 18, fontWeight: "900", marginBottom: 16, color: theme.text },
     inputGroup: { marginBottom: 16 },
-    label: { fontSize: 13, fontWeight: "700", marginBottom: 8 },
-    inputWrapper: { height: 56, borderRadius: 16, borderWidth: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 16 },
+    label: { fontSize: 13, fontWeight: "700", marginBottom: 8, color: theme.textSecondary },
+    inputWrapper: { height: 56, borderRadius: 16, borderWidth: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, backgroundColor: theme.card, borderColor: theme.border },
     inputIcon: { marginRight: 12 },
-    input: { flex: 1, fontSize: 15, fontWeight: "600" },
+    input: { flex: 1, fontSize: 15, fontWeight: "600", color: theme.text },
 
     uploadSection: { marginBottom: 24 },
-    sub: { fontSize: 14, marginBottom: 16, lineHeight: 20 },
-    uploadCard: { borderRadius: 20, borderWidth: 2, borderStyle: "dashed", minHeight: 160, overflow: "hidden" },
+    sub: { fontSize: 14, marginBottom: 16, lineHeight: 20, color: theme.textSecondary },
+    uploadCard: { borderRadius: 20, borderWidth: 2, borderStyle: "dashed", minHeight: 160, overflow: "hidden", borderColor: theme.accent + "40", backgroundColor: theme.accent + "10" },
     placeholder: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20 },
-    uploadLabel: { marginTop: 12, fontWeight: "800", fontSize: 15 },
+    uploadLabel: { marginTop: 12, fontWeight: "800", fontSize: 15, color: theme.text },
     preview: { width: "100%", height: 160 },
     image: { width: "100%", height: "100%" },
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
-    overlayText: { marginTop: 8, fontWeight: "800", fontSize: 14 },
+    overlayText: { marginTop: 8, fontWeight: "800", fontSize: 14, color: theme.success },
 
-    infoCard: { flexDirection: "row", padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 24, gap: 12 },
-    infoText: { flex: 1, fontSize: 13, lineHeight: 18 },
+    infoCard: { flexDirection: "row", padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 24, gap: 12, backgroundColor: (theme?.accent || '#F7E353') + "15", borderColor: (theme?.accent || '#F7E353') + "30" },
+    infoText: { flex: 1, fontSize: 13, lineHeight: 18, color: theme.textSecondary },
 
-    submitBtn: { height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+    submitBtn: { height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: theme.accent },
     disabled: { opacity: 0.5 },
     submitText: { color: "#000", fontWeight: "900", fontSize: 16 }
 });

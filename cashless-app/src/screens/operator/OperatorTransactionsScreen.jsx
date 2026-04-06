@@ -1,19 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  View,
+import { View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Alert,
-  RefreshControl
-} from "react-native";
+  RefreshControl } from "react-native";
 
 import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { Camera01Icon, QrCodeIcon, RefreshIcon, AnalyticsUpIcon, CheckmarkCircle02Icon, Time01Icon, Notification01Icon } from "@hugeicons/core-free-icons";
+import { Camera01Icon, QrCodeIcon, RefreshIcon, AnalyticsUpIcon, CheckmarkCircle02Icon, Time01Icon, Notification01Icon, ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import TxIcon from "../../components/TxIcon";
 
 import { supabase } from "../../api/supabase";
@@ -30,7 +28,7 @@ async function fetchWithTimeout(url, options = {}, ms = 35000) {
   }
 }
 
-export default function OperatorEarningsScreen({ navigation }) {
+export default function OperatorTransactionsScreen({ navigation }) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
@@ -156,12 +154,15 @@ export default function OperatorEarningsScreen({ navigation }) {
     <SafeAreaView style={styles.safe}>
       {/* Header Row outside ScrollView for fixed position */}
       <View style={styles.headerFixed}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
+        </TouchableOpacity>
         <View style={styles.headerTitles}>
-          <Text style={styles.title}>Analytics</Text>
-          <Text style={styles.subtitle}>Performance Dashboard</Text>
+          <Text style={styles.title}>All Activity</Text>
+          <Text style={styles.subtitle}>Recent Earnings & Payouts</Text>
         </View>
-        <TouchableOpacity style={styles.notifBtn} onPress={() => navigation.navigate("Notifications")}>
-          <HugeiconsIcon icon={Notification01Icon} size={20} color={theme.text} />
+        <TouchableOpacity style={styles.notifBtn} onPress={() => load({ silent: false })}>
+          <HugeiconsIcon icon={RefreshIcon} size={20} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -178,81 +179,13 @@ export default function OperatorEarningsScreen({ navigation }) {
           </View>
         ) : null}
 
-        {/* ═══════ EXACT WALLET CARD MATCH (Analytics Theme) ═══════ */}
-        <View style={styles.walletCard}>
-          {/* Balance Section */}
-          <View style={styles.walletBalanceSection}>
-            <View style={styles.walletBalanceInner}>
-              <Text style={styles.walletBalanceLabel}>{"Collected\nToday"}</Text>
-              <Text style={styles.walletBalanceAmount}>₱{computed.todayText}</Text>
-            </View>
-          </View>
-
-          {/* Divider */}
-          <View style={styles.walletDivider} />
-
-          {/* Spending Section (Mapped to Queue & Trend) */}
-          <View style={styles.walletSpendingSection}>
-            <View style={styles.walletSpendingLeft}>
-              <Text style={styles.walletSpendingLabel}>UNPAID QUEUE</Text>
-              <Text style={styles.walletSpendingHint}>₱{computed.unpaidText} pending →</Text>
-            </View>
-            <View style={styles.walletSpendingRight}>
-              <View style={styles.walletPercentRow}>
-                <Text style={[styles.walletPercentText, { color: theme.success }]}>↑ +14.2%</Text>
-                <Text style={styles.walletPercentLabel}>this week</Text>
-              </View>
-              {/* Mini Trend Graph - Green for Motivation */}
-              <View style={styles.walletWaveRow}>
-                <View style={[styles.walletWaveBar, { height: 10, backgroundColor: theme.success }]} />
-                <View style={[styles.walletWaveBar, { height: 14, backgroundColor: theme.success }]} />
-                <View style={[styles.walletWaveBar, { height: 8, backgroundColor: theme.success }]} />
-                <View style={[styles.walletWaveBar, { height: 18, backgroundColor: theme.success }]} />
-                <View style={[styles.walletWaveBar, { height: 12, backgroundColor: theme.success }]} />
-                <View style={[styles.walletWaveBar, { height: 22, backgroundColor: theme.success }]} />
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* ═══════ 2x2 STATS GRID (screenshot version) ═══════ */}
-        <View style={styles.statsGridCard}>
-          <View style={styles.statsGrid}>
-            <View style={styles.statsGridItem}>
-              <Text style={styles.statsGridLabel}>COLLECTED TODAY</Text>
-              <Text style={styles.statsGridValue}>₱{computed.todayText}</Text>
-            </View>
-            <View style={[styles.statsGridItem, styles.statsGridRight]}>
-              <Text style={styles.statsGridLabel}>THIS WEEK</Text>
-              <Text style={styles.statsGridValue}>₱{computed.weekText}</Text>
-            </View>
-            <View style={[styles.statsGridItem, styles.statsGridTop]}>
-              <Text style={styles.statsGridLabel}>PAID OUT</Text>
-              <Text style={[styles.statsGridValue, { color: theme.success }]}>₱{computed.paidText}</Text>
-            </View>
-            <View style={[styles.statsGridItem, styles.statsGridTop, styles.statsGridRight]}>
-              <Text style={styles.statsGridLabel}>QUEUED</Text>
-              <Text style={[styles.statsGridValue, { color: theme.warning }]}>₱{computed.unpaidText}</Text>
-            </View>
-          </View>
-        </View>
-
-
-        {/* Section Header */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeaderTitle}>Recent Activity</Text>
-          <TouchableOpacity onPress={() => navigation.navigate("OperatorTransactions")}>
-            <Text style={styles.headerLink}>See all</Text>
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.transactionList}>
-          {computed.settlements.slice(0, 20).map((x) => {
+          {computed.settlements.map((x) => {
             const amount = Number(x.amount || 0);
             const status = String(x.status || "unpaid").toLowerCase();
             const date = x.paid_at || x.created_at;
             const d = date ? new Date(date) : null;
-
+            
             const dateStr = d ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
             const timeStr = d ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "";
             const isPaid = status === "paid";
@@ -316,11 +249,22 @@ const createStyles = (theme) => StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 10,
+    gap: 12,
   },
   headerTitles: { flex: 1 },
   title: { fontSize: 24, fontWeight: "900", color: theme.text },
   subtitle: { fontSize: 13, color: theme.textSecondary, marginTop: 2 },
   notifBtn: {
+    width: 44,
+    height: 44,
+    backgroundColor: theme.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backBtn: {
     width: 44,
     height: 44,
     backgroundColor: theme.card,
@@ -343,189 +287,92 @@ const createStyles = (theme) => StyleSheet.create({
   netTitle: { color: theme.warning, fontWeight: "900", fontSize: 12 },
   netText: { marginTop: 4, color: theme.textSecondary, lineHeight: 18, fontSize: 12 },
 
-  // ═══════ UNIFIED WALLET CARD ═══════
   walletCard: {
-    marginTop: 18,
+    backgroundColor: theme.accent,
     borderRadius: 28,
-    padding: 20,
-    backgroundColor: theme.cardAlt,
-    borderWidth: 1.5,
-    borderColor: theme.warningBg,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 12,
+    padding: 24,
+    marginTop: 10,
+    overflow: "hidden",
+    shadowColor: theme.accent,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 8,
   },
-  walletBalanceSection: {
-    marginBottom: 18,
-  },
-  walletBalanceInner: {
-    backgroundColor: "rgba(0,0,0,0.7)", // Always dark for high contrast
-    borderRadius: 20,
-    paddingVertical: 18,
-    paddingHorizontal: 22,
+  balanceSection: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  walletBalanceLabel: {
-    color: "rgba(255, 255, 255, 0.7)", // Constant light color on dark background
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 0.3,
-  },
-  walletBalanceAmount: {
-    color: "#FFFFFF", // Constant white on dark background
-    fontSize: 26,
-    fontWeight: "900",
-    letterSpacing: -1,
-  },
-  walletDivider: {
-    height: 1,
-    backgroundColor: theme.isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-    marginBottom: 18,
-  },
-  walletSpendingSection: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
+    justifyContent: "space-between",
   },
-  walletSpendingLeft: {
-    flex: 1,
+  balanceInnerCard: {
+    backgroundColor: "#0B0E14",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
-  walletSpendingLabel: {
-    color: theme.textMuted,
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  walletSpendingHint: {
-    color: theme.textMuted,
-    fontSize: 12,
-  },
-  walletSpendingRight: {
-    alignItems: "flex-end",
-  },
-  walletPercentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginBottom: 8,
-  },
-  walletPercentText: {
-    color: theme.warning,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  walletPercentLabel: {
-    color: theme.textMuted,
-    fontSize: 10,
-  },
-  walletWaveRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 3,
-  },
-  walletWaveBar: {
-    width: 10,
-    borderRadius: 3,
-    backgroundColor: theme.accentWarm || theme.warning,
-  },
+  balanceLabel: { color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  balanceAmount: { color: "#FFF", fontSize: 28, fontWeight: "900", marginTop: 4 },
 
-  // ═══════ 2x2 STATS GRID (screenshot style) ═══════
-  statsGridCard: {
-    marginTop: 16,
-    borderRadius: 28,
+  cardDivider: {
+    height: 1,
+    backgroundColor: "rgba(0,0,0,0.1)",
+    marginVertical: 20,
+  },
+  spendingSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  spendingLeft: {},
+  spendingLabel: { color: "rgba(0,0,0,0.6)", fontSize: 13, fontWeight: "700" },
+  spendingAmount: { color: "#000", fontSize: 24, fontWeight: "900", marginTop: 4, letterSpacing: -0.5 },
+
+  spendingRight: { alignItems: "flex-end", width: 100 },
+  percentageRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#0B0E14", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, marginBottom: 8 },
+  percentageText: { color: "#FFD36A", fontSize: 11, fontWeight: "800", marginLeft: 4 },
+  percentageLabel: { color: "rgba(255,255,255,0.6)", fontSize: 10, marginLeft: 4, fontWeight: "600" },
+  
+  waveContainer: { width: "100%", height: 24, justifyContent: "flex-end", overflow: "hidden" },
+  waveLine: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", flex: 1 },
+  waveSegment: { width: 6, backgroundColor: "rgba(0,0,0,0.2)", borderRadius: 4 },
+
+  statsRow: { flexDirection: "row", gap: 12, marginTop: 16 },
+  statCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 22,
+    backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  statLabel: { color: theme.textSecondary, fontSize: 13, fontWeight: "700" },
+  statValue: { color: theme.text, fontSize: 20, fontWeight: "900", marginTop: 6 },
+
+  actionsRow: { flexDirection: "row", gap: 12, marginTop: 16 },
+  actionCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 22,
     backgroundColor: theme.cardAlt,
     borderWidth: 1,
     borderColor: theme.border,
-    padding: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    alignItems: "flex-start"
   },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  statsGridItem: {
-    width: "50%",
-    padding: 20,
-  },
-  statsGridRight: {
-    borderLeftWidth: 1,
-    borderLeftColor: theme.border,
-  },
-  statsGridTop: {
-    borderTopWidth: 1,
-    borderTopColor: theme.border,
-  },
-  statsGridLabel: {
-    color: theme.textMuted,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  statsGridValue: {
-    color: theme.text,
-    fontSize: 22,
-    fontWeight: "900",
-  },
-
-  // ═══════ ACTION BUTTONS (screenshot style) ═══════
-  actionsBox: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  actionBtnYellow: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FFD36A",
-    paddingVertical: 18,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  actionBtnWhite: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 18,
-    borderRadius: 20,
+  actionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: theme.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
   },
-  actionBtnTextBlack: {
-    color: "#000",
-    fontWeight: "900",
-    fontSize: 16,
-  },
+  actionTitle: { color: theme.text, fontWeight: "800", fontSize: 15 },
+  actionSub: { color: theme.textSecondary, marginTop: 4, fontSize: 12 },
 
   sectionHeaderRow: {
     flexDirection: "row",

@@ -178,10 +178,12 @@ export default function PersonalInfoScreen({ navigation, route }) {
   const initFirst = editMode ? (existingProfile?.first_name || nameParts[0] || "") : "";
   const initMiddle = editMode ? (existingProfile?.middle_name || (nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : "")) : "";
   const initLast = editMode ? (existingProfile?.last_name || nameParts[nameParts.length - 1] || "") : "";
+  const initEmail = editMode ? (existingProfile?.email || "") : (route?.params?.email || "");
 
   const [firstName, setFirstName] = useState(initFirst);
   const [middleName, setMiddleName] = useState(initMiddle);
   const [lastName, setLastName] = useState(initLast);
+  const [email, setEmail] = useState(initEmail);
 
   const initBirthdate = editMode && existingProfile?.birthdate
     ? new Date(existingProfile.birthdate + "T00:00:00")
@@ -222,6 +224,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
     if (!firstName.trim()) return "First name is required";
     if (!lastName.trim()) return "Last name is required";
     if (!birthdateObj) return "Birthdate is required";
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Please enter a valid email address";
     if (!province.trim()) return "Province is required";
     if (!city.trim()) return "City/Municipality is required";
     if (!barangay.trim()) return "Barangay is required";
@@ -249,6 +252,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
           middle_name: middleName.trim() || null,
           last_name: lastName.trim(),
           full_name: fullName || null,
+          email: email.trim().toLowerCase() || null,
           birthdate: toISODateOnly(birthdateObj),
           province: province.trim(),
           city: city.trim(),
@@ -278,6 +282,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
       middle_name: middleName.trim() || null,
       last_name: lastName.trim(),
       full_name: fullName || null,
+      email: email.trim().toLowerCase() || null,
       birthdate: toISODateOnly(birthdateObj),
       province: province.trim(),
       city: city.trim(),
@@ -337,6 +342,15 @@ export default function PersonalInfoScreen({ navigation, route }) {
           value={birthdateObj ? formatNiceDate(birthdateObj) : ""}
           placeholder="Select birthdate"
           onPress={() => setShowDatePicker(true)}
+          theme={theme}
+        />
+        <Field
+          label="Email Address"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="you@example.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
           theme={theme}
         />
 

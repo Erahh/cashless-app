@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View,
   Text,
@@ -10,10 +10,15 @@ import { View,
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { listVehicles } from "../../api/vehiclesApi";
+import { useTheme } from "../../context/ThemeContext";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 const KEY = "operator_selected_vehicle";
 
 export default function OperatorSetupScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -79,7 +84,7 @@ export default function OperatorSetupScreen({ navigation }) {
                     Route: {v.route_name || "—"}
                   </Text>
                 </View>
-                <Text style={styles.arrow}>›</Text>
+                <HugeiconsIcon icon={ArrowRight01Icon} size={24} color={theme.textMuted} />
               </TouchableOpacity>
             ))}
           </View>
@@ -99,32 +104,31 @@ export default function OperatorSetupScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0B0E14" },
+const createStyles = (theme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.background },
   content: { padding: 18, paddingTop: 60 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "900" },
-  sub: { marginTop: 8, color: "rgba(255,255,255,0.65)" },
+  title: { color: theme.text, fontSize: 26, fontWeight: "900" },
+  sub: { marginTop: 8, color: theme.textSecondary },
 
   center: { alignItems: "center", paddingVertical: 30 },
-  dim: { marginTop: 10, color: "rgba(255,255,255,0.6)" },
+  dim: { marginTop: 10, color: theme.textSecondary },
 
   card: {
     borderRadius: 18,
     padding: 16,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.cardAlt,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: theme.border,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   cardActive: {
-    borderColor: "rgba(255, 211, 106, 0.65)",
-    backgroundColor: "rgba(255, 211, 106, 0.10)",
+    borderColor: theme.warningBg,
+    backgroundColor: theme.card,
   },
-  cardTitle: { color: "#fff", fontSize: 16, fontWeight: "900" },
-  cardSub: { marginTop: 6, color: "rgba(255,255,255,0.65)" },
-  arrow: { color: "rgba(255,255,255,0.7)", fontSize: 26 },
+  cardTitle: { color: theme.text, fontSize: 16, fontWeight: "900" },
+  cardSub: { marginTop: 6, color: theme.textSecondary },
 
   ghostBtn: {
     marginTop: 16,
@@ -132,8 +136,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    borderColor: theme.border,
+    backgroundColor: theme.card,
   },
-  ghostText: { color: "rgba(255,255,255,0.85)", fontWeight: "900", fontSize: 15 },
+  ghostText: { color: theme.text, fontWeight: "900", fontSize: 15 },
 });

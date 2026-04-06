@@ -1,17 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
-import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { supabase } from "../api/supabase";
 import { registerPushToken } from "../api/notificationsApi";
-
-// Configure how notifications appear when app is in foreground
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-    }),
-});
 
 /**
  * Hook to handle push notification registration.
@@ -27,15 +18,46 @@ Notifications.setNotificationHandler({
 export function usePushNotifications() {
     const tokenRef = useRef(null);
     const hasRegisteredRef = useRef(false);
+    const notificationsRef = useRef(null);
 
     useEffect(() => {
         let isMounted = true;
+        const isExpoGo =
+            Constants?.appOwnership === "expo" ||
+            Constants?.executionEnvironment === "storeClient";
+        let isHandlerConfigured = false;
+
+        function getNotificationsModule() {
+            if (!notificationsRef.current) {
+                notificationsRef.current = require("expo-notifications");
+            }
+
+            if (!isHandlerConfigured) {
+                notificationsRef.current.setNotificationHandler({
+                    handleNotification: async () => ({
+                        shouldShowAlert: true,
+                        shouldPlaySound: true,
+                        shouldSetBadge: true,
+                    }),
+                });
+                isHandlerConfigured = true;
+            }
+
+            return notificationsRef.current;
+        }
 
         async function setupPush() {
             // Guard: only register once per mount cycle
             if (hasRegisteredRef.current) return;
 
             try {
+                // Expo Go (SDK 53+) does not support remote push notifications.
+                if (isExpoGo) {
+                    return;
+                }
+
+                const Notifications = getNotificationsModule();
+
                 // 1. Check if logged in
                 const { data } = await supabase.auth.getSession();
                 if (!data?.session) return; // Not logged in, skip
@@ -51,7 +73,7 @@ export function usePushNotifications() {
                 }
 
                 if (finalStatus !== "granted") {
-                    console.log("📱 Push notification permission denied");
+                    console.log("Push notification permission denied");
                     return;
                 }
 
@@ -66,7 +88,7 @@ export function usePushNotifications() {
                 hasRegisteredRef.current = true;
                 tokenRef.current = pushToken.data;
 
-                console.log("📱 Push token:", pushToken.data);
+                console.log("Push token:", pushToken.data);
 
                 // 4. Register with backend (fire and forget - don't block app)
                 registerPushToken(pushToken.data).catch((err) => {
@@ -95,7 +117,8 @@ export function usePushNotifications() {
         });
 
         // Set up Android notification channel
-        if (Platform.OS === "android") {
+        if (Platform.OS === "android" && !isExpoGo) {
+            const Notifications = getNotificationsModule();
             Notifications.setNotificationChannelAsync("default", {
                 name: "Default",
                 importance: Notifications.AndroidImportance.HIGH,
@@ -113,4 +136,3 @@ export function usePushNotifications() {
 
     return tokenRef;
 }
-

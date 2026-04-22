@@ -34,6 +34,7 @@ import PersonalInfoScreen from "../screens/common/PersonalInfoScreen";
 import SendLoadScreen from "../screens/commuter/SendLoadScreen";
 import NotificationsScreen from "../screens/common/NotificationsScreen";
 import CardApplicationScreen from "../screens/common/CardApplicationScreen";
+import PasswordSecurityScreen from "../screens/common/PasswordSecurityScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -129,6 +130,7 @@ function CommuterContent() {
                 <Stack.Screen name="PersonalInfo" component={withNavCapture(PersonalInfoScreen)} />
                 <Stack.Screen name="Notifications" component={withNavCapture(NotificationsScreen)} />
                 <Stack.Screen name="CardApplication" component={withNavCapture(CardApplicationScreen)} />
+                <Stack.Screen name="PasswordSecurity" component={withNavCapture(PasswordSecurityScreen)} />
             </Stack.Navigator>
             <CommuterBottomNav />
         </View>

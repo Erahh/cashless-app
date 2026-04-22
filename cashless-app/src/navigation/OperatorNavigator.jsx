@@ -15,6 +15,7 @@ import OperatorApplyScreen from "../screens/operator/OperatorApplyScreen";
 import OperatorTerminalModeScreen from "../screens/operator/OperatorTerminalModeScreen";
 import NotificationsScreen from "../screens/common/NotificationsScreen";
 import ProfileScreen from "../screens/common/ProfileScreen";
+import PasswordSecurityScreen from "../screens/common/PasswordSecurityScreen";
 
 // Verification flow
 import PassengerTypeScreen from "../screens/commuter/PassengerTypeScreen";
@@ -102,6 +103,7 @@ function OperatorContent() {
                 {/* Shared */}
                 <Stack.Screen name="Profile" component={withNavCapture(ProfileScreen)} />
                 <Stack.Screen name="Notifications" component={withNavCapture(NotificationsScreen)} />
+                <Stack.Screen name="PasswordSecurity" component={withNavCapture(PasswordSecurityScreen)} />
 
                 {/* Verification (Shared for all roles) */}
                 <Stack.Screen name="PassengerType" component={withNavCapture(PassengerTypeScreen)} />

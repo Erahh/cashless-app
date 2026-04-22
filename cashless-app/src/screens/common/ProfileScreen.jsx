@@ -20,7 +20,7 @@ import {
   ArrowLeft01Icon, Camera01Icon, Shield01Icon, ArrowRight01Icon,
   Cancel01Icon, UserIcon,
   LockIcon, Clock01Icon, QrCodeIcon,
-  Notification01Icon, InformationCircleIcon, SmartphoneWifiIcon,
+  InformationCircleIcon, SmartphoneWifiIcon,
 } from "@hugeicons/core-free-icons";
 import * as ImagePicker from "expo-image-picker";
 import { renderApiRequest } from "../../api/apiHelper";
@@ -68,9 +68,6 @@ export default function ProfileScreen({ navigation }) {
     return { name, initials, passengerLabel, verLabel, verTone, chipText, passengerType, discountActive };
   }, [profile, account]);
 
-  const [isOperator, setIsOperator] = useState(false);
-  const [operatorApp, setOperatorApp] = useState(null);
-
   async function load() {
     setLoading(true);
     try {
@@ -97,14 +94,6 @@ export default function ProfileScreen({ navigation }) {
 
       setProfile(p);
       setAccount(a);
-
-      // Check Operator Status
-      const { data: op } = await supabase.from("operator_users").select("*").eq("user_id", userId).single();
-      setIsOperator(!!op);
-
-      // Check Application Status
-      const { data: app } = await supabase.from("operator_applications").select("*").eq("user_id", userId).order("submitted_at", { ascending: false }).limit(1).single();
-      setOperatorApp(app);
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to load profile");
     } finally {
@@ -321,13 +310,7 @@ export default function ProfileScreen({ navigation }) {
             title="Password & Security"
             rightText={account?.pin_set ? "SET" : "NOT SET"}
             rightColor={account?.pin_set ? theme.success : theme.danger}
-            theme={theme}
-          />
-          <View style={styles.menuDivider} />
-          <MenuItem
-            icon={Notification01Icon}
-            title="Notifications"
-            onPress={() => navigation.navigate("Notifications")}
+            onPress={() => navigation.navigate("PasswordSecurity")}
             theme={theme}
           />
           <View style={styles.menuDivider} />
@@ -353,25 +336,6 @@ export default function ProfileScreen({ navigation }) {
             theme={theme}
           />
           <View style={styles.menuDivider} />
-          <MenuItem
-            icon={Shield01Icon || UserIcon}
-            title="Become an Operator"
-            rightText={
-              isOperator ? "ACTIVE" :
-                operatorApp?.status === "pending" ? "PENDING" :
-                  operatorApp?.status === "rejected" ? "REJECTED" : "APPLY"
-            }
-            rightColor={
-              isOperator ? theme.success :
-                operatorApp?.status === "pending" ? theme.warning :
-                  operatorApp?.status === "rejected" ? theme.danger : theme.accent
-            }
-            onPress={() => {
-              if (isOperator) return Alert.alert("Active", "You are already a verified operator.");
-              navigation.navigate("OperatorApply");
-            }}
-            theme={theme}
-          />
         </View>
 
         {/* Preferences Section */}

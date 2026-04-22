@@ -43,6 +43,7 @@ export default function QuickActions({ items = [] }) {
 function ActionCard({ item, index, styles, theme, isDarkMode }) {
   const scale = useSharedValue(1);
   const rotation = useSharedValue(0);
+  const pressLock = React.useRef(false);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -52,7 +53,12 @@ function ActionCard({ item, index, styles, theme, isDarkMode }) {
   }));
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (pressLock.current) return;
+    pressLock.current = true;
+
+    // Don't let haptics failures block navigation.
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+
     scale.value = withSequence(
       withSpring(0.92, { damping: 10, stiffness: 200 }),
       withSpring(1, { damping: 10, stiffness: 200 }),
@@ -65,10 +71,14 @@ function ActionCard({ item, index, styles, theme, isDarkMode }) {
       withTiming(0, { duration: 40 })
     );
     
-    // Add a slight delay to let the active animation play before navigating
-    setTimeout(() => {
-      if (item.onPress) item.onPress();
-    }, 160);
+    // Run action immediately for reliable taps.
+    try {
+      item.onPress?.();
+    } finally {
+      setTimeout(() => {
+        pressLock.current = false;
+      }, 500);
+    }
   };
 
   return (
@@ -83,6 +93,7 @@ function ActionCard({ item, index, styles, theme, isDarkMode }) {
             index === 0 && styles.firstCard,
             pressed && { opacity: 0.85 }
           ]}
+          hitSlop={10}
         >
           <View style={styles.iconBox}>
             {typeof item.icon === 'string' ? (

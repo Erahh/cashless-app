@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScrollView,
   View,
   Text,
@@ -21,6 +21,7 @@ let CACHED_WALLET = null;
 
 export default function BalanceScreen({ navigation }) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(!CACHED_WALLET);
   const [wallet, setWallet] = useState(CACHED_WALLET);
@@ -63,7 +64,7 @@ export default function BalanceScreen({ navigation }) {
   }, [wallet]);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       {/* Fixed Header - Outside ScrollView */}
       <View style={styles.topRow}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
@@ -75,7 +76,13 @@ export default function BalanceScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
+      >
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator color="#FFD36A" size="large" />
@@ -239,7 +246,7 @@ export default function BalanceScreen({ navigation }) {
           </>
         )}
       </ScrollView>
-    </SafeAreaView >
+    </View >
   );
 }
 

@@ -39,7 +39,7 @@ export default function AuthBackground({ children, onBack }) {
             <StatusBar
                 barStyle={isDarkMode ? "light-content" : "dark-content"}
                 backgroundColor={bgColor}
-                translucent={true}
+                translucent={false}
             />
             
             {/* Background Grid */}
@@ -76,7 +76,7 @@ export default function AuthBackground({ children, onBack }) {
                 </TouchableOpacity>
             </View>
 
-            <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
+            <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
                 <View style={styles.wrap}>{children}</View>
             </SafeAreaView>
         </View>

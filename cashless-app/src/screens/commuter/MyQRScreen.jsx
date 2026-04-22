@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View,
   Text,
   StyleSheet,
@@ -17,6 +17,7 @@ import QuickActions from "../../components/QuickActions";
 import { useTheme } from "../../context/ThemeContext";
 
 export default function MyQRScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { theme, isDarkMode } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
 
@@ -64,17 +65,17 @@ export default function MyQRScreen({ navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={[styles.safe, { paddingTop: insets.top }]}>
         <View style={styles.center}>
           <ActivityIndicator color={theme.textSecondary} />
           <Text style={styles.dim}>Loading your QR...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.topRow}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
@@ -91,6 +92,9 @@ export default function MyQRScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled={true}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
       >
         {/* QR Code Card - Centered and Minimal */}
         <View style={styles.qrCard}>
@@ -147,7 +151,7 @@ export default function MyQRScreen({ navigation }) {
 
         <View style={{ height: 140 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

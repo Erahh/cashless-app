@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useContext } from "react";
 import { AppLockContext } from "../../context/AppLockContext";
 import { useTheme } from "../../context/ThemeContext";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View,
   Text,
   TouchableOpacity,
@@ -26,6 +26,7 @@ import * as ImagePicker from "expo-image-picker";
 import { renderApiRequest } from "../../api/apiHelper";
 
 export default function ProfileScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [account, setAccount] = useState(null);
@@ -229,23 +230,26 @@ export default function ProfileScreen({ navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={[styles.safe, { paddingTop: insets.top }]}>
         <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.accent} />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
 
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -398,7 +402,7 @@ export default function ProfileScreen({ navigation }) {
         {/* App Version */}
         <Text style={styles.versionText}>ERA Wallet v1.0.0</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

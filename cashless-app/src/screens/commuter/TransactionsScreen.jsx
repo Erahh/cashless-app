@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, Text, ScrollView, RefreshControl, Alert, TouchableOpacity, StyleSheet } from "react-native";
 
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -47,6 +47,7 @@ let CACHED_TX = [];
 
 export default function TransactionsScreen({ navigation }) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(CACHED_TX.length === 0);
   const [refreshing, setRefreshing] = useState(false);
@@ -94,7 +95,7 @@ export default function TransactionsScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       {/* Fixed Header - Outside ScrollView */}
       <View style={styles.topRow}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backBtn}>
@@ -109,6 +110,9 @@ export default function TransactionsScreen({ navigation }) {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Card>
@@ -117,6 +121,9 @@ export default function TransactionsScreen({ navigation }) {
             style={{ marginTop: 14 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             showsVerticalScrollIndicator={false}
+            contentInsetAdjustmentBehavior="never"
+            automaticallyAdjustContentInsets={false}
+            automaticallyAdjustsScrollIndicatorInsets={false}
           >
             {items.map((it) => {
               const isDebit =
@@ -179,7 +186,7 @@ export default function TransactionsScreen({ navigation }) {
           </ScrollView>
         </Card>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

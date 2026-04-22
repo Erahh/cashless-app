@@ -52,14 +52,44 @@ function withNavCapture(ScreenComponent) {
     };
 }
 
+// Keep wrapped components stable to avoid remount/jump on navigator re-renders.
+const CapturedHomeScreen = withNavCapture(HomeScreen);
+const CapturedBalanceScreen = withNavCapture(BalanceScreen);
+const CapturedTransactionsScreen = withNavCapture(TransactionsScreen);
+const CapturedTransactionDetailsScreen = withNavCapture(TransactionDetailsScreen);
+const CapturedProfileScreen = withNavCapture(ProfileScreen);
+const CapturedMyQRScreen = withNavCapture(MyQRScreen);
+const CapturedSendLoadScreen = withNavCapture(SendLoadScreen);
+const CapturedTopUpScreen = withNavCapture(TopUpScreen);
+const CapturedTopUpCheckoutScreen = withNavCapture(TopUpCheckoutScreen);
+const CapturedCommuterScanScreen = withNavCapture(CommuterScanScreen);
+const CapturedPayConfirmScreen = withNavCapture(PayConfirmScreen);
+const CapturedNFCTapPayScreen = withNavCapture(NFCTapPayScreen);
+const CapturedRegisterRFIDScreen = withNavCapture(RegisterRFIDScreen);
+const CapturedPassengerTypeScreen = withNavCapture(PassengerTypeScreen);
+const CapturedDiscountInfoScreen = withNavCapture(DiscountInfoScreen);
+const CapturedUploadFrontIDScreen = withNavCapture(UploadFrontIDScreen);
+const CapturedUploadBackIDScreen = withNavCapture(UploadBackIDScreen);
+const CapturedUploadVerificationScreen = withNavCapture(UploadVerificationScreen);
+const CapturedVerificationSubmittedScreen = withNavCapture(VerificationSubmittedScreen);
+const CapturedOperatorApplyScreen = withNavCapture(OperatorApplyScreen);
+const CapturedGuardianLinkScreen = withNavCapture(GuardianLinkScreen);
+const CapturedFriendsMapScreen = withNavCapture(FriendsMapScreen);
+const CapturedAddFriendScreen = withNavCapture(AddFriendScreen);
+const CapturedPersonalInfoScreen = withNavCapture(PersonalInfoScreen);
+const CapturedNotificationsScreen = withNavCapture(NotificationsScreen);
+const CapturedCardApplicationScreen = withNavCapture(CardApplicationScreen);
+const CapturedPasswordSecurityScreen = withNavCapture(PasswordSecurityScreen);
+
 function CommuterBottomNav() {
     const { navRef, activeRoute } = useInnerNav();
 
     const handleNavigate = useCallback((route) => {
         const nav = navRef.current;
         if (!nav) return;
+        if (activeRoute === route) return;
         nav.navigate(route);
-    }, [navRef]);
+    }, [navRef, activeRoute]);
 
     return <BottomNav active={activeRoute} onNavigate={handleNavigate} />;
 }
@@ -92,45 +122,65 @@ function CommuterContent() {
                 }}
             >
                 {/* Main Screens (formerly tabs) */}
-                <Stack.Screen name="Home" component={withNavCapture(HomeScreen)} options={{ animation: "fade" }} />
-                <Stack.Screen name="Balance" component={withNavCapture(BalanceScreen)} options={{ animation: "fade" }} />
-                <Stack.Screen name="Transactions" component={withNavCapture(TransactionsScreen)} options={{ animation: "fade" }} />
-                <Stack.Screen name="TransactionDetails" component={withNavCapture(TransactionDetailsScreen)} options={{ animation: "slide_from_right" }} />
-                <Stack.Screen name="Profile" component={withNavCapture(ProfileScreen)} options={{ animation: "fade" }} />
-                <Stack.Screen name="MyQR" component={withNavCapture(MyQRScreen)} options={{ animation: "slide_from_bottom" }} />
+                <Stack.Screen
+                    name="Home"
+                    component={CapturedHomeScreen}
+                    options={{ animation: "none", gestureEnabled: false }}
+                />
+                <Stack.Screen
+                    name="Balance"
+                    component={CapturedBalanceScreen}
+                    options={{ animation: "none", gestureEnabled: false }}
+                />
+                <Stack.Screen
+                    name="Transactions"
+                    component={CapturedTransactionsScreen}
+                    options={{ animation: "none", gestureEnabled: false }}
+                />
+                <Stack.Screen name="TransactionDetails" component={CapturedTransactionDetailsScreen} options={{ animation: "slide_from_right" }} />
+                <Stack.Screen
+                    name="Profile"
+                    component={CapturedProfileScreen}
+                    options={{ animation: "none", gestureEnabled: false }}
+                />
+                <Stack.Screen
+                    name="MyQR"
+                    component={CapturedMyQRScreen}
+                    options={{ animation: "none", gestureEnabled: false }}
+                />
 
                 {/* Wallet (Non-tab) */}
-                <Stack.Screen name="SendLoad" component={withNavCapture(SendLoadScreen)} options={{ animation: "fade" }} />
-                <Stack.Screen name="TopUp" component={withNavCapture(TopUpScreen)} options={{ animation: "fade" }} />
-                <Stack.Screen name="TopUpCheckout" component={withNavCapture(TopUpCheckoutScreen)} options={{ animation: "fade" }} />
+                <Stack.Screen name="SendLoad" component={CapturedSendLoadScreen} options={{ animation: "fade" }} />
+                <Stack.Screen name="TopUp" component={CapturedTopUpScreen} options={{ animation: "fade" }} />
+                <Stack.Screen name="TopUpCheckout" component={CapturedTopUpCheckoutScreen} options={{ animation: "fade" }} />
 
                 {/* QR + Pay (Non-tab) */}
-                <Stack.Screen name="CommuterScan" component={withNavCapture(CommuterScanScreen)} options={{ animation: "fade" }} />
-                <Stack.Screen name="PayConfirm" component={withNavCapture(PayConfirmScreen)} options={{ animation: "fade" }} />
-                <Stack.Screen name="NFCTapPay" component={withNavCapture(NFCTapPayScreen)} options={{ animation: "fade" }} />
-                <Stack.Screen name="RegisterRFID" component={withNavCapture(RegisterRFIDScreen)} />
+                <Stack.Screen name="CommuterScan" component={CapturedCommuterScanScreen} options={{ animation: "fade" }} />
+                <Stack.Screen name="PayConfirm" component={CapturedPayConfirmScreen} options={{ animation: "fade" }} />
+                <Stack.Screen name="NFCTapPay" component={CapturedNFCTapPayScreen} options={{ animation: "fade" }} />
+                <Stack.Screen name="RegisterRFID" component={CapturedRegisterRFIDScreen} />
 
                 {/* Verification */}
-                <Stack.Screen name="PassengerType" component={withNavCapture(PassengerTypeScreen)} />
-                <Stack.Screen name="DiscountInfo" component={withNavCapture(DiscountInfoScreen)} />
-                <Stack.Screen name="UploadFrontID" component={withNavCapture(UploadFrontIDScreen)} />
-                <Stack.Screen name="UploadBackID" component={withNavCapture(UploadBackIDScreen)} />
-                <Stack.Screen name="UploadVerification" component={withNavCapture(UploadVerificationScreen)} />
-                <Stack.Screen name="VerificationSubmitted" component={withNavCapture(VerificationSubmittedScreen)} />
-                <Stack.Screen name="OperatorApply" component={withNavCapture(OperatorApplyScreen)} />
+                <Stack.Screen name="PassengerType" component={CapturedPassengerTypeScreen} />
+                <Stack.Screen name="DiscountInfo" component={CapturedDiscountInfoScreen} />
+                <Stack.Screen name="UploadFrontID" component={CapturedUploadFrontIDScreen} />
+                <Stack.Screen name="UploadBackID" component={CapturedUploadBackIDScreen} />
+                <Stack.Screen name="UploadVerification" component={CapturedUploadVerificationScreen} />
+                <Stack.Screen name="VerificationSubmitted" component={CapturedVerificationSubmittedScreen} />
+                <Stack.Screen name="OperatorApply" component={CapturedOperatorApplyScreen} />
 
                 {/* Guardian */}
-                <Stack.Screen name="GuardianLink" component={withNavCapture(GuardianLinkScreen)} />
+                <Stack.Screen name="GuardianLink" component={CapturedGuardianLinkScreen} />
 
                 {/* Friends Map */}
-                <Stack.Screen name="FriendsMap" component={withNavCapture(FriendsMapScreen)} />
-                <Stack.Screen name="AddFriend" component={withNavCapture(AddFriendScreen)} />
+                <Stack.Screen name="FriendsMap" component={CapturedFriendsMapScreen} />
+                <Stack.Screen name="AddFriend" component={CapturedAddFriendScreen} />
 
                 {/* Profile */}
-                <Stack.Screen name="PersonalInfo" component={withNavCapture(PersonalInfoScreen)} />
-                <Stack.Screen name="Notifications" component={withNavCapture(NotificationsScreen)} />
-                <Stack.Screen name="CardApplication" component={withNavCapture(CardApplicationScreen)} />
-                <Stack.Screen name="PasswordSecurity" component={withNavCapture(PasswordSecurityScreen)} />
+                <Stack.Screen name="PersonalInfo" component={CapturedPersonalInfoScreen} />
+                <Stack.Screen name="Notifications" component={CapturedNotificationsScreen} />
+                <Stack.Screen name="CardApplication" component={CapturedCardApplicationScreen} />
+                <Stack.Screen name="PasswordSecurity" component={CapturedPasswordSecurityScreen} />
             </Stack.Navigator>
             <CommuterBottomNav />
         </View>

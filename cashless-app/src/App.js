@@ -1,8 +1,9 @@
 // App.js
 import React, { useEffect, useContext, useRef } from "react";
-import { AppState, DeviceEventEmitter, Alert, StatusBar as RNStatusBar } from "react-native";
+import { AppState, DeviceEventEmitter, Alert, StatusBar as RNStatusBar, Platform } from "react-native";
 import { NavigationContainer, CommonActions, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider, initialWindowMetrics } from "react-native-safe-area-context";
 
 import AppNavigator from "./navigation/AppNavigator";
 import { AppLockProvider, AppLockContext } from "./context/AppLockContext";
@@ -96,11 +97,19 @@ function AppWithLock() {
   // Imperatively force the status bar style to fix Android cold-start timing issues
   useEffect(() => {
     RNStatusBar.setBarStyle(isDarkMode ? "light-content" : "dark-content", true);
-  }, [isDarkMode]);
+    if (Platform.OS === "android") {
+      RNStatusBar.setTranslucent(false);
+      RNStatusBar.setBackgroundColor(theme.background, true);
+    }
+  }, [isDarkMode, theme.background]);
 
   return (
     <>
-      <StatusBar style={isDarkMode ? "light" : "dark"} />
+      <StatusBar
+        style={isDarkMode ? "light" : "dark"}
+        translucent={false}
+        backgroundColor={theme.background}
+      />
       <NavigationContainer theme={navigationTheme}>
         <AppNavigator />
       </NavigationContainer>
@@ -110,12 +119,14 @@ function AppWithLock() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <UserProvider>
-        <AppLockProvider>
-          <AppWithLock />
-        </AppLockProvider>
-      </UserProvider>
-    </ThemeProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <ThemeProvider>
+        <UserProvider>
+          <AppLockProvider>
+            <AppWithLock />
+          </AppLockProvider>
+        </UserProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

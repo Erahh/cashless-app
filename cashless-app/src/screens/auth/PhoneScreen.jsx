@@ -260,6 +260,8 @@ export default function PhoneScreen({ navigation, route }) {
                   value={rawPhone}
                   onChangeText={setRawPhone}
                   maxLength={10}
+                  editable={!loading}
+                  returnKeyType="done"
                 />
                 <View style={styles.indicatorWrap}>
                   {phoneStatus?.loading ? (

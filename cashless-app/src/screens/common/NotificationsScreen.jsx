@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScrollView,
   View,
   Text,
@@ -26,6 +26,7 @@ function normalizePayload(payload) {
 }
 
 export default function NotificationsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
@@ -180,7 +181,7 @@ export default function NotificationsScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: theme.card }]}>
@@ -192,7 +193,12 @@ export default function NotificationsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
+      >
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>News</Text>
           {items.length > 0 && (
@@ -284,7 +290,7 @@ export default function NotificationsScreen({ navigation }) {
         </TouchableWithoutFeedback>
       </Modal>
 
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useState, useRef } from "react";
 import { fetchNotifications } from "../../api/notificationsApi";
 import { useTheme } from "../../context/ThemeContext";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View,
   Text,
   StyleSheet,
@@ -9,12 +9,11 @@ import { View,
   ScrollView,
   ActivityIndicator,
   Alert,
-  RefreshControl,
-  Platform,
-  StatusBar } from "react-native";
+  RefreshControl } from "react-native";
 
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
+import { fetchWallet } from "../../api/walletApi";
 import QuickActions from "../../components/QuickActions";
 import MiniMapCard from "../../components/MiniMapCard";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -36,19 +35,24 @@ async function fetchWithTimeout(url, options = {}, ms = 35000) {
 
 let CACHED_STATUS = null;
 let CACHED_RECENT = [];
+let CACHED_WALLET = null;
 
 export default function HomeScreen({ navigation, route }) {
   const { theme, isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(!CACHED_STATUS);
   const [status, setStatus] = useState(CACHED_STATUS);
   const [netMsg, setNetMsg] = useState("");
   const [recent, setRecent] = useState(CACHED_RECENT);
+  const [wallet, setWallet] = useState(CACHED_WALLET);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [notifCount, setNotifCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const { hideBalance, toggleHideBalance } = useAppStore();
   const lastSeenNotif = useRef(null);
+  const balanceNavLockRef = useRef(false);
+  const balanceNavTimerRef = useRef(null);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -69,14 +73,15 @@ export default function HomeScreen({ navigation, route }) {
       if (!token) throw new Error("No session. Please login again.");
 
       // 🚀 Parallelize dashboard data fetching for a snappier experience
-      const [statusRes, txRes, notifs] = await Promise.all([
+      const [statusRes, txRes, notifs, walletJson] = await Promise.all([
         fetchWithTimeout(`${API_BASE_URL}/me/status`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetchWithTimeout(`${API_BASE_URL}/wallet/transactions?limit=5`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => null), // Graceful fallback for transactions
-        fetchNotifications(50).catch(() => []) // Graceful fallback for notifications
+        fetchNotifications(50).catch(() => []), // Graceful fallback for notifications
+        fetchWallet().catch(() => null), // Match spending logic with wallet screen
       ]);
 
       // 1) Handle me/status result
@@ -121,6 +126,12 @@ export default function HomeScreen({ navigation, route }) {
           : notifs;
         setNotifCount(fresh.length);
       }
+
+      // 4) Handle wallet summary
+      if (walletJson) {
+        setWallet(walletJson);
+        CACHED_WALLET = walletJson;
+      }
     } catch (e) {
       const isTimeout = e?.name === "AbortError";
       const msg = isTimeout
@@ -146,7 +157,10 @@ export default function HomeScreen({ navigation, route }) {
   useEffect(() => {
     const unsub = navigation?.addListener?.("focus", () => loadStatus({ silent: true }));
     loadStatus({ silent: true });
-    return unsub;
+    return () => {
+      if (balanceNavTimerRef.current) clearTimeout(balanceNavTimerRef.current);
+      unsub?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -196,6 +210,13 @@ export default function HomeScreen({ navigation, route }) {
         maximumFractionDigits: 2,
       })
       : "--.--";
+    const ledger = wallet?.ledger || [];
+    const debits = ledger.filter((x) => x.kind !== "topup_credit");
+    const moneySpendValue = debits.reduce((sum, x) => sum + Number(x.amount || 0), 0);
+    const moneySpendText = moneySpendValue.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
 
     const showCallout =
       passengerTypeLabel !== "Casual" && verificationStatus !== "Verified";
@@ -209,6 +230,7 @@ export default function HomeScreen({ navigation, route }) {
 
     return {
       balanceText,
+      moneySpendText,
       passengerType: passengerTypeLabel,
       verificationStatus,
       badge,
@@ -218,27 +240,39 @@ export default function HomeScreen({ navigation, route }) {
       isAdmin,
       isCommuter,
     };
-  }, [status]);
+  }, [status, wallet]);
+
+  const handleOpenBalance = () => {
+    if (balanceNavLockRef.current) return;
+    balanceNavLockRef.current = true;
+    navigation.navigate("Balance");
+    balanceNavTimerRef.current = setTimeout(() => {
+      balanceNavLockRef.current = false;
+    }, 700);
+  };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={[styles.safe, { paddingTop: insets.top }]}>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <ActivityIndicator />
           <Text style={{ color: theme.textSecondary, marginTop: 10 }}>
             Loading dashboard...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -267,7 +301,6 @@ export default function HomeScreen({ navigation, route }) {
                 Last updated: {new Date(lastUpdated).toLocaleTimeString()}
               </Text>
             ) : null}
-
             <View style={[styles.badge, styles[`badge_${computed.badge.tone}`]]}>
               <Text style={styles.badgeText}>{computed.badge.text}</Text>
             </View>
@@ -310,14 +343,14 @@ export default function HomeScreen({ navigation, route }) {
         {/* ═══════ UNIFIED WALLET CARD ═══════ */}
         <TouchableOpacity
           style={styles.walletCard}
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate("Balance")}
+          activeOpacity={1}
+          onPress={handleOpenBalance}
         >
           {/* Balance Section */}
           <View style={styles.walletBalanceSection}>
             <View style={styles.walletBalanceInner}>
-              <Text style={styles.walletBalanceLabel}>{"Available\nBalance"}</Text>
-              <Text style={styles.walletBalanceAmount}>₱{hideBalance ? "••••" : computed.balanceText}</Text>
+              <Text style={styles.walletBalanceLabel}>{"Money Spend"}</Text>
+              <Text style={styles.walletBalanceAmount}>₱{computed.moneySpendText}</Text>
             </View>
           </View>
 
@@ -501,7 +534,7 @@ export default function HomeScreen({ navigation, route }) {
           ) : null}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -525,7 +558,6 @@ const createStyles = (theme) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: theme.background,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0
   },
   scroll: { flex: 1 },
   content: { padding: 18, paddingBottom: 160 },

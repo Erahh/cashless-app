@@ -28,18 +28,20 @@ async function fetchWithTimeout(url, options = {}, ms = 35000) {
   }
 }
 
+let CACHED_OP_TX = null;
+
 export default function OperatorTransactionsScreen({ navigation }) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!CACHED_OP_TX);
   const [refreshing, setRefreshing] = useState(false);
   const [netMsg, setNetMsg] = useState("");
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(CACHED_OP_TX);
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const load = async ({ silent = false, canRetry = true } = {}) => {
     try {
-      if (!silent) setLoading(true);
+      if (!silent || !CACHED_OP_TX) setLoading(true);
       if (!silent) setNetMsg("");
 
       const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
@@ -70,6 +72,7 @@ export default function OperatorTransactionsScreen({ navigation }) {
       }
 
       setData(json);
+      CACHED_OP_TX = json;
       setLastUpdated(new Date().toISOString());
       setNetMsg("");
     } catch (e) {

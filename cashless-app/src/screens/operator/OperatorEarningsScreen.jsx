@@ -30,18 +30,20 @@ async function fetchWithTimeout(url, options = {}, ms = 35000) {
   }
 }
 
+let CACHED_EARNINGS = null;
+
 export default function OperatorEarningsScreen({ navigation }) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!CACHED_EARNINGS);
   const [refreshing, setRefreshing] = useState(false);
   const [netMsg, setNetMsg] = useState("");
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(CACHED_EARNINGS);
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const load = async ({ silent = false, canRetry = true } = {}) => {
     try {
-      if (!silent) setLoading(true);
+      if (!silent || !CACHED_EARNINGS) setLoading(true);
       if (!silent) setNetMsg("");
 
       const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
@@ -72,6 +74,7 @@ export default function OperatorEarningsScreen({ navigation }) {
       }
 
       setData(json);
+      CACHED_EARNINGS = json;
       setLastUpdated(new Date().toISOString());
       setNetMsg("");
     } catch (e) {

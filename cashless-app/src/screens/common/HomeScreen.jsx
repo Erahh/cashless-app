@@ -34,13 +34,16 @@ async function fetchWithTimeout(url, options = {}, ms = 35000) {
   }
 }
 
+let CACHED_STATUS = null;
+let CACHED_RECENT = [];
+
 export default function HomeScreen({ navigation, route }) {
   const { theme, isDarkMode } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
-  const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(!CACHED_STATUS);
+  const [status, setStatus] = useState(CACHED_STATUS);
   const [netMsg, setNetMsg] = useState("");
-  const [recent, setRecent] = useState([]);
+  const [recent, setRecent] = useState(CACHED_RECENT);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [notifCount, setNotifCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,7 +59,7 @@ export default function HomeScreen({ navigation, route }) {
   const loadStatus = async ({ silent = false, canRetry = true } = {}) => {
     try {
       // Only show full-screen loader if it's a fresh load (no status) or not silent
-      if (!status || !silent) setLoading(true);
+      if (!CACHED_STATUS || !silent) setLoading(true);
       if (!silent) setNetMsg("");
 
       const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
@@ -92,6 +95,7 @@ export default function HomeScreen({ navigation, route }) {
       }
 
       setStatus(json);
+      CACHED_STATUS = json;
       setNetMsg("");
 
       // 2) Handle wallet transactions result
@@ -101,6 +105,7 @@ export default function HomeScreen({ navigation, route }) {
           if (txText) {
             const txJson = JSON.parse(txText);
             setRecent(txJson?.items || []);
+            CACHED_RECENT = txJson?.items || [];
             setLastUpdated(new Date().toISOString());
           }
         } catch (e) {

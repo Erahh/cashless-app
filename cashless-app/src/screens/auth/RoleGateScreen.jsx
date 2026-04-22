@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from "react";
-import { View, Text, ActivityIndicator, StyleSheet, Alert, Dimensions, Animated } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, Text, ActivityIndicator, StyleSheet, Dimensions, Animated } from "react-native";
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
 import { TapGlowOverlay, useTapGlow } from "../../components/TapGlow";
@@ -9,8 +9,8 @@ import { LinearGradient } from "expo-linear-gradient";
 const { width, height } = Dimensions.get("window");
 const GRID_SIZE = 30;
 
-// ✅ Helper for timeout logic (increased for Render cold starts)
-async function fetchWithTimeout(url, options = {}, ms = 60000) {
+// Timeout helper — 30s is enough for a warm Render instance; 60s for cold start
+async function fetchWithTimeout(url, options = {}, ms = 30000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), ms);
     try {
@@ -30,17 +30,12 @@ const useFloat = (duration = 3000, offset = 10) => {
             ])
         ).start();
     }, []);
-    return anim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, offset],
-    });
+    return anim.interpolate({ inputRange: [0, 1], outputRange: [0, offset] });
 };
 
 export default function RoleGateScreen({ navigation }) {
-    const [message, setMessage] = useState("Checking your account...");
     const { taps, onTap } = useTapGlow();
     const { isDarkMode, theme } = useTheme();
-
     const floatAnim = useFloat(3500, -15);
 
     useEffect(() => {
@@ -52,80 +47,56 @@ export default function RoleGateScreen({ navigation }) {
                 if (sessionErr) throw sessionErr;
 
                 const token = sessionData?.session?.access_token;
-                if (!token) throw new Error("No session. Please login again.");
+                if (!token) throw new Error("No session.");
 
-                const res = await fetchWithTimeout(`${API_BASE_URL}/me/status`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                // /me/roles is 2 DB queries vs /me/status which does 6 — much faster
+                const res = await fetchWithTimeout(
+                    `${API_BASE_URL}/me/roles`,
+                    { headers: { Authorization: `Bearer ${token}` } },
+                    30000
+                );
 
-                // ✅ SAFE PARSE (handles empty body)
                 const text = await res.text();
                 let json = null;
-
                 if (text) {
-                    try {
-                        json = JSON.parse(text);
-                    } catch (e) {
-                        throw new Error(`Server returned non-JSON (HTTP ${res.status})`);
-                    }
+                    try { json = JSON.parse(text); }
+                    catch { throw new Error(`Non-JSON response (HTTP ${res.status})`); }
                 }
+                if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
-                if (!res.ok) {
-                    throw new Error(json?.error || `Request failed (HTTP ${res.status})`);
-                }
-
-                const roles = json?.roles || {};
-                const isAdmin = !!roles.is_admin;
-                const isOperator = !!roles.is_operator;
-
-                // Priority: Admin > Operator > Commuter
+                const isAdmin    = !!json?.is_admin;
+                const isOperator = !!json?.is_operator;
                 const target = isAdmin ? "AdminApp" : isOperator ? "OperatorApp" : "CommuterApp";
 
-                if (alive) {
-                    navigation.reset({ index: 0, routes: [{ name: target }] });
-                }
+                if (alive) navigation.reset({ index: 0, routes: [{ name: target }] });
+
             } catch (e) {
-                const isTimeout = e?.name === "AbortError";
-                const msg = isTimeout
-                    ? "Server waking up (Render sleep). Retrying..."
-                    : e.message;
-
                 console.error("RoleGate error:", e);
-                setMessage(msg);
 
-                // ✅ one retry after delay (only on timeout)
-                if (isTimeout && canRetry) {
-                    setTimeout(() => {
-                        if (alive) go({ canRetry: false });
-                    }, 5000); // Give server more time to wake up
+                // Silent retry once on timeout — gives a cold Render server time to wake
+                if ((e?.name === "AbortError") && canRetry) {
+                    setTimeout(() => { if (alive) go({ canRetry: false }); }, 3000);
                     return;
                 }
 
-                // ✅ Show error but still navigate (fallback to commuter)
-                Alert.alert("Connection Issue", msg + "\n\nContinuing as Commuter...");
+                // Persistent failure → fall through to Commuter silently
                 if (alive) navigation.reset({ index: 0, routes: [{ name: "CommuterApp" }] });
             }
         }
 
         go();
-        return () => {
-            alive = false;
-        };
+        return () => { alive = false; };
     }, [navigation]);
 
-    const bgColor = isDarkMode ? theme.background : "#F9F6EE";
-    const gridColor = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
-    const textColor = isDarkMode ? theme.textSecondary : "#4A4A4A";
-    const spinnerColor = isDarkMode ? theme.accent : "#121417";
-    
-    // Dynamic shadow for glowing card effect
+    const bgColor         = isDarkMode ? theme.background : "#F9F6EE";
+    const gridColor       = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
+    const spinnerColor    = isDarkMode ? theme.accent : "#121417";
     const cardShadowColor = isDarkMode ? "#F9F6EE" : "#000000";
     const cardShadowOpacity = isDarkMode ? 0.35 : 0.2;
 
-    // Render a subtle grid like in the reference image
     const renderGrid = () => {
         const columns = Math.ceil(width / GRID_SIZE);
-        const rows = Math.ceil(height / GRID_SIZE);
+        const rows    = Math.ceil(height / GRID_SIZE);
         return (
             <View style={StyleSheet.absoluteFill} pointerEvents="none">
                 {[...Array(columns)].map((_, i) => (
@@ -145,17 +116,17 @@ export default function RoleGateScreen({ navigation }) {
                 {renderGrid()}
             </View>
 
-            {/* Glowing Commuter Card Illustration */}
+            {/* Floating Commuter Card */}
             <View style={styles.illustrationWrap}>
-                <Animated.View 
+                <Animated.View
                     style={[
-                        styles.cardFront, 
-                        { 
+                        styles.cardFront,
+                        {
                             transform: [{ translateY: floatAnim }, { rotate: "3deg" }],
                             shadowColor: cardShadowColor,
                             shadowOpacity: cardShadowOpacity,
                             shadowRadius: 25,
-                            elevation: 20
+                            elevation: 20,
                         }
                     ]}
                 >
@@ -172,12 +143,11 @@ export default function RoleGateScreen({ navigation }) {
                 </Animated.View>
             </View>
 
+            {/* Spinner only — no text message shown */}
             <View style={styles.loadingFooter}>
                 <ActivityIndicator size="large" color={spinnerColor} />
-                <Text style={[styles.message, { color: textColor }]}>{message}</Text>
             </View>
 
-            {/* TapGlow overlay */}
             <TapGlowOverlay taps={taps} />
         </View>
     );
@@ -194,17 +164,17 @@ const styles = StyleSheet.create({
         opacity: 0.4,
     },
     gridLineV: {
-        position: 'absolute',
+        position: "absolute",
         width: 1,
-        height: '100%',
+        height: "100%",
     },
     gridLineH: {
-        position: 'absolute',
+        position: "absolute",
         height: 1,
-        width: '100%',
+        width: "100%",
     },
     illustrationWrap: {
-        width: '100%',
+        width: "100%",
         height: 220,
         alignItems: "center",
         justifyContent: "center",
@@ -216,23 +186,15 @@ const styles = StyleSheet.create({
         height: 150,
         borderRadius: 18,
     },
-    cardGrade: { flex: 1, borderRadius: 18, padding: 18, justifyContent: "space-between" },
-    cardHeader: { flexDirection: "row", justifyContent: "space-between" },
-    chipSilverGold: { width: 36, height: 28, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 4 },
-    masterCircle: { width: 32, height: 22, flexDirection: "row" },
-    cardPassText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900", letterSpacing: 2, opacity: 0.8 },
+    cardGrade:     { flex: 1, borderRadius: 18, padding: 18, justifyContent: "space-between" },
+    cardHeader:    { flexDirection: "row", justifyContent: "space-between" },
+    chipSilverGold:{ width: 36, height: 28, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 4 },
+    masterCircle:  { width: 32, height: 22, flexDirection: "row" },
+    cardPassText:  { color: "#FFFFFF", fontSize: 13, fontWeight: "900", letterSpacing: 2, opacity: 0.8 },
     cardBottomRow: {},
-    cardNumber: { color: "#FFFFFF", fontSize: 15, fontWeight: "500", letterSpacing: 1.5, opacity: 0.6 },
+    cardNumber:    { color: "#FFFFFF", fontSize: 15, fontWeight: "500", letterSpacing: 1.5, opacity: 0.6 },
     loadingFooter: {
         alignItems: "center",
         justifyContent: "center",
-    },
-    message: {
-        marginTop: 20,
-        fontSize: 15,
-        textAlign: "center",
-        paddingHorizontal: 40,
-        fontWeight: "600",
-        letterSpacing: 0.5,
     },
 });

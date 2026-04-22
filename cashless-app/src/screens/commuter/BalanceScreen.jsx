@@ -17,18 +17,22 @@ import TxIcon from "../../components/TxIcon";
 import { useTheme } from "../../context/ThemeContext";
 import { useAppStore } from "../../store/appStore";
 
+let CACHED_WALLET = null;
+
 export default function BalanceScreen({ navigation }) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
-  const [loading, setLoading] = useState(true);
-  const [wallet, setWallet] = useState(null);
+  const [loading, setLoading] = useState(!CACHED_WALLET);
+  const [wallet, setWallet] = useState(CACHED_WALLET);
   const hideBalance = useAppStore((state) => state.hideBalance);
 
-  const load = async () => {
+  const load = async (silent = false) => {
     try {
-      setLoading(true);
+      // Only show full-screen loader if not silent or if we have no data yet
+      if (!silent || !CACHED_WALLET) setLoading(true);
       const json = await fetchWallet();
       setWallet(json);
+      CACHED_WALLET = json;
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
@@ -37,8 +41,8 @@ export default function BalanceScreen({ navigation }) {
   };
 
   useEffect(() => {
-    const unsub = navigation?.addListener?.("focus", load);
-    load();
+    const unsub = navigation?.addListener?.("focus", () => load(true));
+    load(false); // Initial load is non-silent
     return unsub;
   }, []);
 

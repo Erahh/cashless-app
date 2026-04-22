@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -49,13 +49,19 @@ export default function PhoneScreen({ navigation, route }) {
   const { theme, isDarkMode } = useTheme();
   const phoneInputRef = useRef(null);
 
-  // Debounced Phone Check
+  // Silently pre-warm the Render backend on mount so cold-start doesn't
+  // cause visible delays when the user finishes typing their phone number.
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/health`, { method: "GET" }).catch(() => {});
+  }, []);
+
+  // Debounced Phone Check (300ms is fast enough after pre-warm)
   useEffect(() => {
     const clean = rawPhone.replace(/[^\d]/g, "");
     if (clean.length === 10) {
       const timer = setTimeout(() => {
         checkPhoneStatus(clean);
-      }, 500);
+      }, 300);
       return () => clearTimeout(timer);
     } else {
       setPhoneStatus(null);
@@ -64,11 +70,6 @@ export default function PhoneScreen({ navigation, route }) {
 
   const checkPhoneStatus = async (num) => {
     setPhoneStatus({ loading: true });
-
-    const waitTimer = setTimeout(() => {
-      setLoadingText("Waking up secure server (~45s)...");
-    }, 4000);
-
     try {
       const full = buildE164(num);
       const resp = await fetch(`${API_BASE_URL}/auth/check-phone`, {
@@ -90,9 +91,6 @@ export default function PhoneScreen({ navigation, route }) {
     } catch (e) {
       console.warn("Check phone error", e.message);
       setPhoneStatus(null);
-    } finally {
-      clearTimeout(waitTimer);
-      setLoadingText((prev) => prev.includes("Waking up") ? "" : prev);
     }
   };
 
@@ -126,9 +124,7 @@ export default function PhoneScreen({ navigation, route }) {
       let currentStatus = phoneStatus;
       if (!currentStatus || currentStatus.loading) {
         setLoading(true);
-        let waitTimer = setTimeout(() => {
-          setLoadingText("Waking up secure server (~45s)...");
-        }, 3000);
+        setLoadingText("Verifying...");
         try {
           const resp = await fetch(`${API_BASE_URL}/auth/check-phone`, {
             method: "POST",
@@ -138,7 +134,6 @@ export default function PhoneScreen({ navigation, route }) {
           const json = await resp.json();
           if (json.ok) currentStatus = json;
         } finally {
-          clearTimeout(waitTimer);
           setLoadingText("");
           setLoading(false);
         }

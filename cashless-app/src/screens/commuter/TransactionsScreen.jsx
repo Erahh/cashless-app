@@ -43,17 +43,19 @@ function badgeFor(item) {
   }
 }
 
+let CACHED_TX = [];
+
 export default function TransactionsScreen({ navigation }) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(CACHED_TX.length === 0);
   const [refreshing, setRefreshing] = useState(false);
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(CACHED_TX);
   const [isFullList, setIsFullList] = useState(false);
 
-  const load = async (limit = 10) => {
+  const load = async (limit = 10, silent = false) => {
     try {
-      setLoading(true);
+      if (!silent || CACHED_TX.length === 0) setLoading(true);
 
       const { data: s } = await supabase.auth.getSession();
       const token = s?.session?.access_token;
@@ -69,6 +71,7 @@ export default function TransactionsScreen({ navigation }) {
       if (!res.ok) throw new Error(json?.error || `Failed (HTTP ${res.status})`);
 
       setItems(json?.items || []);
+      CACHED_TX = json?.items || [];
       setIsFullList(limit > 10);
     } catch (e) {
       Alert.alert("Transactions", e.message);
@@ -79,8 +82,8 @@ export default function TransactionsScreen({ navigation }) {
   };
 
   useEffect(() => {
-    const unsub = navigation?.addListener?.("focus", () => load(10));
-    load(10);
+    const unsub = navigation?.addListener?.("focus", () => load(10, true));
+    load(10, false);
     return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

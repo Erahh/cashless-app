@@ -1,5 +1,5 @@
 import React from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -7,8 +7,9 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 export function Screen({ title, subtitle, rightSlot, onBack, children, theme }) {
   const isDark = theme?.isDark ?? true;
+  const insets = useSafeAreaInsets();
   return (
-    <SafeAreaView style={[styles.root, theme && { backgroundColor: theme.background }]}>
+    <View style={[styles.root, theme && { backgroundColor: theme.background }, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         {onBack && (
           <View style={styles.leftSlot}>
@@ -27,7 +28,7 @@ export function Screen({ title, subtitle, rightSlot, onBack, children, theme }) 
       </View>
 
       <View style={styles.content}>{children}</View>
-    </SafeAreaView>
+    </View>
   );
 }
 

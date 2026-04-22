@@ -1,5 +1,5 @@
 import React from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -15,6 +15,7 @@ function formatPHP(n) {
 
 export default function TransactionDetailsScreen({ route, navigation }) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   // Get item from params
@@ -22,7 +23,7 @@ export default function TransactionDetailsScreen({ route, navigation }) {
 
   if (!item) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={[styles.safe, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
@@ -31,7 +32,7 @@ export default function TransactionDetailsScreen({ route, navigation }) {
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <Text style={{ color: theme.text }}>Transaction not found.</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -61,7 +62,7 @@ export default function TransactionDetailsScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -71,7 +72,12 @@ export default function TransactionDetailsScreen({ route, navigation }) {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
+      >
         {/* Main Amount Card */}
         <View style={styles.amountCard}>
           <Text style={styles.amountLabel}>Amount</Text>
@@ -134,7 +140,7 @@ export default function TransactionDetailsScreen({ route, navigation }) {
         </View>
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

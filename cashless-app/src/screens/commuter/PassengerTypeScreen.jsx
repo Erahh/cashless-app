@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View,
   Text,
   Alert,
@@ -52,6 +52,7 @@ const VALENCIA_SCHOOLS = {
 
 export default function PassengerTypeScreen({ navigation }) {
   const { theme, isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = getStyles(theme);
   const [type, setType] = useState("student");
   const [educationLevel, setEducationLevel] = useState("high_school");
@@ -80,7 +81,7 @@ export default function PassengerTypeScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -91,6 +92,9 @@ export default function PassengerTypeScreen({ navigation }) {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
+          automaticallyAdjustsScrollIndicatorInsets={false}
         >
           {/* Header with Back Button */}
           <View style={styles.header}>
@@ -291,7 +295,7 @@ export default function PassengerTypeScreen({ navigation }) {
         </TouchableOpacity>
       </Modal>
 
-    </SafeAreaView>
+    </View>
   );
 }
 

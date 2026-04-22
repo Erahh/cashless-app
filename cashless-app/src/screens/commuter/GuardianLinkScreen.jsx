@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScrollView,
   View,
   Text,
@@ -17,6 +17,7 @@ import {
 } from "../../api/guardianApi";
 
 export default function GuardianLinkScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -93,8 +94,13 @@ export default function GuardianLinkScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
+      >
         <View style={styles.topRow}>
           <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
             <Text style={styles.back}>‹ Back</Text>
@@ -239,7 +245,7 @@ export default function GuardianLinkScreen({ navigation }) {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-    </SafeAreaView>
+    </View>
   );
 }
 

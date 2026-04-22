@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View,
     Text,
     Alert,
@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { AppLockContext } from "../../context/AppLockContext";
 
 export default function UploadBackIDScreen({ navigation, route }) {
+    const insets = useSafeAreaInsets();
     const { setLockSuppressed } = useContext(AppLockContext);
     const { theme, isDarkMode } = useTheme();
 
@@ -169,11 +170,14 @@ export default function UploadBackIDScreen({ navigation, route }) {
     const typeLabel = passenger_type === "student" ? "Student" : "Senior Citizen";
 
     return (
-        <SafeAreaView style={styles.safe}>
+        <View style={[styles.safe, { paddingTop: insets.top }]}>
             <ScrollView
                 style={styles.scroll}
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
+                contentInsetAdjustmentBehavior="never"
+                automaticallyAdjustContentInsets={false}
+                automaticallyAdjustsScrollIndicatorInsets={false}
             >
                 {/* Header */}
                 <View style={styles.header}>
@@ -315,7 +319,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
                     </LinearGradient>
                 </TouchableOpacity>
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 

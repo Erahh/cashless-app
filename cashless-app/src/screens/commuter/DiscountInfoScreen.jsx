@@ -1,5 +1,5 @@
 import React from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View,
   Text,
   TouchableOpacity,
@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 export default function DiscountInfoScreen({ navigation, route }) {
   const { theme, isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = getStyles(theme);
   const passenger_type = route?.params?.passenger_type; // "student" | "senior"
 
@@ -33,11 +34,14 @@ export default function DiscountInfoScreen({ navigation, route }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
       >
         {/* Header with Back Button */}
         <View style={styles.header}>
@@ -116,7 +120,7 @@ export default function DiscountInfoScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

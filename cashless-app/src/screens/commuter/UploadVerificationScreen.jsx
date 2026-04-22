@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View,
   Text,
   Alert,
@@ -20,6 +20,7 @@ import { AppLockContext } from "../../context/AppLockContext";
 const { width } = Dimensions.get("window");
 
 export default function UploadVerificationScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { setLockSuppressed } = useContext(AppLockContext);
 
   // Prevent app from locking while on this screen
@@ -170,11 +171,14 @@ export default function UploadVerificationScreen({ navigation, route }) {
   const progress = (!front && !back) ? 0 : (front && !back) ? 50 : (front && back) ? 100 : 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
       >
         {/* Header with Back Button */}
         <View style={styles.header}>
@@ -328,7 +332,7 @@ export default function UploadVerificationScreen({ navigation, route }) {
           )}
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

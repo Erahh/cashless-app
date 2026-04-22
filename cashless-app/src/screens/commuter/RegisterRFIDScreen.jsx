@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View,
     Text,
     StyleSheet,
@@ -11,6 +11,7 @@ import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
 
 export default function RegisterRFIDScreen({ navigation }) {
+    const insets = useSafeAreaInsets();
     const [scanning, setScanning] = useState(false);
     const [registeredCards, setRegisteredCards] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -137,7 +138,7 @@ export default function RegisterRFIDScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.safe}>
+        <View style={[styles.safe, { paddingTop: insets.top }]}>
             <View style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
@@ -240,7 +241,7 @@ export default function RegisterRFIDScreen({ navigation }) {
                     )}
                 </View>
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 

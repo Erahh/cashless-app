@@ -21,6 +21,8 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, Cancel01Icon, Tick01Icon, Alert01Icon, Search01Icon, UserIcon, Bus01Icon } from "@hugeicons/core-free-icons";
 import CEraLogo from "../../components/CEraLogo";
 
+const ENABLE_VERBOSE_AUTH_DEBUG = false;
+
 const COUNTRY_CODES = [
   { flag: "🇵🇭", code: "+63", name: "Philippines", mask: "912 3456 789", max: 10 },
   { flag: "🇺🇸", code: "+1", name: "United States", mask: "201 555 0123", max: 10 },
@@ -145,7 +147,9 @@ export default function PhoneScreen({ navigation, route }) {
 
       // 2. Validate currentStatus exists
       if (currentStatus) {
-        console.log("[DEBUG] Role check:", { passedRole, consumes: currentStatus });
+        if (__DEV__ && ENABLE_VERBOSE_AUTH_DEBUG) {
+          console.log("[DEBUG] Role check:", { passedRole, consumes: currentStatus });
+        }
 
         // A. REGISTRATION MODE CHECK: Block if already exists
         if (!isLogin && currentStatus.exists) {
@@ -181,7 +185,9 @@ export default function PhoneScreen({ navigation, route }) {
           const isOperator = !!currentStatus.is_operator;
           const targetRole = passedRole || "commuter"; // Default if missing
 
-          console.log(`[DEBUG] Login role validation: Target=${targetRole}, isOp=${isOperator}, isAdmin=${isAdmin}`);
+          if (__DEV__ && ENABLE_VERBOSE_AUTH_DEBUG) {
+            console.log(`[DEBUG] Login role validation: Target=${targetRole}, isOp=${isOperator}, isAdmin=${isAdmin}`);
+          }
 
           if (targetRole === "operator") {
             if (!isOperator && !isAdmin) {

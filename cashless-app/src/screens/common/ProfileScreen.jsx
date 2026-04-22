@@ -332,6 +332,13 @@ export default function ProfileScreen({ navigation }) {
           />
           <View style={styles.menuDivider} />
           <MenuItem
+            icon={QrCodeIcon}
+            title="Activate / Open Card Account"
+            onPress={() => navigation.navigate("CardApplication", { profile })}
+            theme={theme}
+          />
+          <View style={styles.menuDivider} />
+          <MenuItem
             icon={Shield01Icon}
             title="Verification Status"
             rightText={computed.verLabel}

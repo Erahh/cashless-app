@@ -25,7 +25,15 @@ export function usePushNotifications() {
         const isExpoGo =
             Constants?.appOwnership === "expo" ||
             Constants?.executionEnvironment === "storeClient";
+        const shouldSkipPushSetup = isExpoGo && Platform.OS === "android";
         let isHandlerConfigured = false;
+
+        if (shouldSkipPushSetup) {
+            // Android remote push is unsupported in Expo Go (SDK 53+).
+            // Skip Android Expo Go registration to avoid noisy warnings.
+            // iOS Expo Go can still attempt token registration.
+            return () => {};
+        }
 
         function getNotificationsModule() {
             if (!notificationsRef.current) {
@@ -51,11 +59,6 @@ export function usePushNotifications() {
             if (hasRegisteredRef.current) return;
 
             try {
-                // Expo Go (SDK 53+) does not support remote push notifications.
-                if (isExpoGo) {
-                    return;
-                }
-
                 const Notifications = getNotificationsModule();
 
                 // 1. Check if logged in
@@ -88,7 +91,9 @@ export function usePushNotifications() {
                 hasRegisteredRef.current = true;
                 tokenRef.current = pushToken.data;
 
-                console.log("Push token:", pushToken.data);
+                if (__DEV__) {
+                    console.log("Push token:", pushToken.data);
+                }
 
                 // 4. Register with backend (fire and forget - don't block app)
                 registerPushToken(pushToken.data).catch((err) => {
@@ -117,7 +122,7 @@ export function usePushNotifications() {
         });
 
         // Set up Android notification channel
-        if (Platform.OS === "android" && !isExpoGo) {
+        if (Platform.OS === "android") {
             const Notifications = getNotificationsModule();
             Notifications.setNotificationChannelAsync("default", {
                 name: "Default",

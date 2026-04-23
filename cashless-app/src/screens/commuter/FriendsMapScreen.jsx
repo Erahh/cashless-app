@@ -8,6 +8,8 @@ import {
     ActivityIndicator,
     Dimensions,
     ScrollView,
+    Modal,
+    Linking,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
@@ -21,10 +23,18 @@ export default function FriendsMapScreen({ navigation }) {
     const [friends, setFriends] = useState([]);
     const [loading, setLoading] = useState(true);
     const [shareLocation, setShareLocation] = useState(true);
+    const [mapMode, setMapMode] = useState('street'); // 'street' | 'satellite'
+    const [walkingMode, setWalkingMode] = useState(false);
     const [showFriendsList, setShowFriendsList] = useState(false);
     const [onlineToast, setOnlineToast] = useState(null); // {name, visible}
+    const [refreshing, setRefreshing] = useState(false);
+    const [streetViewVisible, setStreetViewVisible] = useState(false);
+    const [streetViewUrl, setStreetViewUrl] = useState('');
     const webViewRef = useRef(null);
     const broadcastIntervalRef = useRef(null);
+    const walkWatchRef = useRef(null);
+    const lastWalkSyncRef = useRef(0);
+    const previousMapModeRef = useRef('street');
     const prevOnlineRef = useRef({}); // Track previous online states
     const toastTimeoutRef = useRef(null);
 
@@ -38,6 +48,10 @@ export default function FriendsMapScreen({ navigation }) {
             clearInterval(friendsInterval);
             if (broadcastIntervalRef.current) {
                 clearInterval(broadcastIntervalRef.current);
+            }
+            if (walkWatchRef.current) {
+                walkWatchRef.current.remove();
+                walkWatchRef.current = null;
             }
             if (toastTimeoutRef.current) {
                 clearTimeout(toastTimeoutRef.current);
@@ -154,7 +168,9 @@ export default function FriendsMapScreen({ navigation }) {
             if (response.ok) {
                 setShareLocation(newValue);
                 if (newValue) {
-                    startBroadcasting();
+                    if (!walkingMode) {
+                        startBroadcasting();
+                    }
                 } else if (broadcastIntervalRef.current) {
                     clearInterval(broadcastIntervalRef.current);
                     broadcastIntervalRef.current = null;
@@ -169,6 +185,121 @@ export default function FriendsMapScreen({ navigation }) {
         }
     };
 
+    const startWalkingTracking = async () => {
+        if (walkWatchRef.current) return;
+
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Denied', 'Location permission is required for walking mode.');
+            return;
+        }
+
+        // Disable interval-based updates while using live walking tracking.
+        if (broadcastIntervalRef.current) {
+            clearInterval(broadcastIntervalRef.current);
+            broadcastIntervalRef.current = null;
+        }
+
+        walkWatchRef.current = await Location.watchPositionAsync(
+            {
+                accuracy: Location.Accuracy.High,
+                distanceInterval: 3,
+                timeInterval: 2000,
+            },
+            async (location) => {
+                const nextLocation = {
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                };
+
+                setMyLocation(nextLocation);
+
+                // Throttle backend sync to avoid excessive API calls while walking.
+                if (shareLocation) {
+                    const now = Date.now();
+                    if (now - lastWalkSyncRef.current >= 8000) {
+                        lastWalkSyncRef.current = now;
+                        try {
+                            await api('/friends/update-location', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    latitude: location.coords.latitude,
+                                    longitude: location.coords.longitude,
+                                    accuracy: location.coords.accuracy,
+                                    speed: location.coords.speed,
+                                    heading: location.coords.heading,
+                                })
+                            });
+                        } catch (syncErr) {
+                            console.error('Walking mode sync error:', syncErr);
+                        }
+                    }
+                }
+            }
+        );
+    };
+
+    const stopWalkingTracking = () => {
+        if (walkWatchRef.current) {
+            walkWatchRef.current.remove();
+            walkWatchRef.current = null;
+        }
+
+        // Restore interval broadcasting if sharing is enabled.
+        if (shareLocation) {
+            startBroadcasting();
+        }
+    };
+
+    const toggleWalkingMode = async () => {
+        try {
+            if (walkingMode) {
+                stopWalkingTracking();
+                setWalkingMode(false);
+                setMapMode(previousMapModeRef.current || 'street');
+                return;
+            }
+
+            previousMapModeRef.current = mapMode;
+            setMapMode('satellite');
+            await startWalkingTracking();
+            setWalkingMode(true);
+        } catch (error) {
+            console.error('Walking mode error:', error);
+            Alert.alert('Error', 'Failed to enable walking mode');
+        }
+    };
+
+    const openStreetView = async () => {
+        if (!myLocation) {
+            Alert.alert('Location unavailable', 'Cannot open Street View without your current location.');
+            return;
+        }
+
+        const { latitude, longitude } = myLocation;
+        const panoUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${latitude},${longitude}`;
+
+        setStreetViewUrl(panoUrl);
+        setStreetViewVisible(true);
+    };
+
+    const handleStreetViewError = async () => {
+        if (!streetViewUrl) return;
+
+        try {
+            const canOpen = await Linking.canOpenURL(streetViewUrl);
+            if (!canOpen) {
+                Alert.alert('Unavailable', 'Street View is not available on this device right now.');
+                return;
+            }
+
+            await Linking.openURL(streetViewUrl);
+        } catch (error) {
+            console.error('Street View open error:', error);
+            Alert.alert('Error', 'Failed to open Street View.');
+        }
+    };
+
     const getTimeSince = (timestamp) => {
         if (!timestamp) return 'Unknown';
         const diff = Date.now() - new Date(timestamp).getTime();
@@ -180,21 +311,52 @@ export default function FriendsMapScreen({ navigation }) {
         return `${Math.floor(hours / 24)}d ago`;
     };
 
+    const escapeHtml = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
     // Generate HTML for the map
     const generateMapHtml = () => {
         const lat = myLocation?.latitude || 14.5995;
         const lng = myLocation?.longitude || 120.9842;
+        const isSatelliteMode = mapMode === 'satellite';
+        const tileUrl = isSatelliteMode
+            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        const tileAttribution = isSatelliteMode
+            ? 'Tiles © Esri'
+            : '© OpenStreetMap';
 
-        const friendMarkers = friends.map(f => `
+        const friendsForMap = friends.filter(
+            (f) => f.can_show_on_map && typeof f.latitude === 'number' && typeof f.longitude === 'number'
+        );
+
+        const friendMarkers = friendsForMap.map(f => {
+            const displayName = f.friend_name || 'Friend';
+            const markerInitial = escapeHtml((displayName || '?').charAt(0).toUpperCase() || '?');
+            const statusText = escapeHtml(f.status_label || (f.is_online ? 'Online' : 'Offline'));
+            const seenText = escapeHtml(
+                f.is_online
+                    ? getTimeSince(f.location_updated)
+                    : `Last seen ${getTimeSince(f.last_seen || f.location_updated)}`
+            );
+            const popupHtml = `<b>${escapeHtml(displayName)}</b><br>${statusText}<br>${seenText}`;
+            const markerHtml = `<div style="background: ${f.is_online ? '#4CAF50' : '#8A8A8A'}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">${markerInitial}</div>`;
+
+            return `
             L.marker([${f.latitude}, ${f.longitude}], {
                 icon: L.divIcon({
                     className: 'friend-marker',
-                    html: '<div style="background: ${f.is_online ? '#4CAF50' : '#FFD36A'}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">${f.friend_name?.charAt(0) || '?'}</div>',
+                    html: ${JSON.stringify(markerHtml)},
                     iconSize: [32, 32],
                     iconAnchor: [16, 16]
                 })
-            }).addTo(map).bindPopup('<b>${f.friend_name || 'Friend'}</b><br>${f.is_online ? '🟢 Online' : '⚪ Offline'}<br>${getTimeSince(f.location_updated)}');
-        `).join('\n');
+            }).addTo(map).bindPopup(${JSON.stringify(popupHtml)});
+        `;
+        }).join('\n');
 
         return `
 <!DOCTYPE html>
@@ -222,8 +384,8 @@ export default function FriendsMapScreen({ navigation }) {
     <script>
         var map = L.map('map').setView([${lat}, ${lng}], 15);
         
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
+        L.tileLayer(${JSON.stringify(tileUrl)}, {
+            attribution: ${JSON.stringify(tileAttribution)}
         }).addTo(map);
 
         // My location marker
@@ -265,6 +427,9 @@ export default function FriendsMapScreen({ navigation }) {
         );
     }
 
+    const onlineFriends = friends.filter((f) => f.is_online);
+    const offlineFriends = friends.filter((f) => !f.is_online);
+
     return (
         <View style={styles.container}>
             {/* Map WebView */}
@@ -291,28 +456,63 @@ export default function FriendsMapScreen({ navigation }) {
                     <Ionicons name="arrow-back" size={24} color="#FFF" />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.friendCount}
-                    onPress={() => setShowFriendsList(!showFriendsList)}
-                >
-                    <Ionicons name="people" size={20} color="#FFF" />
-                    <Text style={styles.friendCountText}>
-                        {friends.filter(f => f.is_online).length} online / {friends.length} friends
-                    </Text>
-                </TouchableOpacity>
+                <View style={styles.topRightControls}>
+                    <TouchableOpacity
+                        style={styles.layerButton}
+                        onPress={() => setMapMode((prev) => (prev === 'street' ? 'satellite' : 'street'))}
+                    >
+                        <Ionicons name="layers" size={18} color="#FFF" />
+                        <Text style={styles.layerButtonText}>
+                            {mapMode === 'satellite' ? 'Satellite' : 'Street'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.friendCount}
+                        onPress={() => setShowFriendsList(!showFriendsList)}
+                    >
+                        <Ionicons name="people" size={20} color="#FFF" />
+                        <Text style={styles.friendCountText}>
+                            {onlineFriends.length} online / {offlineFriends.length} offline
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Friends List Dropdown */}
-            {showFriendsList && friends.length > 0 && (
+            {showFriendsList && (
                 <View style={styles.friendsListContainer}>
                     <ScrollView style={styles.friendsList}>
-                        {friends.map((friend) => (
+                        <Text style={styles.friendSectionTitle}>Online ({onlineFriends.length})</Text>
+                        {onlineFriends.length === 0 && (
+                            <Text style={styles.emptySectionText}>No friends online</Text>
+                        )}
+                        {onlineFriends.map((friend) => (
                             <View key={friend.friend_id} style={styles.friendItem}>
                                 <View style={[styles.friendDot, friend.is_online && styles.friendDotOnline]} />
                                 <View style={styles.friendInfo}>
                                     <Text style={styles.friendName}>{friend.friend_name}</Text>
-                                    <Text style={styles.friendStatus}>
-                                        {friend.is_online ? 'Online' : getTimeSince(friend.location_updated)}
+                                    <Text style={[styles.friendStatus, friend.is_online ? styles.friendStatusOnline : styles.friendStatusOffline]}>
+                                        {friend.status_label || (friend.is_online ? 'Online' : 'Offline')}
+                                    </Text>
+                                </View>
+                            </View>
+                        ))}
+
+                        <Text style={styles.friendSectionTitle}>Offline ({offlineFriends.length})</Text>
+                        {offlineFriends.length === 0 && (
+                            <Text style={styles.emptySectionText}>No friends offline</Text>
+                        )}
+                        {offlineFriends.map((friend) => (
+                            <View key={friend.friend_id} style={styles.friendItem}>
+                                <View style={[styles.friendDot, friend.is_online && styles.friendDotOnline]} />
+                                <View style={styles.friendInfo}>
+                                    <Text style={styles.friendName}>{friend.friend_name}</Text>
+                                    <Text style={[styles.friendStatus, friend.is_online ? styles.friendStatusOnline : styles.friendStatusOffline]}>
+                                        {friend.status_label || (friend.is_online ? 'Online' : 'Offline')}
+                                    </Text>
+                                    <Text style={styles.friendLastSeen}>
+                                        Last seen {getTimeSince(friend.last_seen || friend.location_updated)}
                                     </Text>
                                 </View>
                             </View>
@@ -345,16 +545,38 @@ export default function FriendsMapScreen({ navigation }) {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={styles.refreshButton}
+                    style={[styles.walkButton, walkingMode && styles.walkButtonActive]}
+                    onPress={toggleWalkingMode}
+                >
+                    <Ionicons name="walk" size={22} color="#FFF" />
+                </TouchableOpacity>
+
+                {walkingMode && (
+                    <TouchableOpacity
+                        style={styles.streetViewButton}
+                        onPress={openStreetView}
+                    >
+                        <Ionicons name="navigate" size={20} color="#FFF" />
+                    </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                    style={[styles.refreshButton, refreshing && styles.refreshButtonDisabled]}
+                    disabled={refreshing}
                     onPress={async () => {
-                        await refreshFriendsLocations();
-                        // Force WebView refresh
-                        if (webViewRef.current) {
-                            webViewRef.current.reload();
+                        try {
+                            setRefreshing(true);
+                            await refreshFriendsLocations();
+                        } finally {
+                            setRefreshing(false);
                         }
                     }}
                 >
-                    <Ionicons name="refresh" size={24} color="#FFF" />
+                    {refreshing ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                        <Ionicons name="refresh" size={24} color="#FFF" />
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -369,6 +591,38 @@ export default function FriendsMapScreen({ navigation }) {
                     </View>
                 </View>
             )}
+
+            {/* In-app Street View Modal */}
+            <Modal
+                visible={streetViewVisible}
+                animationType="slide"
+                presentationStyle="fullScreen"
+                onRequestClose={() => setStreetViewVisible(false)}
+            >
+                <View style={styles.streetViewContainer}>
+                    <WebView
+                        source={{ uri: streetViewUrl }}
+                        style={styles.streetViewWebView}
+                        javaScriptEnabled={true}
+                        domStorageEnabled={true}
+                        startInLoadingState={true}
+                        renderLoading={() => (
+                            <View style={styles.streetViewLoading}>
+                                <ActivityIndicator size="large" color="#FFD36A" />
+                                <Text style={styles.streetViewLoadingText}>Loading Street View...</Text>
+                            </View>
+                        )}
+                        onError={handleStreetViewError}
+                    />
+
+                    <TouchableOpacity
+                        style={styles.streetViewCloseButton}
+                        onPress={() => setStreetViewVisible(false)}
+                    >
+                        <Ionicons name="close" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -436,6 +690,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
     },
+    topRightControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     backButton: {
         width: 48,
         height: 48,
@@ -443,6 +702,20 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.7)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    layerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 20,
+        gap: 6,
+    },
+    layerButtonText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: '600',
     },
     friendCount: {
         flexDirection: 'row',
@@ -502,6 +775,31 @@ const styles = StyleSheet.create({
         fontSize: 11,
         marginTop: 2,
     },
+    friendSectionTitle: {
+        color: '#FFD36A',
+        fontSize: 12,
+        fontWeight: '700',
+        marginTop: 8,
+        marginBottom: 6,
+        paddingHorizontal: 8,
+    },
+    emptySectionText: {
+        color: '#888',
+        fontSize: 11,
+        paddingHorizontal: 8,
+        paddingBottom: 8,
+    },
+    friendStatusOnline: {
+        color: '#4CAF50',
+    },
+    friendStatusOffline: {
+        color: '#FF6B6B',
+    },
+    friendLastSeen: {
+        color: '#A8A8A8',
+        fontSize: 10,
+        marginTop: 2,
+    },
     bottomControls: {
         position: 'absolute',
         bottom: 120,
@@ -538,6 +836,25 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    walkButton: {
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        backgroundColor: '#2D6CDF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    walkButtonActive: {
+        backgroundColor: '#2BB673',
+    },
+    streetViewButton: {
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        backgroundColor: '#5B3DF5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     refreshButton: {
         width: 54,
         height: 54,
@@ -545,6 +862,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.7)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    refreshButtonDisabled: {
+        opacity: 0.65,
     },
     toastContainer: {
         position: 'absolute',
@@ -575,5 +895,39 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 14,
         fontWeight: '700',
+    },
+    streetViewContainer: {
+        flex: 1,
+        backgroundColor: '#000',
+    },
+    streetViewWebView: {
+        flex: 1,
+    },
+    streetViewLoading: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#000',
+    },
+    streetViewLoadingText: {
+        color: '#FFF',
+        marginTop: 10,
+        fontSize: 14,
+    },
+    streetViewCloseButton: {
+        position: 'absolute',
+        top: 48,
+        right: 16,
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
     },
 });

@@ -63,6 +63,20 @@ export default function NotificationsScreen({ navigation }) {
   const handleNotificationClick = (n, p) => {
     // Navigate based on notification type
     const lowerType = String(p.type || "").toLowerCase();
+    const lowerTitle = String(p.title || "").toLowerCase();
+    const lowerBody = String(p.body || "").toLowerCase();
+    const routeNames = navigation?.getState?.()?.routeNames || [];
+    const canNavigateTo = (routeName) => routeNames.includes(routeName);
+
+    const isFriendOnlineNotification =
+      (lowerType.includes("friend") && lowerType.includes("online")) ||
+      (lowerTitle.includes("friend") && lowerTitle.includes("online")) ||
+      (lowerBody.includes("friend") && lowerBody.includes("online"));
+
+    if (isFriendOnlineNotification && canNavigateTo("FriendsMap")) {
+      navigation.navigate("FriendsMap");
+      return;
+    }
     
     // Security or Account related go to Profile
     if (lowerType.includes("security") || lowerType.includes("account")) {

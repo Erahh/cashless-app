@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { DeviceEventEmitter, Platform } from "react-native";
 import Constants from "expo-constants";
 import { supabase } from "../api/supabase";
 import { registerPushToken } from "../api/notificationsApi";
@@ -108,6 +108,12 @@ export function usePushNotifications() {
         // Run on mount
         setupPush();
 
+        const Notifications = getNotificationsModule();
+        const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+            const data = response?.notification?.request?.content?.data || {};
+            DeviceEventEmitter.emit("PUSH_NOTIFICATION_RESPONSE", data);
+        });
+
         // Also re-register when auth state changes (login/logout)
         const {
             data: { subscription },
@@ -138,6 +144,7 @@ export function usePushNotifications() {
             isMounted = false;
             hasRegisteredRef.current = false;
             subscription?.unsubscribe();
+            responseSub?.remove?.();
         };
     }, []);
 

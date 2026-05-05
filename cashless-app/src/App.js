@@ -17,6 +17,7 @@ function AppWithLock() {
   const { setLocked } = useContext(AppLockContext);
   const { isDarkMode, theme } = useTheme();
   const appState = useRef(AppState.currentState);
+  const navigationRef = useRef(null);
   // Track if we're just showing a system dialog (permission prompt, etc)
   // On iOS, system dialogs set state to 'inactive' but NOT 'background'.
   // We should ONLY lock when the app truly goes to background.
@@ -78,9 +79,36 @@ function AppWithLock() {
       );
     });
 
+    const pushSub = DeviceEventEmitter.addListener("PUSH_NOTIFICATION_RESPONSE", (data = {}) => {
+      try {
+        const type = String(data.type || "").toLowerCase();
+        const title = String(data.title || "").toLowerCase();
+        const body = String(data.body || "").toLowerCase();
+        const friendId = data.friend_id || data.friendId || data.sender_id || null;
+
+        const isFriendOnline =
+          (type.includes("friend") && type.includes("online")) ||
+          (title.includes("friend") && title.includes("online")) ||
+          (body.includes("friend") && body.includes("online"));
+
+        const nav = navigationRef.current;
+        if (!nav?.navigate) return;
+
+        if (isFriendOnline && friendId) {
+          nav.navigate("FriendsMap", { friendId });
+          return;
+        }
+
+        nav.navigate("Notifications");
+      } catch (err) {
+        // Ignore navigation errors from background responses
+      }
+    });
+
     return () => {
       sub.remove();
       sessionSub.remove();
+      pushSub.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setLocked]);
@@ -110,7 +138,7 @@ function AppWithLock() {
         translucent={false}
         backgroundColor={theme.background}
       />
-      <NavigationContainer theme={navigationTheme}>
+      <NavigationContainer ref={navigationRef} theme={navigationTheme}>
         <AppNavigator />
       </NavigationContainer>
     </>

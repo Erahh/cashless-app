@@ -15,15 +15,39 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, UserIcon, Cancel01Icon, Delete01Icon, UserAdd01Icon, UserGroup02Icon } from "@hugeicons/core-free-icons";
 import { api } from '../../api/apiHelper';
 
-export default function AddFriendScreen({ navigation }) {
+export default function AddFriendScreen({ navigation, route }) {
     const [phone, setPhone] = useState('');
     const [friends, setFriends] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searching, setSearching] = useState(false);
 
+    const normalizePhone = (raw) => {
+        const digits = String(raw || "").replace(/\D/g, "");
+        if (!digits) return { local: "", e164: "", valid: false };
+
+        let local = digits;
+        if (local.startsWith("63") && local.length === 12) {
+            local = `0${local.slice(2)}`;
+        } else if (local.startsWith("9") && local.length === 10) {
+            local = `0${local}`;
+        }
+
+        const valid = /^09\d{9}$/.test(local);
+        const e164 = valid ? `+63${local.slice(1)}` : "";
+        return { local, e164, valid };
+    };
+
     useEffect(() => {
         loadFriends();
     }, []);
+
+    useEffect(() => {
+        if (!route?.params?.focusIncoming) return;
+        const hasIncoming = friends.some((f) => f.status === "pending" && f.is_incoming);
+        if (hasIncoming) {
+            Alert.alert("Friend Request", "You have pending friend requests. Tap Accept to connect.");
+        }
+    }, [route?.params?.focusIncoming, friends]);
 
     const loadFriends = async () => {
         try {
@@ -39,7 +63,8 @@ export default function AddFriendScreen({ navigation }) {
     };
 
     const sendFriendRequest = async () => {
-        if (!phone || phone.length < 10) {
+        const normalized = normalizePhone(phone);
+        if (!normalized.valid) {
             Alert.alert('Invalid Phone', 'Please enter a valid phone number');
             return;
         }
@@ -48,11 +73,16 @@ export default function AddFriendScreen({ navigation }) {
         try {
             const response = await api('/friends/request', {
                 method: 'POST',
-                body: JSON.stringify({ phone: phone.trim() }),
+                body: JSON.stringify({
+                    phone: normalized.local,
+                    phone_number: normalized.local,
+                    mobile: normalized.e164,
+                }),
             });
 
             if (response.ok) {
-                Alert.alert('Success', `Friend request sent to ${response.friend.full_name}`);
+                const friendName = response?.friend?.full_name || response?.friend_name || normalized.local;
+                Alert.alert('Success', `Friend request sent to ${friendName}`);
                 setPhone('');
                 await loadFriends(); // Refresh list
             } else {
@@ -159,6 +189,15 @@ export default function AddFriendScreen({ navigation }) {
 
     const acceptedFriends = friends.filter(f => f.status === 'accepted');
     const pendingFriends = friends.filter(f => f.status === 'pending');
+    const prioritizedPending = route?.params?.friendId
+        ? [...pendingFriends].sort((a, b) => {
+            const aMatch = String(a.friend_id || "") === String(route.params.friendId);
+            const bMatch = String(b.friend_id || "") === String(route.params.friendId);
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+            return 0;
+        })
+        : pendingFriends;
 
     return (
         <KeyboardAvoidingView
@@ -184,7 +223,7 @@ export default function AddFriendScreen({ navigation }) {
                         placeholderTextColor="#888"
                         keyboardType="phone-pad"
                         value={phone}
-                        onChangeText={setPhone}
+                        onChangeText={(value) => setPhone(value.replace(/[^\d+]/g, ""))}
                         editable={!searching}
                     />
                     <TouchableOpacity
@@ -208,7 +247,7 @@ export default function AddFriendScreen({ navigation }) {
                 </View>
             ) : (
                 <FlatList
-                    data={[...pendingFriends, ...acceptedFriends]}
+                    data={[...prioritizedPending, ...acceptedFriends]}
                     renderItem={renderFriendItem}
                     keyExtractor={item => item.connection_id}
                     contentContainerStyle={styles.listContent}

@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { API_BASE_URL } from "../config/api";
+import { Platform } from "react-native";
 
 async function getToken() {
   const { data } = await supabase.auth.getSession();
@@ -26,6 +27,8 @@ export async function fetchNotifications(limit = 30) {
  */
 export async function registerPushToken(pushToken) {
   const token = await getToken();
+  const tokenValue = String(pushToken || "").trim();
+  if (!tokenValue) throw new Error("Missing push token");
 
   const res = await fetch(`${API_BASE_URL}/notifications/register-push`, {
     method: "POST",
@@ -33,10 +36,13 @@ export async function registerPushToken(pushToken) {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ token: pushToken }),
+    body: JSON.stringify({
+      token: tokenValue,
+      platform: Platform.OS,
+    }),
   });
 
-  const json = await res.json();
+  const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error || "Failed to register push token");
   return json;
 }
@@ -46,6 +52,8 @@ export async function registerPushToken(pushToken) {
  */
 export async function unregisterPushToken(pushToken) {
   const token = await getToken();
+  const tokenValue = String(pushToken || "").trim();
+  if (!tokenValue) return { ok: true };
 
   const res = await fetch(`${API_BASE_URL}/notifications/unregister-push`, {
     method: "DELETE",
@@ -53,10 +61,10 @@ export async function unregisterPushToken(pushToken) {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ token: pushToken }),
+    body: JSON.stringify({ token: tokenValue }),
   });
 
-  const json = await res.json();
+  const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error || "Failed to unregister push token");
   return json;
 }

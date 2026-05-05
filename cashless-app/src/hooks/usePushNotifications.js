@@ -30,8 +30,7 @@ export function usePushNotifications() {
 
         if (shouldSkipPushSetup) {
             // Android remote push is unsupported in Expo Go (SDK 53+).
-            // Skip Android Expo Go registration to avoid noisy warnings.
-            // iOS Expo Go can still attempt token registration.
+            // Keep iOS Expo Go registration path enabled.
             return () => {};
         }
 
@@ -81,9 +80,11 @@ export function usePushNotifications() {
                 }
 
                 // 3. Get Expo push token
-                const pushToken = await Notifications.getExpoPushTokenAsync({
-                    projectId: "0cd82e3a-c938-4064-bdc0-78e6dd13313c", // From app.json
-                });
+                const configuredProjectId =
+                    Constants?.expoConfig?.extra?.eas?.projectId ||
+                    Constants?.easConfig?.projectId;
+                const tokenOptions = configuredProjectId ? { projectId: configuredProjectId } : undefined;
+                const pushToken = await Notifications.getExpoPushTokenAsync(tokenOptions);
 
                 if (!isMounted) return;
 
@@ -112,6 +113,7 @@ export function usePushNotifications() {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event) => {
             if (event === "SIGNED_IN") {
+                hasRegisteredRef.current = false;
                 setupPush(); // Will be skipped if already registered
             }
             if (event === "SIGNED_OUT") {

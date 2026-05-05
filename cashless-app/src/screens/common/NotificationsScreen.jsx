@@ -22,6 +22,9 @@ function normalizePayload(payload) {
     title: String(p.title || "Notification"),
     body: String(p.body || ""),
     type: String(p.type || "system"), // 'transfer', 'payment', 'system'
+    action: String(p.action || p.event || ""),
+    target: String(p.target || p.screen || ""),
+    friendId: p.friend_id || p.sender_id || p.user_id || null,
   };
 }
 
@@ -50,6 +53,39 @@ export default function NotificationsScreen({ navigation }) {
     }
   };
 
+  const formatNotificationTime = (dateObj) => {
+    if (!dateObj) return '';
+    const date = (dateObj instanceof Date) ? dateObj : new Date(dateObj);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+
+    if (diffSec < 60) return 'Just now';
+    if (diffMin < 60) return `${diffMin} ${diffMin === 1 ? 'minute' : 'minutes'} ago`;
+    // Same day -> show "Today at hh:mm AM/PM"
+    const isSameDay = now.toDateString() === date.toDateString();
+    if (isSameDay) {
+      return `Today at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    }
+    // Yesterday
+    const yesterday = new Date();
+    yesterday.setDate(now.getDate() - 1);
+    if (yesterday.toDateString() === date.toDateString()) {
+      return `Yesterday at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    }
+
+    // Within last 7 days -> Weekday at time
+    const daysDiff = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (daysDiff < 7) {
+      return `${date.toLocaleDateString([], { weekday: 'long' })} at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    }
+
+    // Older -> formal date and time
+    return `${date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })} at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  };
+
   useEffect(() => {
     const unsub = navigation?.addListener?.("focus", () => load(10));
     load(10);
@@ -72,9 +108,25 @@ export default function NotificationsScreen({ navigation }) {
       (lowerType.includes("friend") && lowerType.includes("online")) ||
       (lowerTitle.includes("friend") && lowerTitle.includes("online")) ||
       (lowerBody.includes("friend") && lowerBody.includes("online"));
+    const isFriendRequestNotification =
+      (lowerType.includes("friend") && lowerType.includes("request")) ||
+      (lowerTitle.includes("friend") && lowerTitle.includes("request")) ||
+      (lowerBody.includes("friend") && lowerBody.includes("request")) ||
+      String(p.action || "").toLowerCase().includes("friend_request") ||
+      String(p.target || "").toLowerCase().includes("friend");
+
+    if (isFriendRequestNotification && canNavigateTo("AddFriend")) {
+      navigation.navigate("AddFriend", {
+        focusIncoming: true,
+        friendId: p.friendId,
+      });
+      return;
+    }
 
     if (isFriendOnlineNotification && canNavigateTo("FriendsMap")) {
-      navigation.navigate("FriendsMap");
+      navigation.navigate("FriendsMap", {
+        friendId: p.friendId,
+      });
       return;
     }
     
@@ -238,9 +290,7 @@ export default function NotificationsScreen({ navigation }) {
               const { icon, color, lib } = getIconInfo(p.title, p.type);
 
               const date = new Date(n.created_at);
-              const now = new Date();
-              const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-              const displayTime = diffDays === 0 ? "Today" : diffDays === 1 ? "Yesterday" : `${diffDays} days ago`;
+              const displayTime = formatNotificationTime(date);
 
               return (
                 <TouchableOpacity 

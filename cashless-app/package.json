@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "cross-env EXPO_NO_REDIRECT_PAGE=1 expo start --tunnel --go",
+    "start": "cross-env EXPO_NO_REDIRECT_PAGE=1 expo start --lan --go",
     "start:tunnel": "cross-env EXPO_NO_REDIRECT_PAGE=1 expo start --tunnel",
     "start:lan": "cross-env EXPO_NO_REDIRECT_PAGE=1 expo start --lan",
     "android": "expo run:android",

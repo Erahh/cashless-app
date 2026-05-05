@@ -18,18 +18,21 @@ import { api } from '../../api/apiHelper';
 
 const { width, height } = Dimensions.get('window');
 
-export default function FriendsMapScreen({ navigation }) {
+export default function FriendsMapScreen({ navigation, route }) {
     const [myLocation, setMyLocation] = useState(null);
     const [friends, setFriends] = useState([]);
     const [loading, setLoading] = useState(true);
     const [shareLocation, setShareLocation] = useState(true);
     const [mapMode, setMapMode] = useState('street'); // 'street' | 'satellite'
     const [walkingMode, setWalkingMode] = useState(false);
+    const [followMode, setFollowMode] = useState(false); // auto-center on selected friend
     const [showFriendsList, setShowFriendsList] = useState(false);
     const [onlineToast, setOnlineToast] = useState(null); // {name, visible}
     const [refreshing, setRefreshing] = useState(false);
     const [streetViewVisible, setStreetViewVisible] = useState(false);
     const [streetViewUrl, setStreetViewUrl] = useState('');
+    const [selectedFriendId, setSelectedFriendId] = useState(null);
+    const [friendTrails, setFriendTrails] = useState({});
     const webViewRef = useRef(null);
     const broadcastIntervalRef = useRef(null);
     const walkWatchRef = useRef(null);
@@ -37,6 +40,7 @@ export default function FriendsMapScreen({ navigation }) {
     const previousMapModeRef = useRef('street');
     const prevOnlineRef = useRef({}); // Track previous online states
     const toastTimeoutRef = useRef(null);
+    const followIntervalRef = useRef(null);
 
     useEffect(() => {
         initializeMap();
@@ -56,8 +60,18 @@ export default function FriendsMapScreen({ navigation }) {
             if (toastTimeoutRef.current) {
                 clearTimeout(toastTimeoutRef.current);
             }
+            if (followIntervalRef.current) {
+                clearInterval(followIntervalRef.current);
+                followIntervalRef.current = null;
+            }
         };
     }, []);
+
+    useEffect(() => {
+        if (route?.params?.friendId) {
+            setSelectedFriendId(String(route.params.friendId));
+        }
+    }, [route?.params?.friendId]);
 
     const initializeMap = async () => {
         try {
@@ -142,6 +156,29 @@ export default function FriendsMapScreen({ navigation }) {
                 prevOnlineRef.current = onlineMap;
 
                 setFriends(newFriends);
+                setFriendTrails((prev) => {
+                    const next = { ...prev };
+                    const now = Date.now();
+
+                    newFriends.forEach((f) => {
+                        if (typeof f.latitude !== "number" || typeof f.longitude !== "number") return;
+                        const key = String(f.friend_id);
+                        const point = { lat: f.latitude, lng: f.longitude, ts: now };
+                        const current = next[key] || [];
+                        const last = current[current.length - 1];
+
+                        const samePoint =
+                            !!last &&
+                            Math.abs(last.lat - point.lat) < 0.00001 &&
+                            Math.abs(last.lng - point.lng) < 0.00001;
+
+                        const updated = samePoint ? current : [...current, point];
+                        // Keep recent movement window only.
+                        next[key] = updated.filter((p) => now - p.ts <= 20 * 60 * 1000).slice(-25);
+                    });
+
+                    return next;
+                });
             }
         } catch (error) {
             console.error('Error fetching friends locations:', error);
@@ -311,6 +348,62 @@ export default function FriendsMapScreen({ navigation }) {
         return `${Math.floor(hours / 24)}d ago`;
     };
 
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const haversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
+        if ([lat1, lon1, lat2, lon2].some((v) => typeof v !== 'number')) return null;
+        const R = 6371000; // metres
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    };
+
+    const formatDistance = (meters) => {
+        if (meters == null) return '—';
+        if (meters < 1000) return `${Math.round(meters)}m`;
+        return `${(meters / 1000).toFixed(2)}km`;
+    };
+
+    const formatSpeed = (speed) => {
+        if (speed == null || isNaN(speed)) return '—';
+        // API may return m/s — show km/h if > 0
+        const kmh = speed * 3.6;
+        if (kmh < 1) return `${Math.round(speed)} m/s`;
+        return `${Math.round(kmh)} km/h`;
+    };
+
+    // Follow mode: keep WebView map centered on selected friend
+    useEffect(() => {
+        if (followIntervalRef.current) {
+            clearInterval(followIntervalRef.current);
+            followIntervalRef.current = null;
+        }
+
+        if (!followMode) return;
+
+        followIntervalRef.current = setInterval(() => {
+            try {
+                if (!selectedFriendId || !webViewRef.current) return;
+                const f = friends.find((x) => String(x.friend_id) === String(selectedFriendId));
+                if (!f || typeof f.latitude !== 'number' || typeof f.longitude !== 'number') return;
+                const js = `try{ if(window.map){ window.map.setView([${f.latitude}, ${f.longitude}], 16);} }catch(e){}; true;`;
+                webViewRef.current.injectJavaScript(js);
+            } catch (err) {
+                // ignore
+            }
+        }, 1000);
+
+        return () => {
+            if (followIntervalRef.current) {
+                clearInterval(followIntervalRef.current);
+                followIntervalRef.current = null;
+            }
+        };
+    }, [followMode, selectedFriendId, friends]);
+
     const escapeHtml = (value) => String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -344,7 +437,8 @@ export default function FriendsMapScreen({ navigation }) {
                     : `Last seen ${getTimeSince(f.last_seen || f.location_updated)}`
             );
             const popupHtml = `<b>${escapeHtml(displayName)}</b><br>${statusText}<br>${seenText}`;
-            const markerHtml = `<div style="background: ${f.is_online ? '#4CAF50' : '#8A8A8A'}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">${markerInitial}</div>`;
+            const isSelected = String(selectedFriendId || "") === String(f.friend_id || "");
+            const markerHtml = `<div style="background: ${f.is_online ? '#4CAF50' : '#8A8A8A'}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; border: 3px solid ${isSelected ? '#FFD36A' : 'white'}; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">${markerInitial}</div>`;
 
             return `
             L.marker([${f.latitude}, ${f.longitude}], {
@@ -357,6 +451,24 @@ export default function FriendsMapScreen({ navigation }) {
             }).addTo(map).bindPopup(${JSON.stringify(popupHtml)});
         `;
         }).join('\n');
+
+        const trailLines = friendsForMap
+            .map((f) => {
+                const trail = friendTrails[String(f.friend_id)] || [];
+                if (trail.length < 2) return "";
+                const latLngs = trail.map((p) => [p.lat, p.lng]);
+                const isSelected = String(selectedFriendId || "") === String(f.friend_id || "");
+                const color = isSelected ? "#FFD36A" : (f.is_online ? "#63D66A" : "#9A9A9A");
+                return `L.polyline(${JSON.stringify(latLngs)}, { color: '${color}', weight: ${isSelected ? 5 : 3}, opacity: ${isSelected ? 0.95 : 0.65} }).addTo(map);`;
+            })
+            .join("\n");
+
+        const selectedFriend = friendsForMap.find(
+            (f) => String(selectedFriendId || "") === String(f.friend_id || "")
+        );
+        const focusScript = selectedFriend
+            ? `map.setView([${selectedFriend.latitude}, ${selectedFriend.longitude}], 16);`
+            : "";
 
         return `
 <!DOCTYPE html>
@@ -400,6 +512,8 @@ export default function FriendsMapScreen({ navigation }) {
 
         // Friend markers
         ${friendMarkers}
+        ${trailLines}
+        ${focusScript}
     </script>
 </body>
 </html>
@@ -468,6 +582,14 @@ export default function FriendsMapScreen({ navigation }) {
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                        style={[styles.layerButton, followMode && styles.followButtonActive]}
+                        onPress={() => setFollowMode((v) => !v)}
+                    >
+                        <Ionicons name="locate" size={18} color="#FFF" />
+                        <Text style={styles.layerButtonText}>{followMode ? 'Following' : 'Follow'}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                         style={styles.friendCount}
                         onPress={() => setShowFriendsList(!showFriendsList)}
                     >
@@ -487,24 +609,53 @@ export default function FriendsMapScreen({ navigation }) {
                         {onlineFriends.length === 0 && (
                             <Text style={styles.emptySectionText}>No friends online</Text>
                         )}
-                        {onlineFriends.map((friend) => (
-                            <View key={friend.friend_id} style={styles.friendItem}>
-                                <View style={[styles.friendDot, friend.is_online && styles.friendDotOnline]} />
-                                <View style={styles.friendInfo}>
-                                    <Text style={styles.friendName}>{friend.friend_name}</Text>
-                                    <Text style={[styles.friendStatus, friend.is_online ? styles.friendStatusOnline : styles.friendStatusOffline]}>
-                                        {friend.status_label || (friend.is_online ? 'Online' : 'Offline')}
-                                    </Text>
-                                </View>
-                            </View>
-                        ))}
+                        {onlineFriends.map((friend) => {
+                            const dist = myLocation && typeof friend.latitude === 'number' && typeof friend.longitude === 'number'
+                                ? haversineDistanceMeters(myLocation.latitude, myLocation.longitude, friend.latitude, friend.longitude)
+                                : null;
+                            const speed = friend.speed; // assume m/s if provided by API
+                            return (
+                                <TouchableOpacity
+                                    key={friend.friend_id}
+                                    style={[
+                                        styles.friendItem,
+                                        String(selectedFriendId || "") === String(friend.friend_id || "") && styles.friendItemSelected
+                                    ]}
+                                    onPress={() => setSelectedFriendId(String(friend.friend_id))}
+                                    activeOpacity={0.8}
+                                >
+                                    <View style={[styles.friendDot, friend.is_online && styles.friendDotOnline]} />
+                                    <View style={[styles.friendInfo, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.friendName}>{friend.friend_name}</Text>
+                                            <Text style={[styles.friendStatus, friend.is_online ? styles.friendStatusOnline : styles.friendStatusOffline]}>
+                                                {friend.status_label || (friend.is_online ? 'Online' : 'Offline')}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.badgeContainer}>
+                                            <Text style={styles.badgeText}>{formatDistance(dist)}</Text>
+                                            <Text style={[styles.badgeText, { marginTop: 2 }]}>{formatSpeed(speed)}</Text>
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
 
                         <Text style={styles.friendSectionTitle}>Offline ({offlineFriends.length})</Text>
                         {offlineFriends.length === 0 && (
                             <Text style={styles.emptySectionText}>No friends offline</Text>
                         )}
                         {offlineFriends.map((friend) => (
-                            <View key={friend.friend_id} style={styles.friendItem}>
+                            <TouchableOpacity
+                                key={friend.friend_id}
+                                style={[
+                                    styles.friendItem,
+                                    String(selectedFriendId || "") === String(friend.friend_id || "") && styles.friendItemSelected
+                                ]}
+                                onPress={() => setSelectedFriendId(String(friend.friend_id))}
+                                activeOpacity={0.8}
+                            >
                                 <View style={[styles.friendDot, friend.is_online && styles.friendDotOnline]} />
                                 <View style={styles.friendInfo}>
                                     <Text style={styles.friendName}>{friend.friend_name}</Text>
@@ -515,7 +666,7 @@ export default function FriendsMapScreen({ navigation }) {
                                         Last seen {getTimeSince(friend.last_seen || friend.location_updated)}
                                     </Text>
                                 </View>
-                            </View>
+                            </TouchableOpacity>
                         ))}
                     </ScrollView>
                 </View>
@@ -717,6 +868,9 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
     },
+    followButtonActive: {
+        backgroundColor: '#FFD36A',
+    },
     friendCount: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -751,6 +905,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255,255,255,0.1)',
+    },
+    friendItemSelected: {
+        backgroundColor: 'rgba(255, 211, 106, 0.15)',
+        borderRadius: 10,
     },
     friendDot: {
         width: 10,
@@ -799,6 +957,21 @@ const styles = StyleSheet.create({
         color: '#A8A8A8',
         fontSize: 10,
         marginTop: 2,
+    },
+    badgeContainer: {
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8,
+        minWidth: 56,
+    },
+    badgeText: {
+        color: '#FFF',
+        fontSize: 11,
+        fontWeight: '700',
     },
     bottomControls: {
         position: 'absolute',

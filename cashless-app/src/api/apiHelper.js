@@ -2,8 +2,9 @@ import { supabase } from "./supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DeviceEventEmitter } from "react-native";
 
-// Your Render backend URL
+// Your Render backend URL (fallback)
 const RENDER_API_URL = "https://cashless-backend.onrender.com";
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || "").trim() || RENDER_API_URL;
 
 export async function getAccessToken() {
   const { data, error } = await supabase.auth.getSession();
@@ -21,7 +22,7 @@ export async function renderApiRequest(path, options = {}) {
     deviceToken = await AsyncStorage.getItem("device_token");
   } catch { /* ignore */ }
 
-  const url = path.startsWith("http") ? path : `${RENDER_API_URL}${path}`;
+  const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
 
   const headers = {
     Authorization: `Bearer ${accessToken}`,
@@ -63,7 +64,7 @@ export async function renderApiRequest(path, options = {}) {
 
 // ✅ Health check (no auth)
 export async function checkHealth() {
-  const res = await fetch(`${RENDER_API_URL}/health`);
+  const res = await fetch(`${API_BASE_URL}/health`);
   return res.json();
 }
 

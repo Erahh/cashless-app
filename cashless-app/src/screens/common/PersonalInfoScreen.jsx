@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View,
   Text,
@@ -16,36 +16,11 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 
 import { supabase } from "../../api/supabase";
+import { renderApiRequest } from "../../api/apiHelper";
 import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import FloatingLabelInput from "../../components/Input";
-
-
-// ------- Sample address data -------
-const ADDRESS_DATA = [
-  {
-    province: "Bukidnon",
-    cities: [
-      { city: "Malaybalay City", barangays: ["Aglayan", "Bangcud", "Busdi"] },
-      { city: "Valencia City", barangays: ["Bagontaas", "Batangan", "Poblacion"] },
-    ],
-  },
-  {
-    province: "Misamis Oriental",
-    cities: [
-      { city: "Cagayan de Oro", barangays: ["Carmen", "Lapasan", "Nazareth"] },
-      { city: "Gingoog", barangays: ["Agay-ayan", "Anakan", "Poblacion"] },
-    ],
-  },
-  {
-    province: "Cebu",
-    cities: [
-      { city: "Cebu City", barangays: ["Lahug", "Mabolo", "Guadalupe"] },
-      { city: "Mandaue", barangays: ["Alang-alang", "Bakilid", "Centro"] },
-    ],
-  },
-];
 
 function toISODateOnly(dateObj) {
   if (!dateObj) return "";
@@ -203,21 +178,83 @@ export default function PersonalInfoScreen({ navigation, route }) {
   const [provinceModal, setProvinceModal] = useState(false);
   const [cityModal, setCityModal] = useState(false);
   const [barangayModal, setBarangayModal] = useState(false);
+  const [provinceOptions, setProvinceOptions] = useState([]);
+  const [cityOptions, setCityOptions] = useState([]);
+  const [barangayOptions, setBarangayOptions] = useState([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingBarangays, setLoadingBarangays] = useState(false);
 
 
   const fullName = useMemo(() => {
     return [firstName, middleName, lastName].map((s) => (s || "").trim()).filter(Boolean).join(" ");
   }, [firstName, middleName, lastName]);
 
-  const provinceOptions = useMemo(() => Array.isArray(ADDRESS_DATA) ? ADDRESS_DATA.map((p) => ({ label: p.province, value: p.province })) : [], []);
-  const cityOptions = useMemo(() => {
-    const p = Array.isArray(ADDRESS_DATA) ? ADDRESS_DATA.find((x) => x.province === province) : null;
-    return p && Array.isArray(p.cities) ? p.cities.map((c) => ({ label: c.city, value: c.city })) : [];
+  useEffect(() => {
+    let active = true;
+    const loadProvinces = async () => {
+      setLoadingProvinces(true);
+      try {
+        const res = await renderApiRequest("/locations/provinces");
+        const items = (res?.provinces || []).map((p) => ({ label: p.name, value: p.name }));
+        if (active) setProvinceOptions(items);
+      } catch (e) {
+        if (active) Alert.alert("Error", e.message || "Failed to load provinces");
+      } finally {
+        if (active) setLoadingProvinces(false);
+      }
+    };
+
+    loadProvinces();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadCities = async () => {
+      if (!province) {
+        setCityOptions([]);
+        return;
+      }
+      setLoadingCities(true);
+      setCityOptions([]);
+      try {
+        const res = await renderApiRequest(`/locations/cities?province=${encodeURIComponent(province)}`);
+        const items = (res?.cities || []).map((c) => ({ label: c.name, value: c.name }));
+        if (active) setCityOptions(items);
+      } catch (e) {
+        if (active) Alert.alert("Error", e.message || "Failed to load cities");
+      } finally {
+        if (active) setLoadingCities(false);
+      }
+    };
+
+    loadCities();
+    return () => { active = false; };
   }, [province]);
-  const barangayOptions = useMemo(() => {
-    const p = Array.isArray(ADDRESS_DATA) ? ADDRESS_DATA.find((x) => x.province === province) : null;
-    const c = p?.cities?.find((x) => x.city === city);
-    return c && Array.isArray(c.barangays) ? c.barangays.map((b) => ({ label: b, value: b })) : [];
+
+  useEffect(() => {
+    let active = true;
+    const loadBarangays = async () => {
+      if (!province || !city) {
+        setBarangayOptions([]);
+        return;
+      }
+      setLoadingBarangays(true);
+      setBarangayOptions([]);
+      try {
+        const res = await renderApiRequest(`/locations/barangays?province=${encodeURIComponent(province)}&city=${encodeURIComponent(city)}`);
+        const items = (res?.barangays || []).map((b) => ({ label: b.name, value: b.name }));
+        if (active) setBarangayOptions(items);
+      } catch (e) {
+        if (active) Alert.alert("Error", e.message || "Failed to load barangays");
+      } finally {
+        if (active) setLoadingBarangays(false);
+      }
+    };
+
+    loadBarangays();
+    return () => { active = false; };
   }, [province, city]);
 
   function validate() {
@@ -357,12 +394,19 @@ export default function PersonalInfoScreen({ navigation, route }) {
 
         {/* ── ADDRESS SECTION ── */}
         <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Address</Text>
-        <SelectField label="Province *" value={province} placeholder="Select province" onPress={() => setProvinceModal(true)} theme={theme} />
+        <SelectField
+          label="Province *"
+          value={province}
+          placeholder={loadingProvinces ? "Loading provinces..." : "Select province"}
+          onPress={() => setProvinceModal(true)}
+          disabled={loadingProvinces}
+          theme={theme}
+        />
         <SelectField
           label="City/Municipality *"
           value={city}
-          placeholder="Select city/municipality"
-          disabled={!province}
+          placeholder={loadingCities ? "Loading cities..." : "Select city/municipality"}
+          disabled={!province || loadingCities}
           onPress={() => {
             if (!province) return Alert.alert("Select province first", "Please select a province first.");
             setCityModal(true);
@@ -372,8 +416,8 @@ export default function PersonalInfoScreen({ navigation, route }) {
         <SelectField
           label="Barangay *"
           value={barangay}
-          placeholder="Select barangay"
-          disabled={!province || !city}
+          placeholder={loadingBarangays ? "Loading barangays..." : "Select barangay"}
+          disabled={!province || !city || loadingBarangays}
           onPress={() => {
             if (!province || !city) return Alert.alert("Select location first", "Please select province and city first.");
             setBarangayModal(true);

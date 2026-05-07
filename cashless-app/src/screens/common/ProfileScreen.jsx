@@ -24,6 +24,8 @@ import {
 } from "@hugeicons/core-free-icons";
 import * as ImagePicker from "expo-image-picker";
 import { renderApiRequest } from "../../api/apiHelper";
+import AboutUsModal from "../../components/AboutUsModal";
+
 
 export default function ProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -31,7 +33,9 @@ export default function ProfileScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [account, setAccount] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [aboutModalVisible, setAboutModalVisible] = useState(false);
   const { setLocked, setLockSuppressed } = useContext(AppLockContext);
+
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
 
@@ -366,8 +370,10 @@ export default function ProfileScreen({ navigation }) {
           <MenuItem
             icon={InformationCircleIcon}
             title="About Us"
+            onPress={() => setAboutModalVisible(true)}
             theme={theme}
           />
+
         </View>
 
         {/* Support Section */}
@@ -402,7 +408,15 @@ export default function ProfileScreen({ navigation }) {
         {/* App Version */}
         <Text style={styles.versionText}>ERA Wallet v1.0.0</Text>
       </ScrollView>
+
+      <AboutUsModal 
+        visible={aboutModalVisible} 
+        onClose={() => setAboutModalVisible(false)}
+        theme={theme}
+        isDarkMode={isDarkMode}
+      />
     </View>
+
   );
 }
 

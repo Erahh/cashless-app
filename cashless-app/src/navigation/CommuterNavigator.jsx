@@ -35,6 +35,7 @@ import SendLoadScreen from "../screens/commuter/SendLoadScreen";
 import NotificationsScreen from "../screens/common/NotificationsScreen";
 import CardApplicationScreen from "../screens/common/CardApplicationScreen";
 import PasswordSecurityScreen from "../screens/common/PasswordSecurityScreen";
+import BusinessVerificationScreen from "../screens/commuter/BusinessVerificationScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -80,6 +81,7 @@ const CapturedPersonalInfoScreen = withNavCapture(PersonalInfoScreen);
 const CapturedNotificationsScreen = withNavCapture(NotificationsScreen);
 const CapturedCardApplicationScreen = withNavCapture(CardApplicationScreen);
 const CapturedPasswordSecurityScreen = withNavCapture(PasswordSecurityScreen);
+const CapturedBusinessVerificationScreen = withNavCapture(BusinessVerificationScreen);
 
 function CommuterBottomNav() {
     const { navRef, activeRoute } = useInnerNav();
@@ -181,6 +183,7 @@ function CommuterContent() {
                 <Stack.Screen name="Notifications" component={CapturedNotificationsScreen} />
                 <Stack.Screen name="CardApplication" component={CapturedCardApplicationScreen} />
                 <Stack.Screen name="PasswordSecurity" component={CapturedPasswordSecurityScreen} />
+                <Stack.Screen name="BusinessVerification" component={CapturedBusinessVerificationScreen} />
             </Stack.Navigator>
             <CommuterBottomNav />
         </View>

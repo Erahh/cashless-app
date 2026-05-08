@@ -52,6 +52,12 @@ export default function BalanceScreen({ navigation }) {
     return b.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }, [wallet]);
 
+  // Calculate max balance limit and remaining capacity
+  const MAX_BALANCE = 100000;
+  const currentBalance = Number(wallet?.balance ?? 0);
+  const remainingCapacity = Math.max(0, MAX_BALANCE - currentBalance);
+  const percentageUsed = Math.round((currentBalance / MAX_BALANCE) * 100);
+
   // Calculate spending from ledger (debits)
   const spendingData = useMemo(() => {
     const ledger = wallet?.ledger || [];
@@ -133,6 +139,82 @@ export default function BalanceScreen({ navigation }) {
                   </View>
                 </View>
               </View>
+            </View>
+
+            <View style={styles.businessCtaCard}>
+              <View style={styles.businessCtaTextBlock}>
+                <Text style={[styles.businessCtaTitle, { color: theme.text }]}>Need higher wallet limits?</Text>
+                <Text style={[styles.businessCtaText, { color: theme.textSecondary }]}>Apply for business verification to raise your balance limit to ₱500,000.</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.businessCtaButton}
+                onPress={() => navigation.navigate("BusinessVerification")}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.businessCtaButtonText}>Apply Now</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ═══════════════════════════════════════════════════════════════
+                BALANCE LIMIT INDICATOR
+            ═══════════════════════════════════════════════════════════════ */}
+            <View style={[styles.limitCard, percentageUsed >= 80 ? styles.limitCardWarning : styles.limitCardNormal]}>
+              <View style={styles.limitHeader}>
+                <View style={styles.limitIconContainer}>
+                  <MaterialCommunityIcons
+                    name={percentageUsed >= 80 ? "alert-circle" : "information"}
+                    size={20}
+                    color={percentageUsed >= 80 ? "#FF9800" : theme.text}
+                  />
+                </View>
+                <View style={styles.limitInfo}>
+                  <Text style={[styles.limitLabel, { color: theme.text }]}>Balance Limit</Text>
+                  <Text style={[styles.limitValue, { color: theme.textSecondary }]}>
+                    ₱{currentBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} / ₱100,000
+                  </Text>
+                </View>
+              </View>
+
+              {/* Progress Bar */}
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    {
+                      width: `${percentageUsed}%`,
+                      backgroundColor: percentageUsed >= 80 ? "#FF9800" : "#4CAF50",
+                    },
+                  ]}
+                />
+              </View>
+
+              {percentageUsed >= 80 && remainingCapacity > 0 && (
+                <View style={styles.upgradePrompt}>
+                  <Text style={[styles.upgradeText, { color: theme.text }]}>
+                    Approaching limit. {remainingCapacity > 0 ? `Only ₱${remainingCapacity.toLocaleString()} left.` : ""}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.upgradeButton}
+                    onPress={() => navigation.navigate("BusinessVerification")}
+                  >
+                    <Text style={styles.upgradeButtonText}>Apply for Business Account</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {percentageUsed >= 100 && (
+                <View style={styles.limitReachedPrompt}>
+                  <Text style={[styles.limitReachedText, { color: theme.text }]}>
+                    You've reached your balance limit. Upgrade to a business account to increase it to ₱500,000.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.upgradeButton, { backgroundColor: theme.warning }]}
+                    onPress={() => navigation.navigate("BusinessVerification")}
+                  >
+                    <Text style={[styles.upgradeButtonText, { color: '#000' }]}>Upgrade Now</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             {/* ═══════════════════════════════════════════════════════════════
@@ -231,7 +313,7 @@ export default function BalanceScreen({ navigation }) {
                   key: "send_load",
                   icon: FlashIcon,
                   title: "Send Load",
-                  onPress: () => Alert.alert("Send Load", "Coming soon!")
+                  onPress: () => navigation.navigate("SendLoad")
                 },
                 {
                   key: "my_qr",
@@ -472,5 +554,121 @@ const createStyles = (theme) => StyleSheet.create({
   emptyText: {
     color: theme.textMuted,
     fontSize: 14,
+  },
+
+  limitCard: {
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    backgroundColor: theme.card,
+  },
+  limitCardNormal: {
+    borderColor: theme.border,
+  },
+  limitCardWarning: {
+    borderColor: "#FF9800",
+    backgroundColor: "rgba(255, 152, 0, 0.05)",
+  },
+  limitHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  limitIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "rgba(76, 175, 80, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  limitInfo: {
+    flex: 1,
+  },
+  limitLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 2,
+    opacity: 0.7,
+  },
+  limitValue: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: theme.border,
+    borderRadius: 3,
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+  progressBar: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  upgradePrompt: {
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
+  },
+  upgradeText: {
+    fontSize: 12,
+    marginBottom: 10,
+  },
+  upgradeButton: {
+    backgroundColor: theme.warning,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  upgradeButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#000",
+  },
+  businessCtaCard: {
+    marginTop: 14,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  businessCtaTextBlock: {
+    marginBottom: 12,
+  },
+  businessCtaTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  businessCtaText: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  businessCtaButton: {
+    backgroundColor: theme.warning,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  businessCtaButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#000",
+  },
+  limitReachedPrompt: {
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
+  },
+  limitReachedText: {
+    fontSize: 12,
+    marginBottom: 10,
+    lineHeight: 18,
   },
 });

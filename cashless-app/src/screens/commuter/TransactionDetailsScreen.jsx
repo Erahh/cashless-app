@@ -36,6 +36,50 @@ export default function TransactionDetailsScreen({ route, navigation }) {
     );
   }
 
+  // Determine payment method from transaction data
+  const getPaymentMethod = () => {
+    // If payment_method is explicitly set in the item
+    if (item.payment_method) {
+      if (item.payment_method === "ic_card" || item.payment_method === "rfid") {
+        return "IC Card";
+      } else if (item.payment_method === "qr_code" || item.payment_method === "qr") {
+        return "QR Code";
+      }
+      return String(item.payment_method).replace(/_/g, " ");
+    }
+    
+    // For fare transactions, try to infer from metadata
+    if (String(item.kind || "").includes("fare")) {
+      // If meta contains reference to card/tap, it's likely IC card
+      if (item.meta && (item.meta.includes("card") || item.meta.includes("tap") || item.meta.includes("rfid"))) {
+        return "IC Card";
+      }
+      // If meta contains qr reference
+      if (item.meta && item.meta.includes("qr")) {
+        return "QR Code";
+      }
+      // Default for fares without explicit payment method
+      return "Terminal Payment";
+    }
+    
+    return null;
+  };
+
+  if (!item) {
+    return (
+      <View style={[styles.safe, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text style={{ color: theme.text }}>Transaction not found.</Text>
+        </View>
+      </View>
+    );
+  }
+
   const isDebit =
     item.source === "ledger" &&
     (String(item.kind).includes("debit") || String(item.kind).includes("fare"));
@@ -106,12 +150,19 @@ export default function TransactionDetailsScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
 
+          {!!getPaymentMethod() && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Payment Method</Text>
+              <Text style={styles.detailValue}>{getPaymentMethod()}</Text>
+            </View>
+          )}
+
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Date & Time</Text>
             <Text style={styles.detailValue}>{dateString} {timeString}</Text>
           </View>
 
-          {!!item.meta && (
+          {!!item.meta && !String(item.meta).startsWith("led_") && !String(item.meta).startsWith("top_") && !String(item.kind || "").includes("fare") && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Note / Reason</Text>
               <Text style={styles.detailValue}>{item.meta}</Text>

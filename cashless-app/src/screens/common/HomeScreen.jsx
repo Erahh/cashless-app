@@ -488,7 +488,13 @@ export default function HomeScreen({ navigation, route }) {
             const meta =
               tx.source === "topup"
                 ? `GCash • ${String(tx.status || "").toUpperCase()}`
-                : tx.meta || String(tx.kind || "ledger");
+                : String(tx.kind || "").includes("fare")
+                  ? tx.payment_method === "qr_code" 
+                    ? "Paid via QR" 
+                    : tx.payment_method === "ic_card" 
+                    ? "Paid via IC Card" 
+                    : "Terminal Payment"
+                  : tx.meta || String(tx.kind || "ledger");
 
             // Format date nicely
             const txDate = new Date(tx.created_at);

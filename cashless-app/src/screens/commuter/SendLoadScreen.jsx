@@ -135,7 +135,18 @@ export default function SendLoadScreen({ navigation }) {
                 [{ text: "OK", onPress: () => navigation.goBack() }]
             );
         } catch (e) {
-            Alert.alert("Transfer Failed", e.message);
+            // Check if it's a balance limit error
+            if (e.message?.includes("exceed the ₱100,000 limit")) {
+                Alert.alert(
+                    "Receiver's Balance Limit Exceeded",
+                    `Your recipient cannot receive this amount right now because their wallet would exceed the ₱100,000 maximum balance.\n\nThey may need to:
+1. Spend some balance first, or
+2. Apply for business verification to increase their limit\n\nPlease try again later or contact them directly.`,
+                    [{ text: "OK" }]
+                );
+            } else {
+                Alert.alert("Transfer Failed", e.message);
+            }
         } finally {
             setLoading(false);
         }

@@ -128,6 +128,14 @@ export default function OperatorTerminalModeScreen({ navigation }) {
             const token = sessionData?.session?.access_token;
             if (!token) throw new Error("Session expired");
 
+            // Detect payment method based on credential format
+            // IC Cards typically have shorter, hex-based UIDs (8-16 chars)
+            // QR codes are typically longer and may contain alphanumeric patterns
+            let paymentMethod = "ic_card"; // Default to IC card
+            if (uid.length > 20 || uid.includes("-") || uid.startsWith("HTTP")) {
+              paymentMethod = "qr_code";
+            }
+
             const res = await fetch(`${API_BASE_URL}/transactions/scan`, {
                 method: "POST",
                 headers: {
@@ -136,6 +144,7 @@ export default function OperatorTerminalModeScreen({ navigation }) {
                 },
                 body: JSON.stringify({
                     credential_value: uid,
+                    payment_method: paymentMethod,
                     vehicle_id: vehicle?.id,
                     route_name: vehicle?.route_name,
                     device_id: "vehicle-terminal",

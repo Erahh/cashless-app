@@ -15,6 +15,7 @@ import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../api/apiHelper';
+import { API_BASE_URL } from '../../config/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -33,6 +34,8 @@ export default function FriendsMapScreen({ navigation, route }) {
     const [streetViewUrl, setStreetViewUrl] = useState('');
     const [selectedFriendId, setSelectedFriendId] = useState(null);
     const [friendTrails, setFriendTrails] = useState({});
+    const [backendStatus, setBackendStatus] = useState('online'); // online | offline
+    const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true); // Toggle auto-refresh
     const webViewRef = useRef(null);
     const broadcastIntervalRef = useRef(null);
     const walkWatchRef = useRef(null);
@@ -41,15 +44,58 @@ export default function FriendsMapScreen({ navigation, route }) {
     const prevOnlineRef = useRef({}); // Track previous online states
     const toastTimeoutRef = useRef(null);
     const followIntervalRef = useRef(null);
+    const fallbackLocationRef = useRef({ latitude: 14.5995, longitude: 120.9842 });
+    const refreshPauseUntilRef = useRef(0);
+    const broadcastPauseUntilRef = useRef(0);
+    const failureNoticeTimeoutRef = useRef(null);
+
+    const handleBackendFailure = (scope, error) => {
+        const now = Date.now();
+        if (scope === 'refresh') {
+            refreshPauseUntilRef.current = now + 30000;
+        }
+        if (scope === 'broadcast') {
+            broadcastPauseUntilRef.current = now + 30000;
+        }
+
+        if (now - (failureNoticeTimeoutRef.current || 0) > 30000) {
+            failureNoticeTimeoutRef.current = now;
+            setBackendStatus('offline');
+        }
+
+        if (__DEV__) {
+            console.warn(`Friends map ${scope} failed:`, error?.message || error);
+        }
+    };
+
+    const getBestAvailableLocation = async () => {
+        try {
+            const current = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+            });
+            return current;
+        } catch (currentError) {
+            try {
+                const lastKnown = await Location.getLastKnownPositionAsync();
+                return lastKnown;
+            } catch (lastKnownError) {
+                console.warn('No usable location fix available:', currentError, lastKnownError);
+                return null;
+            }
+        }
+    };
 
     useEffect(() => {
         initializeMap();
 
-        // Refresh friends' locations every 10 seconds
-        const friendsInterval = setInterval(refreshFriendsLocations, 10000);
+        // Refresh friends' locations every 10 seconds (only if auto-refresh is enabled)
+        let friendsInterval;
+        if (isAutoRefreshEnabled) {
+            friendsInterval = setInterval(refreshFriendsLocations, 10000);
+        }
 
         return () => {
-            clearInterval(friendsInterval);
+            if (friendsInterval) clearInterval(friendsInterval);
             if (broadcastIntervalRef.current) {
                 clearInterval(broadcastIntervalRef.current);
             }
@@ -65,7 +111,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                 followIntervalRef.current = null;
             }
         };
-    }, []);
+    }, [isAutoRefreshEnabled]);
 
     useEffect(() => {
         if (route?.params?.friendId) {
@@ -82,14 +128,15 @@ export default function FriendsMapScreen({ navigation, route }) {
                 return;
             }
 
-            const location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced,
-            });
+            const location = await getBestAvailableLocation();
+            const initialLocation = location
+                ? {
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                }
+                : fallbackLocationRef.current;
 
-            setMyLocation({
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-            });
+            setMyLocation(initialLocation);
 
             await refreshFriendsLocations();
 
@@ -109,10 +156,10 @@ export default function FriendsMapScreen({ navigation, route }) {
         if (broadcastIntervalRef.current) return;
 
         broadcastIntervalRef.current = setInterval(async () => {
+            if (Date.now() < broadcastPauseUntilRef.current) return;
             try {
-                const location = await Location.getCurrentPositionAsync({
-                    accuracy: Location.Accuracy.Balanced,
-                });
+                const location = await getBestAvailableLocation();
+                if (!location) return;
 
                 setMyLocation({
                     latitude: location.coords.latitude,
@@ -129,17 +176,24 @@ export default function FriendsMapScreen({ navigation, route }) {
                         heading: location.coords.heading,
                     })
                 });
+                setBackendStatus('online');
             } catch (error) {
-                console.error('Error broadcasting location:', error);
+                handleBackendFailure('broadcast', error);
             }
         }, 15000);
     };
 
     const refreshFriendsLocations = async () => {
+        if (Date.now() < refreshPauseUntilRef.current) return;
+
         try {
             const response = await api('/friends/locations-realtime');
+
             if (response.ok) {
-                const newFriends = response.friends || [];
+                const newFriends = (response.friends || []).map((friend) => ({
+                    ...friend,
+                    avatar_url: friend.avatar_url || friend.profile_picture || friend.friend_avatar_url || null,
+                }));
 
                 // Detect friends who just came online
                 newFriends.forEach(f => {
@@ -156,6 +210,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                 prevOnlineRef.current = onlineMap;
 
                 setFriends(newFriends);
+                setBackendStatus('online');
                 setFriendTrails((prev) => {
                     const next = { ...prev };
                     const now = Date.now();
@@ -179,9 +234,11 @@ export default function FriendsMapScreen({ navigation, route }) {
 
                     return next;
                 });
+            } else {
+                handleBackendFailure('refresh', new Error(response?.error || 'Failed to load friends locations'));
             }
         } catch (error) {
-            console.error('Error fetching friends locations:', error);
+            handleBackendFailure('refresh', error);
         }
     };
 
@@ -411,6 +468,13 @@ export default function FriendsMapScreen({ navigation, route }) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
+    const resolveAvatarUrl = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+        if (/^https?:\/\//i.test(raw) || raw.startsWith('data:')) return raw;
+        return `${API_BASE_URL}${raw.startsWith('/') ? '' : '/'}${raw}`;
+    };
+
     // Generate HTML for the map
     const generateMapHtml = () => {
         const lat = myLocation?.latitude || 14.5995;
@@ -438,15 +502,33 @@ export default function FriendsMapScreen({ navigation, route }) {
             );
             const popupHtml = `<b>${escapeHtml(displayName)}</b><br>${statusText}<br>${seenText}`;
             const isSelected = String(selectedFriendId || "") === String(f.friend_id || "");
-            const markerHtml = `<div style="background: ${f.is_online ? '#4CAF50' : '#8A8A8A'}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; border: 3px solid ${isSelected ? '#FFD36A' : 'white'}; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">${markerInitial}</div>`;
+            const avatarUrl = String(
+                f.avatar_url ||
+                f.friend_avatar_url ||
+                f.profile_picture ||
+                f.profile_image_url ||
+                ""
+            ).trim();
+            const resolvedAvatarUrl = resolveAvatarUrl(avatarUrl);
+            
+            // Use profile picture if available, otherwise use initial letter
+            let markerHtml;
+            if (resolvedAvatarUrl) {
+                // Profile picture available - create circular image marker
+                const picUrl = escapeHtml(resolvedAvatarUrl);
+                markerHtml = `<div style="width: 36px; height: 36px; border-radius: 50%; border: 3px solid ${isSelected ? '#FFD36A' : 'white'}; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.3); background-color: ${f.is_online ? '#4CAF50' : '#8A8A8A'};"><img src="${picUrl}" alt="${escapeHtml(displayName)}" style="width: 100%; height: 100%; object-fit: cover; display: block;" /></div>`;
+            } else {
+                // Fallback to initial letter
+                markerHtml = `<div style="background: ${f.is_online ? '#4CAF50' : '#8A8A8A'}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; border: 3px solid ${isSelected ? '#FFD36A' : 'white'}; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">${markerInitial}</div>`;
+            }
 
             return `
             L.marker([${f.latitude}, ${f.longitude}], {
                 icon: L.divIcon({
                     className: 'friend-marker',
                     html: ${JSON.stringify(markerHtml)},
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
                 })
             }).addTo(map).bindPopup(${JSON.stringify(popupHtml)});
         `;
@@ -546,6 +628,14 @@ export default function FriendsMapScreen({ navigation, route }) {
 
     return (
         <View style={styles.container}>
+            {backendStatus === 'offline' && (
+                <View style={styles.offlineBanner}>
+                    <Text style={styles.offlineBannerText}>
+                        Live updates are temporarily unavailable. Showing cached map data.
+                    </Text>
+                </View>
+            )}
+
             {/* Map WebView */}
             <WebView
                 ref={webViewRef}
@@ -710,6 +800,17 @@ export default function FriendsMapScreen({ navigation, route }) {
                         <Ionicons name="navigate" size={20} color="#FFF" />
                     </TouchableOpacity>
                 )}
+
+                <TouchableOpacity
+                    style={[styles.autoRefreshButton, !isAutoRefreshEnabled && styles.autoRefreshButtonOff]}
+                    onPress={() => setIsAutoRefreshEnabled(!isAutoRefreshEnabled)}
+                >
+                    <Ionicons 
+                        name={isAutoRefreshEnabled ? "reload-circle" : "pause-circle"} 
+                        size={24} 
+                        color="#FFF" 
+                    />
+                </TouchableOpacity>
 
                 <TouchableOpacity
                     style={[styles.refreshButton, refreshing && styles.refreshButtonDisabled]}
@@ -1027,6 +1128,17 @@ const styles = StyleSheet.create({
         backgroundColor: '#5B3DF5',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    autoRefreshButton: {
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        backgroundColor: '#4CAF50',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    autoRefreshButtonOff: {
+        backgroundColor: '#888888',
     },
     refreshButton: {
         width: 54,

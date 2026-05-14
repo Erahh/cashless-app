@@ -141,20 +141,6 @@ export default function BalanceScreen({ navigation }) {
               </View>
             </View>
 
-            <View style={styles.businessCtaCard}>
-              <View style={styles.businessCtaTextBlock}>
-                <Text style={[styles.businessCtaTitle, { color: theme.text }]}>Need higher wallet limits?</Text>
-                <Text style={[styles.businessCtaText, { color: theme.textSecondary }]}>Apply for business verification to raise your balance limit to ₱500,000.</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.businessCtaButton}
-                onPress={() => navigation.navigate("BusinessVerification")}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.businessCtaButtonText}>Apply Now</Text>
-              </TouchableOpacity>
-            </View>
-
             {/* ═══════════════════════════════════════════════════════════════
                 BALANCE LIMIT INDICATOR
             ═══════════════════════════════════════════════════════════════ */}

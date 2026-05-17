@@ -15,6 +15,7 @@ import { approveVerification, rejectVerification, fetchVerificationFiles } from 
 export default function AdminVerificationDetailScreen({ navigation, route }) {
   const request = route?.params?.request;
   const requestId = request?.id;
+  const isBusinessRequest = String(request?.requested_type || "").toLowerCase() === "business";
 
   const [loading, setLoading] = useState(true);
   const [files, setFiles] = useState([]);
@@ -37,6 +38,7 @@ export default function AdminVerificationDetailScreen({ navigation, route }) {
     load();
   }, [requestId]);
 
+  const businessFiles = files.filter((x) => x.document_type !== "id_front" && x.document_type !== "id_back");
   const front = files.find((x) => x.document_type === "id_front");
   const back = files.find((x) => x.document_type === "id_back");
 
@@ -81,6 +83,14 @@ export default function AdminVerificationDetailScreen({ navigation, route }) {
           {request?.profiles?.full_name || "Unknown"} • {request?.requested_type?.toUpperCase()}
         </Text>
 
+        {isBusinessRequest && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Business Details</Text>
+            <Text style={styles.cardText}>Business Name: {request?.business_details?.name || request?.business_name || "-"}</Text>
+            <Text style={styles.cardText}>Business Type: {request?.business_details?.type || request?.business_type || "-"}</Text>
+          </View>
+        )}
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Contact</Text>
           <Text style={styles.cardText}>Phone: {request?.profiles?.phone || "-"}</Text>
@@ -106,23 +116,43 @@ export default function AdminVerificationDetailScreen({ navigation, route }) {
           </View>
         ) : (
           <>
-            <Text style={styles.section}>ID Front</Text>
-            <View style={styles.imageBox}>
-              {front?.signed_url ? (
-                <Image source={{ uri: front.signed_url }} style={styles.image} />
-              ) : (
-                <Text style={styles.dim}>No front image</Text>
-              )}
-            </View>
+            {!isBusinessRequest && (
+              <>
+                <Text style={styles.section}>ID Front</Text>
+                <View style={styles.imageBox}>
+                  {front?.signed_url ? (
+                    <Image source={{ uri: front.signed_url }} style={styles.image} />
+                  ) : (
+                    <Text style={styles.dim}>No front image</Text>
+                  )}
+                </View>
 
-            <Text style={styles.section}>ID Back</Text>
-            <View style={styles.imageBox}>
-              {back?.signed_url ? (
-                <Image source={{ uri: back.signed_url }} style={styles.image} />
-              ) : (
-                <Text style={styles.dim}>No back image</Text>
-              )}
-            </View>
+                <Text style={styles.section}>ID Back</Text>
+                <View style={styles.imageBox}>
+                  {back?.signed_url ? (
+                    <Image source={{ uri: back.signed_url }} style={styles.image} />
+                  ) : (
+                    <Text style={styles.dim}>No back image</Text>
+                  )}
+                </View>
+              </>
+            )}
+
+            {isBusinessRequest && businessFiles.length > 0 && (
+              <>
+                <Text style={styles.section}>Uploaded Business Documents</Text>
+                {businessFiles.map((file) => (
+                  <View key={file.id || file.document_type} style={styles.fileCard}>
+                    <Text style={styles.fileTitle}>{String(file.document_type || "document").replace(/_/g, " ").toUpperCase()}</Text>
+                    {file.signed_url ? (
+                      <Image source={{ uri: file.signed_url }} style={styles.image} />
+                    ) : (
+                      <Text style={styles.dim}>No preview available</Text>
+                    )}
+                  </View>
+                ))}
+              </>
+            )}
           </>
         )}
 
@@ -199,6 +229,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   image: { width: "100%", height: "100%", resizeMode: "cover" },
+
+  fileCard: {
+    marginTop: 10,
+    borderRadius: 18,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    minHeight: 220,
+  },
+  fileTitle: {
+    color: "#fff",
+    fontWeight: "900",
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
+  },
 
   actions: { marginTop: 18, gap: 10 },
   primaryBtn: {

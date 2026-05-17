@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === "ios" ? 18 : 12,
+    paddingBottom: Platform.OS === "ios" ? 18 : 42,
     zIndex: 50,
     elevation: 50,
   },

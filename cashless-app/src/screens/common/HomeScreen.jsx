@@ -20,6 +20,7 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import { Notification01Icon, ScanIcon, WalletAdd01Icon, FlashIcon, SmartphoneWifiIcon, QrCodeIcon, Coins01Icon, InvoiceIcon, CheckmarkCircle01Icon, Bus01Icon, MoneySend01Icon } from "@hugeicons/core-free-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import TxIcon from "../../components/TxIcon";
+import VerifiedBadge from "../../components/VerifiedBadge";
 import { useAppStore } from "../../store/appStore";
 
 // ✅ Helper for timeout logic (increased to 35s for Render cold starts)
@@ -301,9 +302,13 @@ export default function HomeScreen({ navigation, route }) {
                 Last updated: {new Date(lastUpdated).toLocaleTimeString()}
               </Text>
             ) : null}
-            <View style={[styles.badge, styles[`badge_${computed.badge.tone}`]]}>
-              <Text style={styles.badgeText}>{computed.badge.text}</Text>
-            </View>
+            {computed.verificationStatus === "Verified" ? (
+              <VerifiedBadge size={28} label={`${computed.passengerType} • Verified`} textStyle={{ color: theme.text }} />
+            ) : (
+              <View style={[styles.badge, styles[`badge_${computed.badge.tone}`]]}>
+                <Text style={styles.badgeText}>{computed.badge.text}</Text>
+              </View>
+            )}
           </View>
 
           {/* ✅ Notifications */}

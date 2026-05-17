@@ -15,18 +15,8 @@ import { ArrowLeft01Icon, RefreshIcon, ArrowRight01Icon, MoreVerticalCircle01Ico
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchNotifications, deleteNotification, clearNotifications } from "../../api/notificationsApi";
 import { useTheme } from "../../context/ThemeContext";
-
-function normalizePayload(payload) {
-  const p = payload && typeof payload === "object" ? payload : {};
-  return {
-    title: String(p.title || "Notification"),
-    body: String(p.body || ""),
-    type: String(p.type || "system"), // 'transfer', 'payment', 'system'
-    action: String(p.action || p.event || ""),
-    target: String(p.target || p.screen || ""),
-    friendId: p.friend_id || p.sender_id || p.user_id || null,
-  };
-}
+import { normalizeNotificationPayload, resolveNotificationDestination } from "../../utils/notificationRouting";
+import VerifiedBadge from "../../components/VerifiedBadge";
 
 export default function NotificationsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -97,46 +87,10 @@ export default function NotificationsScreen({ navigation }) {
   };
 
   const handleNotificationClick = (n, p) => {
-    // Navigate based on notification type
-    const lowerType = String(p.type || "").toLowerCase();
-    const lowerTitle = String(p.title || "").toLowerCase();
-    const lowerBody = String(p.body || "").toLowerCase();
     const routeNames = navigation?.getState?.()?.routeNames || [];
-    const canNavigateTo = (routeName) => routeNames.includes(routeName);
-
-    const isFriendOnlineNotification =
-      (lowerType.includes("friend") && lowerType.includes("online")) ||
-      (lowerTitle.includes("friend") && lowerTitle.includes("online")) ||
-      (lowerBody.includes("friend") && lowerBody.includes("online"));
-    const isFriendRequestNotification =
-      (lowerType.includes("friend") && lowerType.includes("request")) ||
-      (lowerTitle.includes("friend") && lowerTitle.includes("request")) ||
-      (lowerBody.includes("friend") && lowerBody.includes("request")) ||
-      String(p.action || "").toLowerCase().includes("friend_request") ||
-      String(p.target || "").toLowerCase().includes("friend");
-
-    if (isFriendRequestNotification && canNavigateTo("AddFriend")) {
-      navigation.navigate("AddFriend", {
-        focusIncoming: true,
-        friendId: p.friendId,
-      });
-      return;
-    }
-
-    if (isFriendOnlineNotification && canNavigateTo("FriendsMap")) {
-      navigation.navigate("FriendsMap", {
-        friendId: p.friendId,
-      });
-      return;
-    }
-    
-    // Security or Account related go to Profile
-    if (lowerType.includes("security") || lowerType.includes("account")) {
-      navigation.navigate("Profile");
-    } else {
-      // By default (rides, send, top-up, transfer, payment, etc.), go to Transactions history
-      navigation.navigate("Transactions");
-    }
+    const destination = resolveNotificationDestination(p, routeNames);
+    if (!destination?.routeName) return;
+    navigation.navigate(destination.routeName, destination.params);
   };
 
   const handleDelete = async (id) => {
@@ -286,21 +240,21 @@ export default function NotificationsScreen({ navigation }) {
         ) : (
           <View style={styles.list}>
             {items.map((n) => {
-              const p = normalizePayload(n.payload);
+              const p = normalizeNotificationPayload(n.payload);
               const { icon, color, lib } = getIconInfo(p.title, p.type);
 
               const date = new Date(n.created_at);
               const displayTime = formatNotificationTime(date);
 
               return (
-                <TouchableOpacity 
-                  key={n.id} 
-                  style={styles.notificationItem}
-                  activeOpacity={0.7}
+                <TouchableOpacity
+                  key={n.id}
+                  style={[styles.notificationItem, { backgroundColor: theme.card }]}
+                  activeOpacity={0.85}
                   onPress={() => handleNotificationClick(n, p)}
                 >
                   <View style={styles.itemRow}>
-                     <RenderIcon name={icon} color={color} lib={lib} />
+                    <RenderIcon name={icon} color={color} lib={lib} />
 
                     <View style={styles.itemContent}>
                       <Text style={styles.itemTitle}>{p.title}</Text>
@@ -310,9 +264,15 @@ export default function NotificationsScreen({ navigation }) {
                       <Text style={styles.itemTime}>{displayTime}</Text>
                     </View>
 
-                    <TouchableOpacity onPress={(e) => openMenu(n.id, e)} style={styles.itemMenuBtn}>
-                      <HugeiconsIcon icon={MoreVerticalCircle01Icon} size={20} color={theme.textMuted} />
-                    </TouchableOpacity>
+                    <View style={{ alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                      {(p.type?.toLowerCase?.()?.includes('verification') || p.title?.toLowerCase?.()?.includes('verified') || p.body?.toLowerCase?.()?.includes('verified')) ? (
+                        <VerifiedBadge size={22} />
+                      ) : (
+                        <TouchableOpacity onPress={(e) => openMenu(n.id, e)} style={styles.itemMenuBtn}>
+                          <HugeiconsIcon icon={MoreVerticalCircle01Icon} size={20} color={theme.textMuted} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </TouchableOpacity>
               );
@@ -396,9 +356,16 @@ const createStyles = (theme) => StyleSheet.create({
   list: { gap: 10 },
 
   notificationItem: {
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+    marginBottom: 12,
   },
   itemRow: { flexDirection: "row", alignItems: "flex-start", gap: 16 },
 

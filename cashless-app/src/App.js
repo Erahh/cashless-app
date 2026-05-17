@@ -12,6 +12,7 @@ import { UserProvider } from "./context/UserContext";
 import { supabase } from "./api/supabase";
 import { hasMpin } from "./api/mpinLocal";
 import { usePushNotifications } from "./hooks/usePushNotifications";
+import { resolveNotificationDestination } from "./utils/notificationRouting";
 
 function AppWithLock() {
   const { setLocked } = useContext(AppLockContext);
@@ -81,25 +82,12 @@ function AppWithLock() {
 
     const pushSub = DeviceEventEmitter.addListener("PUSH_NOTIFICATION_RESPONSE", (data = {}) => {
       try {
-        const type = String(data.type || "").toLowerCase();
-        const title = String(data.title || "").toLowerCase();
-        const body = String(data.body || "").toLowerCase();
-        const friendId = data.friend_id || data.friendId || data.sender_id || null;
-
-        const isFriendOnline =
-          (type.includes("friend") && type.includes("online")) ||
-          (title.includes("friend") && title.includes("online")) ||
-          (body.includes("friend") && body.includes("online"));
-
         const nav = navigationRef.current;
         if (!nav?.navigate) return;
 
-        if (isFriendOnline && friendId) {
-          nav.navigate("FriendsMap", { friendId });
-          return;
-        }
-
-        nav.navigate("Notifications");
+        const destination = resolveNotificationDestination(data, [], { fallbackRouteName: "Notifications" });
+        if (!destination?.routeName) return;
+        nav.navigate(destination.routeName, destination.params);
       } catch (err) {
         // Ignore navigation errors from background responses
       }

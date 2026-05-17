@@ -72,13 +72,20 @@ export default function AdminVerificationScreen({ navigation }) {
                   <Text style={styles.cardMeta}>
                     {it.requested_type?.toUpperCase()} • {it.profiles?.phone || "-"}
                   </Text>
+                  {it.requested_type === "business" && (
+                    <Text style={styles.cardMeta2}>
+                      Business: {it.business_details?.name || it.business_name || "-"}
+                    </Text>
+                  )}
                   <Text style={styles.cardMeta2}>
                     Submitted: {new Date(it.submitted_at).toLocaleString()}
                   </Text>
                 </View>
 
                 <View style={styles.statusPill}>
-                  <Text style={styles.statusPillText}>PENDING</Text>
+                  <Text style={styles.statusPillText}>
+                    {it.requested_type === "business" ? "BUSINESS" : "REGULAR"}
+                  </Text>
                 </View>
               </TouchableOpacity>
             ))}

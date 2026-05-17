@@ -25,6 +25,8 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { renderApiRequest } from "../../api/apiHelper";
 import AboutUsModal from "../../components/AboutUsModal";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import VerifiedBadge from "../../components/VerifiedBadge";
 
 
 export default function ProfileScreen({ navigation }) {
@@ -32,8 +34,11 @@ export default function ProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [account, setAccount] = useState(null);
+  const [businessVerification, setBusinessVerification] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [aboutModalVisible, setAboutModalVisible] = useState(false);
+  const [isOperator, setIsOperator] = useState(false);
+  const [operatorApp, setOperatorApp] = useState(null);
   const { setLocked, setLockSuppressed } = useContext(AppLockContext);
 
   const { theme, isDarkMode, toggleTheme } = useTheme();
@@ -99,6 +104,22 @@ export default function ProfileScreen({ navigation }) {
 
       setProfile(p);
       setAccount(a);
+
+      // Fetch business verification status
+      try {
+        const biz = await renderApiRequest("/me/business-verification");
+        setBusinessVerification(biz);
+      } catch (e) {
+        console.warn("Failed to fetch business verification:", e.message);
+      }
+
+      // Check Operator Status
+      const { data: op } = await supabase.from("operator_users").select("*").eq("user_id", userId).single();
+      setIsOperator(!!op);
+
+      // Check Application Status
+      const { data: app } = await supabase.from("operator_applications").select("*").eq("user_id", userId).order("submitted_at", { ascending: false }).limit(1).single();
+      setOperatorApp(app);
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to load profile");
     } finally {
@@ -297,8 +318,69 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.profileEmail} numberOfLines={1}>
               {profile?.email || profile?.phone || "—"}
             </Text>
+
+            {computed.verLabel === "Verified" && (
+              <VerifiedBadge size={28} label={`${computed.passengerLabel} • Verified`} textStyle={{ color: theme.text }} />
+            )}
           </View>
         </View>
+
+        {/* Business Upgrade Card */}
+        {businessVerification && (
+          <>
+            {businessVerification.can_apply && !businessVerification.verified && (
+              <View style={styles.businessUpgradeCard}>
+                <View style={styles.businessCardHeader}>
+                  <Text style={styles.businessCardIcon}>📈</Text>
+                  <View style={styles.businessCardTitleWrap}>
+                    <Text style={styles.businessCardTitle}>Upgrade Wallet</Text>
+                    <Text style={styles.businessCardSubtitle}>Unlock ₱500,000 limit</Text>
+                  </View>
+                </View>
+                <Text style={styles.businessCardDescription}>
+                  Verify your business to increase your wallet limit by 10x and enjoy higher top-up amounts.
+                </Text>
+                <TouchableOpacity
+                  style={styles.businessCardButton}
+                  onPress={() => navigation.navigate('BusinessVerification')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.businessCardButtonText}>Apply Now →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {businessVerification.verified && (
+              <View style={[styles.businessUpgradeCard, styles.businessCardVerified]}>
+                <View style={styles.businessCardHeader}>
+                  <Text style={styles.businessCardIcon}>✔</Text>
+                  <View style={styles.businessCardTitleWrap}>
+                    <Text style={styles.businessCardTitle}>Business Account</Text>
+                    <Text style={styles.businessCardSubtitle}>Verified</Text>
+                  </View>
+                </View>
+                <Text style={styles.businessCardDescription}>
+                  Your wallet limit is now ₱500,000. Thank you for your trust!
+                </Text>
+              </View>
+            )}
+
+            {businessVerification.application?.status === 'pending' && (
+              <View style={[styles.businessUpgradeCard, styles.businessCardPending]}>
+                <View style={styles.businessCardHeader}>
+                  <Text style={styles.businessCardIcon}>⏳</Text>
+                  <View style={styles.businessCardTitleWrap}>
+                    <Text style={styles.businessCardTitle}>Pending Review</Text>
+                    <Text style={styles.businessCardSubtitle}>{businessVerification.application.business_name}</Text>
+                  </View>
+                </View>
+                <Text style={styles.businessCardDescription}>
+                  Your business verification is under review. We'll notify you within 3-5 days.
+                </Text>
+              </View>
+            )}
+          </>
+        )}
 
         {/* Account Section */}
         <Text style={styles.sectionLabel}>Account</Text>
@@ -344,6 +426,34 @@ export default function ProfileScreen({ navigation }) {
             theme={theme}
           />
           <View style={styles.menuDivider} />
+          <MenuItem
+            icon={Shield01Icon}
+            title="Business Account"
+            rightText={businessVerification?.verified ? "VERIFIED" : "UPGRADE"}
+            rightColor={businessVerification?.verified ? theme.success : theme.accent}
+            onPress={() => navigation.navigate('BusinessVerification')}
+            theme={theme}
+          />
+          <View style={styles.menuDivider} />
+          <MenuItem
+            icon={Shield01Icon}
+            title="Become an Operator"
+            rightText={
+              isOperator ? "ACTIVE" :
+                operatorApp?.status === "pending" ? "PENDING" :
+                  operatorApp?.status === "rejected" ? "REJECTED" : "APPLY"
+            }
+            rightColor={
+              isOperator ? theme.success :
+                operatorApp?.status === "pending" ? theme.warning :
+                  operatorApp?.status === "rejected" ? theme.danger : theme.accent
+            }
+            onPress={() => {
+              if (isOperator) return Alert.alert("Active", "You are already a verified operator.");
+              navigation.navigate("OperatorApply");
+            }}
+            theme={theme}
+          />
         </View>
 
         {/* Preferences Section */}
@@ -593,6 +703,9 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
     color: theme.textSecondary,
     fontSize: 13,
   },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
+  verifiedPill: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  verifiedText: { fontSize: 13, fontWeight: '700' },
 
   // Section labels
   sectionLabel: {
@@ -655,6 +768,66 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
     color: theme.textMuted,
     fontSize: 13,
     fontWeight: "600",
+  },
+
+  // Business Upgrade Card
+  businessUpgradeCard: {
+    backgroundColor: isDarkMode
+      ? "linear-gradient(135deg, rgba(247, 227, 83, 0.1) 0%, rgba(247, 227, 83, 0.05) 100%)"
+      : "linear-gradient(135deg, rgba(26, 26, 26, 0.04) 0%, rgba(26, 26, 26, 0.02) 100%)",
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: isDarkMode ? "rgba(247, 227, 83, 0.2)" : "rgba(26, 26, 26, 0.1)",
+    padding: 18,
+    marginBottom: 24,
+    backgroundColor: theme.card,
+  },
+  businessCardVerified: {
+    borderColor: isDarkMode ? "rgba(52, 211, 153, 0.3)" : "rgba(52, 211, 153, 0.2)",
+  },
+  businessCardPending: {
+    borderColor: isDarkMode ? "rgba(251, 191, 36, 0.3)" : "rgba(251, 191, 36, 0.2)",
+  },
+  businessCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  businessCardIcon: {
+    fontSize: 28,
+  },
+  businessCardTitleWrap: {
+    flex: 1,
+  },
+  businessCardTitle: {
+    color: theme.text,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  businessCardSubtitle: {
+    color: theme.textSecondary,
+    fontSize: 12,
+  },
+  businessCardDescription: {
+    color: theme.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  businessCardButton: {
+    backgroundColor: theme.accent,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  businessCardButtonText: {
+    color: isDarkMode ? "#0B0E14" : "#fff",
+    fontSize: 14,
+    fontWeight: "700",
   },
 
   // Version

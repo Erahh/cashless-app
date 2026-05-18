@@ -21,6 +21,7 @@ import {
   Cancel01Icon, UserIcon,
   LockIcon, Clock01Icon, QrCodeIcon,
   InformationCircleIcon, SmartphoneWifiIcon,
+  CheckmarkCircle02Icon, Briefcase01Icon, Bus01Icon,
 } from "@hugeicons/core-free-icons";
 import * as ImagePicker from "expo-image-picker";
 import { renderApiRequest } from "../../api/apiHelper";
@@ -412,7 +413,7 @@ export default function ProfileScreen({ navigation }) {
           />
           <View style={styles.menuDivider} />
           <MenuItem
-            icon={Shield01Icon}
+            icon={CheckmarkCircle02Icon}
             title="Verification Status"
             rightText={computed.verLabel}
             rightColor={
@@ -427,7 +428,7 @@ export default function ProfileScreen({ navigation }) {
           />
           <View style={styles.menuDivider} />
           <MenuItem
-            icon={Shield01Icon}
+            icon={Briefcase01Icon}
             title="Business Account"
             rightText={businessVerification?.verified ? "VERIFIED" : "UPGRADE"}
             rightColor={businessVerification?.verified ? theme.success : theme.accent}
@@ -436,7 +437,7 @@ export default function ProfileScreen({ navigation }) {
           />
           <View style={styles.menuDivider} />
           <MenuItem
-            icon={Shield01Icon}
+            icon={Bus01Icon}
             title="Become an Operator"
             rightText={
               isOperator ? "ACTIVE" :

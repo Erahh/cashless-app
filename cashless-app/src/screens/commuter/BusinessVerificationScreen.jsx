@@ -323,20 +323,15 @@ export default function BusinessVerificationScreen({ navigation }) {
             });
 
             const json = await res.json();
-            console.log("Business verification submit response:", json);
             if (!res.ok) {
                 return Alert.alert("Error", json.error || "Failed to submit application");
             }
 
-            try {
-                setStatus("pending");
-                setLatestRequest({
-                    status: "pending",
-                    submitted_at: new Date().toISOString(),
-                });
-            } catch (err) {
-                console.warn('Failed to update state after submit:', err);
-            }
+            setStatus("pending");
+            setLatestRequest({
+                status: "pending",
+                submitted_at: new Date().toISOString(),
+            });
 
             Alert.alert(
                 "Success",
@@ -345,12 +340,7 @@ export default function BusinessVerificationScreen({ navigation }) {
                     {
                         text: "OK",
                         onPress: () => {
-                            try {
-                                navigation.navigate('VerificationSubmitted');
-                            } catch (err) {
-                                console.warn('Error navigating after submit:', err);
-                                Alert.alert('Error', err?.message || String(err));
-                            }
+                            navigation.navigate('VerificationSubmitted');
                         },
                     }
                 ]

@@ -430,7 +430,7 @@ export default function ProfileScreen({ navigation }) {
           <MenuItem
             icon={Briefcase01Icon}
             title="Business Account"
-            rightText={businessVerification?.verified ? "VERIFIED" : "UPGRADE"}
+            rightText={businessVerification?.verified ? "Verified" : "Upgrade"}
             rightColor={businessVerification?.verified ? theme.success : theme.accent}
             onPress={() => navigation.navigate('BusinessVerification')}
             theme={theme}

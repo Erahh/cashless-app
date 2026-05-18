@@ -13,7 +13,20 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
-import { Ionicons } from '@expo/vector-icons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
+import {
+    ArrowLeft01Icon,
+    Cancel01Icon,
+    EyeIcon,
+    Layers02Icon,
+    LocationUser01Icon,
+    Navigation01Icon,
+    RefreshIcon,
+    UserAdd01Icon,
+    UserGroupIcon,
+    WalkingIcon,
+    ViewOffIcon,
+} from '@hugeicons/core-free-icons';
 import { api } from '../../api/apiHelper';
 import { API_BASE_URL } from '../../config/api';
 
@@ -614,7 +627,7 @@ export default function FriendsMapScreen({ navigation, route }) {
     if (!myLocation) {
         return (
             <View style={styles.errorContainer}>
-                <Ionicons name="location-outline" size={64} color="#888" />
+                <HugeiconsIcon icon={LocationUser01Icon} size={64} color="#888" />
                 <Text style={styles.errorText}>Location permission denied</Text>
                 <TouchableOpacity style={styles.retryButton} onPress={initializeMap}>
                     <Text style={styles.retryButtonText}>Retry</Text>
@@ -657,7 +670,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Ionicons name="arrow-back" size={24} color="#FFF" />
+                    <HugeiconsIcon icon={ArrowLeft01Icon} size={24} color="#FFF" />
                 </TouchableOpacity>
 
                 <View style={styles.topRightControls}>
@@ -665,7 +678,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                         style={styles.layerButton}
                         onPress={() => setMapMode((prev) => (prev === 'street' ? 'satellite' : 'street'))}
                     >
-                        <Ionicons name="layers" size={18} color="#FFF" />
+                        <HugeiconsIcon icon={Layers02Icon} size={18} color="#FFF" />
                         <Text style={styles.layerButtonText}>
                             {mapMode === 'satellite' ? 'Satellite' : 'Street'}
                         </Text>
@@ -675,7 +688,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                         style={[styles.layerButton, followMode && styles.followButtonActive]}
                         onPress={() => setFollowMode((v) => !v)}
                     >
-                        <Ionicons name="locate" size={18} color="#FFF" />
+                        <HugeiconsIcon icon={LocationUser01Icon} size={18} color="#FFF" />
                         <Text style={styles.layerButtonText}>{followMode ? 'Following' : 'Follow'}</Text>
                     </TouchableOpacity>
 
@@ -683,7 +696,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                         style={styles.friendCount}
                         onPress={() => setShowFriendsList(!showFriendsList)}
                     >
-                        <Ionicons name="people" size={20} color="#FFF" />
+                        <HugeiconsIcon icon={UserGroupIcon} size={20} color="#FFF" />
                         <Text style={styles.friendCountText}>
                             {onlineFriends.length} online / {offlineFriends.length} offline
                         </Text>
@@ -768,11 +781,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                     style={[styles.shareButton, !shareLocation && styles.shareButtonOff]}
                     onPress={toggleLocationSharing}
                 >
-                    <Ionicons
-                        name={shareLocation ? "eye" : "eye-off"}
-                        size={20}
-                        color="#FFF"
-                    />
+                    <HugeiconsIcon icon={shareLocation ? EyeIcon : ViewOffIcon} size={20} color="#FFF" />
                     <Text style={styles.shareButtonText}>
                         {shareLocation ? 'Visible' : 'Hidden'}
                     </Text>
@@ -782,14 +791,14 @@ export default function FriendsMapScreen({ navigation, route }) {
                     style={styles.addFriendButton}
                     onPress={() => navigation.navigate('AddFriend')}
                 >
-                    <Ionicons name="person-add" size={24} color="#000" />
+                    <HugeiconsIcon icon={UserAdd01Icon} size={24} color="#000" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     style={[styles.walkButton, walkingMode && styles.walkButtonActive]}
                     onPress={toggleWalkingMode}
                 >
-                    <Ionicons name="walk" size={22} color="#FFF" />
+                    <HugeiconsIcon icon={WalkingIcon} size={22} color="#FFF" />
                 </TouchableOpacity>
 
                 {walkingMode && (
@@ -797,7 +806,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                         style={styles.streetViewButton}
                         onPress={openStreetView}
                     >
-                        <Ionicons name="navigate" size={20} color="#FFF" />
+                        <HugeiconsIcon icon={Navigation01Icon} size={20} color="#FFF" />
                     </TouchableOpacity>
                 )}
 
@@ -805,10 +814,10 @@ export default function FriendsMapScreen({ navigation, route }) {
                     style={[styles.autoRefreshButton, !isAutoRefreshEnabled && styles.autoRefreshButtonOff]}
                     onPress={() => setIsAutoRefreshEnabled(!isAutoRefreshEnabled)}
                 >
-                    <Ionicons 
-                        name={isAutoRefreshEnabled ? "reload-circle" : "pause-circle"} 
-                        size={24} 
-                        color="#FFF" 
+                    <HugeiconsIcon
+                        icon={RefreshIcon}
+                        size={24}
+                        color="#FFF"
                     />
                 </TouchableOpacity>
 
@@ -827,7 +836,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                     {refreshing ? (
                         <ActivityIndicator size="small" color="#FFF" />
                     ) : (
-                        <Ionicons name="refresh" size={24} color="#FFF" />
+                        <HugeiconsIcon icon={RefreshIcon} size={24} color="#FFF" />
                     )}
                 </TouchableOpacity>
             </View>
@@ -871,7 +880,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                         style={styles.streetViewCloseButton}
                         onPress={() => setStreetViewVisible(false)}
                     >
-                        <Ionicons name="close" size={24} color="#FFF" />
+                        <HugeiconsIcon icon={Cancel01Icon} size={24} color="#FFF" />
                     </TouchableOpacity>
                 </View>
             </Modal>

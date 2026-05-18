@@ -31,9 +31,15 @@ export default function BusinessVerificationScreen({ navigation }) {
     const [businessType, setBusinessType] = useState("");
     const [registrationNumber, setRegistrationNumber] = useState("");
     const [tinNumber, setTinNumber] = useState("");
+    const [tinType, setTinType] = useState(null); // 'individual' | 'company'
+    const [tinTypeError, setTinTypeError] = useState("");
     const [businessAddress, setBusinessAddress] = useState("");
     const [contactName, setContactName] = useState("");
     const [contactPhone, setContactPhone] = useState("");
+    // validation errors
+    const [regNumError, setRegNumError] = useState("");
+    const [tinError, setTinError] = useState("");
+    const [phoneError, setPhoneError] = useState("");
     const [latestRequest, setLatestRequest] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     // Document uploads (base64 strings)
@@ -99,6 +105,14 @@ export default function BusinessVerificationScreen({ navigation }) {
 
         if (step === 2) {
             if (!registrationNumber.trim()) return Alert.alert("Required", "Please enter business registration number");
+            // registration number length
+            if (registrationNumber.trim().length > 30) return Alert.alert("Invalid", "Registration number is too long");
+            // TIN validation if provided
+            if (tinNumber) {
+                if (!tinType) return Alert.alert("Required", "Please select TIN type (Individual or Company)");
+                if (tinType === 'individual' && tinNumber.length !== 9) return Alert.alert("Invalid", "TIN for Individual must be exactly 9 digits");
+                if (tinType === 'company' && tinNumber.length !== 12) return Alert.alert("Invalid", "TIN for Company must be exactly 12 digits");
+            }
             if (!businessAddress.trim()) return Alert.alert("Required", "Please enter business address");
             return true;
         }
@@ -106,6 +120,11 @@ export default function BusinessVerificationScreen({ navigation }) {
         if (step === 3) {
             if (!contactName.trim()) return Alert.alert("Required", "Please enter contact person name");
             if (!contactPhone.trim()) return Alert.alert("Required", "Please enter contact phone number");
+            // normalize phone: accept +63 or local 0-prefixed. Final must be 11 digits starting with 09
+            let phoneDigits = contactPhone.replace(/\s|\-|\(|\)/g, '');
+            if (phoneDigits.startsWith('+63')) phoneDigits = '0' + phoneDigits.slice(3);
+            phoneDigits = phoneDigits.replace(/\D/g, '');
+            if (!(phoneDigits.length === 11 && phoneDigits.startsWith('09'))) return Alert.alert("Invalid", "Please enter a valid Philippine mobile number (11 digits, starts with 09)");
             if (!businessPermit && !registrationId) return Alert.alert("Required", "Please upload at least one business proof document");
             if (!ownerId) return Alert.alert("Required", "Please upload an owner ID / selfie with ID");
             if (!selfieWithId) return Alert.alert("Required", "Please take a selfie with ID");
@@ -261,6 +280,11 @@ export default function BusinessVerificationScreen({ navigation }) {
         if (!businessAddress.trim()) return Alert.alert("Required", "Please enter business address");
         if (!contactName.trim()) return Alert.alert("Required", "Please enter contact person name");
         if (!contactPhone.trim()) return Alert.alert("Required", "Please enter contact phone number");
+        // normalize to local 11-digit format
+        let phoneDigits = contactPhone.replace(/\s|\-|\(|\)/g, '');
+        if (phoneDigits.startsWith('+63')) phoneDigits = '0' + phoneDigits.slice(3);
+        phoneDigits = phoneDigits.replace(/\D/g, '');
+        if (!(phoneDigits.length === 11 && phoneDigits.startsWith('09'))) return Alert.alert("Invalid", "Please enter a valid Philippine mobile number (11 digits, starts with 09)");
         if (!businessPermit && !registrationId) return Alert.alert("Required", "Please upload at least one business proof document (business permit or registration ID)");
         if (!ownerId) return Alert.alert("Required", "Please upload an owner ID / selfie with ID");
         if (!acceptTerms) return Alert.alert("Terms", "You must accept the terms to submit your application");
@@ -281,10 +305,13 @@ export default function BusinessVerificationScreen({ navigation }) {
                     business_name: businessName.trim(),
                     business_type: businessType,
                     business_registration_number: registrationNumber.trim(),
-                    tin_number: tinNumber.trim() || null,
+                        // send normalized TIN (digits only) if present
+                        tin_type: tinType || null,
+                        // send normalized TIN (digits only) if present and ensure exact length per type
+                        tin_number: tinNumber ? (tinType === 'company' ? tinNumber.replace(/\D/g, '').slice(0, 12) : tinNumber.replace(/\D/g, '').slice(0, 9)) : null,
                     business_address: businessAddress.trim(),
                     contact_person_name: contactName.trim(),
-                    contact_person_phone: contactPhone.trim(),
+                        contact_person_phone: contactPhone.trim(),
                     // Attach documents as base64-encoded strings (without data URI prefix)
                     documents: {
                         business_permit: businessPermit || null,
@@ -557,17 +584,56 @@ export default function BusinessVerificationScreen({ navigation }) {
                                     placeholder="e.g., BN-2024-001234"
                                     placeholderTextColor={theme.textMuted}
                                     value={registrationNumber}
-                                    onChangeText={setRegistrationNumber}
+                                    onChangeText={(t) => {
+                                        // limit length and strip control characters
+                                        const cleaned = t.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 30);
+                                        setRegistrationNumber(cleaned);
+                                        if (cleaned.length > 25) setRegNumError('Registration number is unusually long'); else setRegNumError('');
+                                    }}
+                                    maxLength={30}
                                 />
+                                {regNumError ? <Text style={{ color: '#FF6B6B', marginTop: 6 }}>{regNumError}</Text> : null}
 
                                 <Text style={[styles.label, { color: theme.text, marginTop: 16 }]}>TIN Number (Optional)</Text>
+                                <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                                    <TouchableOpacity
+                                        activeOpacity={0.8}
+                                        style={[styles.typeButtonSmall, { backgroundColor: tinType === 'individual' ? theme.warning : (isDarkMode ? '#1e1e1e' : '#f5f5f5'), borderColor: tinType === 'individual' ? theme.warning : theme.border }]}
+                                        onPress={() => setTinType('individual')}
+                                    >
+                                        <Text style={{ color: tinType === 'individual' ? '#000' : theme.text }}>Individual (9 digits)</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        activeOpacity={0.8}
+                                        style={[styles.typeButtonSmall, { backgroundColor: tinType === 'company' ? theme.warning : (isDarkMode ? '#1e1e1e' : '#f5f5f5'), borderColor: tinType === 'company' ? theme.warning : theme.border }]}
+                                        onPress={() => setTinType('company')}
+                                    >
+                                        <Text style={{ color: tinType === 'company' ? '#000' : theme.text }}>Company (12 digits)</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                {tinTypeError ? <Text style={{ color: '#FF6B6B', marginTop: 6 }}>{tinTypeError}</Text> : null}
                                 <TextInput
                                     style={[styles.input, { backgroundColor: isDarkMode ? '#1e1e1e' : '#f5f5f5', color: theme.text, borderColor: theme.border }]}
-                                    placeholder="12-345-678-901"
+                                    placeholder="123456789012"
                                     placeholderTextColor={theme.textMuted}
                                     value={tinNumber}
-                                    onChangeText={setTinNumber}
+                                    onChangeText={(t) => {
+                                        // allow only digits, limit to 12
+                                        const digits = t.replace(/\D/g, '').slice(0, 12);
+                                        setTinNumber(digits);
+                                        // validate against selected type if present
+                                        if (tinType === 'individual') {
+                                            if (digits.length !== 9) setTinError('TIN must be exactly 9 digits for individuals'); else setTinError('');
+                                        } else if (tinType === 'company') {
+                                            if (digits.length !== 12) setTinError('TIN must be exactly 12 digits for companies'); else setTinError('');
+                                        } else {
+                                            if (digits && digits.length < 9) setTinError('TIN looks too short'); else setTinError('');
+                                        }
+                                    }}
+                                    keyboardType="number-pad"
+                                    maxLength={12}
                                 />
+                                {tinError ? <Text style={{ color: '#FF6B6B', marginTop: 6 }}>{tinError}</Text> : null}
 
                                 <Text style={[styles.label, { color: theme.text, marginTop: 16 }]}>Business Address *</Text>
                                 <TextInput
@@ -600,9 +666,17 @@ export default function BusinessVerificationScreen({ navigation }) {
                                     placeholder="09xxxxxxxxx"
                                     placeholderTextColor={theme.textMuted}
                                     value={contactPhone}
-                                    onChangeText={setContactPhone}
+                                    onChangeText={(t) => {
+                                        // allow digits and plus sign, but store as typed; show validation
+                                        const cleaned = t.replace(/[^+\d]/g, '');
+                                        setContactPhone(cleaned);
+                                        const digits = cleaned.replace(/\D/g, '');
+                                        if (digits && (digits.length < 10 || digits.length > 13)) setPhoneError('Enter a valid phone number'); else setPhoneError('');
+                                    }}
                                     keyboardType="phone-pad"
+                                    maxLength={15}
                                 />
+                                {phoneError ? <Text style={{ color: '#FF6B6B', marginTop: 6 }}>{phoneError}</Text> : null}
 
                                 <Text style={[styles.label, { color: theme.text, marginTop: 20 }]}>Required Documents *</Text>
                                 <Text style={[styles.helperText, { color: theme.textMuted }]}>Use a clear photo or scan. Business proof and selfie verification are required before submission.</Text>

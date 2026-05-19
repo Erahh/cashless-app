@@ -1,7 +1,13 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
+
+const normalizeKeyboardType = (keyboardType) => {
+    if (Platform.OS === "ios") return keyboardType;
+    if (keyboardType === "number-pad") return "numeric";
+    return keyboardType;
+};
 
 export default function GlassInput({
     label,
@@ -25,9 +31,12 @@ export default function GlassInput({
                     onChangeText={onChangeText}
                     placeholder={placeholder}
                     placeholderTextColor="rgba(255,255,255,0.40)"
-                    keyboardType={keyboardType}
+                    keyboardType={normalizeKeyboardType(keyboardType)}
+                    inputMode={keyboardType === "number-pad" ? "numeric" : undefined}
                     autoCapitalize={autoCapitalize}
                     secureTextEntry={hide}
+                    autoCorrect={false}
+                    autoComplete="off"
                     maxLength={maxLength}
                     style={styles.input}
                 />

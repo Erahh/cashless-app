@@ -166,7 +166,7 @@ export default function SendLoadScreen({ navigation }) {
             style={{ flex: 1 }}
         >
             <Screen
-                title="Send Load"
+                title="Send Money"
                 onBack={() => navigation.goBack()}
                 theme={theme}
             >
@@ -350,7 +350,7 @@ export default function SendLoadScreen({ navigation }) {
                         ) : (
                             <>
                                 <PrimaryButton
-                                    label="Send Load Now"
+                                    label="Send Money Now"
                                     onPress={handleSend}
                                     disabled={phone.length < 11 || !amount || Number(amount) < 10}
                                     theme={theme}

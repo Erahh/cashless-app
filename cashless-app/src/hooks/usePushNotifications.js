@@ -2,16 +2,33 @@ import { useEffect, useRef } from "react";
 import { DeviceEventEmitter, Platform } from "react-native";
 import Constants from "expo-constants";
 import { supabase } from "../api/supabase";
+import { fetchNotifications } from "../api/notificationsApi";
 import { registerPushToken } from "../api/notificationsApi";
 
+// Configure foreground notification handler immediately at the module level (required by Expo to show pop-ups in foreground)
+let NotificationsModule;
+try {
+    NotificationsModule = require("expo-notifications");
+} catch (err) {
+    // Ignore if not in React Native / Expo environment
+}
+
+if (NotificationsModule && typeof NotificationsModule.setNotificationHandler === "function") {
+    NotificationsModule.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,   // backward compat (SDK < 53)
+            shouldShowBanner: true,  // SDK 53+
+            shouldShowList: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+        }),
+    });
+}
+
 /**
- * Hook to handle push notification registration.
- * Call this once in your App component.
- * It will:
- *  1. Request permission
- *  2. Get Expo push token
- *  3. Send it to the backend
- *  4. Re-register when user logs in (only once)
+ * Hook to handle push notifications.
+ * For Expo Go Android: uses polling fallback (no remote push support in SDK 53+)
+ * For other platforms: uses real push token registration
  *
  * This hook is safe - all errors are caught and logged, never thrown.
  */
@@ -19,76 +36,61 @@ export function usePushNotifications() {
     const tokenRef = useRef(null);
     const hasRegisteredRef = useRef(false);
     const notificationsRef = useRef(null);
+    const pollIntervalRef = useRef(null);
+    const seenNotificationIdsRef = useRef(new Set());
+    const isExpoGoAndroidRef = useRef(false);
 
     useEffect(() => {
         let isMounted = true;
         const isExpoGo =
             Constants?.appOwnership === "expo" ||
-            Constants?.executionEnvironment === "storeClient";
-        const shouldSkipPushSetup = isExpoGo && Platform.OS === "android";
-        let isHandlerConfigured = false;
-
-        if (shouldSkipPushSetup) {
-            // Android remote push is unsupported in Expo Go (SDK 53+).
-            // Keep iOS Expo Go registration path enabled.
-            return () => {};
-        }
+            Constants?.executionEnvironment === "storeClient" ||
+            Constants?.executionEnvironment === "expoGo";
+        isExpoGoAndroidRef.current = isExpoGo; // Enable local polling fallback for both iOS and Android in Expo Go
 
         function getNotificationsModule() {
             if (!notificationsRef.current) {
-                notificationsRef.current = require("expo-notifications");
+                try {
+                    notificationsRef.current = require("expo-notifications");
+                } catch (err) {
+                    notificationsRef.current = null;
+                }
             }
-
-            if (!isHandlerConfigured) {
-                notificationsRef.current.setNotificationHandler({
-                    handleNotification: async () => ({
-                        shouldShowAlert: true,
-                        shouldPlaySound: true,
-                        shouldSetBadge: true,
-                    }),
-                });
-                isHandlerConfigured = true;
-            }
-
             return notificationsRef.current;
         }
 
         async function setupPush() {
-            // Guard: only register once per mount cycle
+            // Skip remote push in Expo Go - will use polling instead
+            if (isExpoGoAndroidRef.current) return;
             if (hasRegisteredRef.current) return;
 
             try {
                 const Notifications = getNotificationsModule();
 
-                // 1. Check if logged in
+                // Ensure Android notification channel is configured for native push path
+                await ensureAndroidNotificationChannel(Notifications);
+
                 const { data } = await supabase.auth.getSession();
-                if (!data?.session) return; // Not logged in, skip
+                if (!data?.session) return;
 
-                // 2. Request permission
-                const { status: existingStatus } =
-                    await Notifications.getPermissionsAsync();
+                // Request notification permission
+                const { status: existingStatus } = await Notifications.getPermissionsAsync();
                 let finalStatus = existingStatus;
-
                 if (existingStatus !== "granted") {
                     const { status } = await Notifications.requestPermissionsAsync();
                     finalStatus = status;
                 }
+                if (finalStatus !== "granted") return;
 
-                if (finalStatus !== "granted") {
-                    console.log("Push notification permission denied");
-                    return;
-                }
-
-                // 3. Get Expo push token
+                // Get Expo push token
                 const configuredProjectId =
                     Constants?.expoConfig?.extra?.eas?.projectId ||
                     Constants?.easConfig?.projectId;
                 const tokenOptions = configuredProjectId ? { projectId: configuredProjectId } : undefined;
                 const pushToken = await Notifications.getExpoPushTokenAsync(tokenOptions);
 
-                if (!isMounted) return;
+                if (!isMounted || !pushToken) return;
 
-                // Mark as registered so we don't spam
                 hasRegisteredRef.current = true;
                 tokenRef.current = pushToken.data;
 
@@ -96,22 +98,159 @@ export function usePushNotifications() {
                     console.log("Push token:", pushToken.data);
                 }
 
-                // 4. Register with backend (fire and forget - don't block app)
+                // Register token with backend
                 registerPushToken(pushToken.data).catch((err) => {
                     console.warn("Failed to register push token:", err.message);
                 });
             } catch (err) {
-                console.warn("Push notification setup error:", err.message);
+                console.warn("Push setup error:", err.message);
             }
         }
 
+        function normalizeNotificationId(item) {
+            return String(item?.id || item?.notification_id || item?.created_at || item?.sent_at || "");
+        }
+
+        async function ensureLocalNotificationPermission(Notifications) {
+            try {
+                const { status: existingStatus } = await Notifications.getPermissionsAsync();
+                let finalStatus = existingStatus;
+
+                if (existingStatus !== "granted") {
+                    const { status } = await Notifications.requestPermissionsAsync();
+                    finalStatus = status;
+                }
+
+                return finalStatus === "granted";
+            } catch (error) {
+                console.warn("Local notification permission error:", error?.message || error);
+                return false;
+            }
+        }
+
+        async function ensureAndroidNotificationChannel(Notifications) {
+            if (Platform.OS !== "android") return;
+
+            try {
+                // Delete existing default channel first to reset any low importance or misconfigured properties on Android
+                await Notifications.deleteNotificationChannelAsync("default");
+            } catch (err) {
+                // ignore if it doesn't exist
+            }
+
+            await Notifications.setNotificationChannelAsync("default", {
+                name: "Default",
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: "#FF9500",
+                sound: "default",
+            });
+        }
+
+        async function seedSeenNotifications() {
+            try {
+                const items = await fetchNotifications(20);
+                (items || []).forEach((item) => {
+                    const id = normalizeNotificationId(item);
+                    if (id) seenNotificationIdsRef.current.add(id);
+                });
+            } catch {
+                // Ignore seed errors; polling can retry.
+            }
+        }
+
+        async function startExpoGoFallback() {
+            if (!isExpoGoAndroidRef.current || pollIntervalRef.current) return;
+
+            const Notifications = getNotificationsModule();
+            try {
+                await ensureAndroidNotificationChannel(Notifications);
+            } catch (err) {
+                console.warn("Android channel setup failed:", err?.message || err);
+            }
+
+            const canShowLocalNotifications = await ensureLocalNotificationPermission(Notifications);
+            if (!canShowLocalNotifications) {
+                console.warn("Cannot show local notifications - permission denied");
+                return;
+            }
+
+            await seedSeenNotifications();
+
+            const pollOnce = async () => {
+                try {
+                    const { data } = await supabase.auth.getSession();
+                    if (!data?.session) return;
+
+                    const items = await fetchNotifications(20);
+                    if (!items || items.length === 0) return;
+
+                    for (const item of items) {
+                        const id = normalizeNotificationId(item);
+                        if (!id || seenNotificationIdsRef.current.has(id)) continue;
+
+                        seenNotificationIdsRef.current.add(id);
+
+                        // Backend stores notification content inside item.payload
+                        const rawPayload = item.payload && typeof item.payload === "object"
+                            ? item.payload
+                            : {};
+                        const title = String(
+                            rawPayload.title || item.title || item.type || "Notification"
+                        );
+                        const body = String(
+                            rawPayload.body || rawPayload.message ||
+                            item.body || item.message || "You have a new notification."
+                        );
+                        // data for navigation on tap
+                        const data = rawPayload;
+
+                        try {
+                            await Notifications.scheduleNotificationAsync({
+                                content: {
+                                    title,
+                                    body,
+                                    data,
+                                    sound: "default",
+                                    badge: 1,
+                                    // Note: vibrate & priority belong in the channel, not content
+                                    channelId: "default",
+                                },
+                                trigger: null,
+                            });
+
+                            DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", data);
+                        } catch (scheduleErr) {
+                            console.warn("Failed to schedule notification:", scheduleErr?.message || scheduleErr);
+                        }
+                    }
+                } catch (error) {
+                    console.warn("Polling error:", error?.message || error);
+                }
+            };
+
+            // Poll immediately, then every 2 seconds (reduced for instant feedback)
+            await pollOnce();
+            pollIntervalRef.current = setInterval(pollOnce, 2000);
+            console.log("Started notification polling fallback every 2s");
+        }
+
+        // Set up notification handler first
+        getNotificationsModule();
+
         // Run on mount
         setupPush();
+        startExpoGoFallback();
 
         const Notifications = getNotificationsModule();
         const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
             const data = response?.notification?.request?.content?.data || {};
             DeviceEventEmitter.emit("PUSH_NOTIFICATION_RESPONSE", data);
+        });
+
+        const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+            const data = notification?.request?.content?.data || {};
+            DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", data);
         });
 
         // Also re-register when auth state changes (login/logout)
@@ -129,22 +268,19 @@ export function usePushNotifications() {
             }
         });
 
-        // Set up Android notification channel
-        if (Platform.OS === "android") {
-            const Notifications = getNotificationsModule();
-            Notifications.setNotificationChannelAsync("default", {
-                name: "Default",
-                importance: Notifications.AndroidImportance.HIGH,
-                vibrationPattern: [0, 250, 250, 250],
-                lightColor: "#FF9500",
-            });
-        }
+        // Android channel is set up via ensureAndroidNotificationChannel in both paths
 
         return () => {
             isMounted = false;
             hasRegisteredRef.current = false;
             subscription?.unsubscribe();
             responseSub?.remove?.();
+            receivedSub?.remove?.();
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
+            seenNotificationIdsRef.current.clear();
         };
     }, []);
 

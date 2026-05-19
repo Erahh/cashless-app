@@ -9,7 +9,7 @@ import CEraLogo from "./CEraLogo";
 const { width, height } = Dimensions.get("window");
 const GRID_SIZE = 30;
 
-export default function AuthBackground({ children, onBack }) {
+export default function AuthBackground({ children, onBack, showLogo = true }) {
     const { theme, isDarkMode, toggleTheme } = useTheme();
 
     const bgColor = isDarkMode ? theme.background : "#F9F6EE";
@@ -34,6 +34,9 @@ export default function AuthBackground({ children, onBack }) {
         );
     };
 
+    // compute top offset to keep Android header clear of the status bar clock/icons
+    const topOffset = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 18 : 60;
+
     return (
         <View style={[styles.root, { backgroundColor: bgColor }]}>
             <StatusBar
@@ -48,7 +51,7 @@ export default function AuthBackground({ children, onBack }) {
             </View>
 
             {/* Unified Top Navigation */}
-            <View style={styles.topNav}>
+            <View style={[styles.topNav, { top: topOffset }] }>
                 {onBack ? (
                     <TouchableOpacity 
                         style={[styles.navBtn, { backgroundColor: btnBg, borderColor: btnBorder }]} 
@@ -60,7 +63,7 @@ export default function AuthBackground({ children, onBack }) {
                 ) : <View style={styles.navBtnPlaceholder} />}
 
                 <View style={styles.navLogo}>
-                    <CEraLogo size="small" />
+                    {showLogo ? <CEraLogo size="small" /> : null}
                 </View>
 
                 <TouchableOpacity 
@@ -109,6 +112,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         paddingHorizontal: 24,
+        paddingTop: Platform.OS === 'android' ? 4 : 0,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",

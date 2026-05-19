@@ -5,8 +5,15 @@ import {
     Animated,
     StyleSheet,
     Easing,
+    Platform,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
+
+const normalizeKeyboardType = (keyboardType) => {
+    if (Platform.OS === "ios") return keyboardType;
+    if (keyboardType === "number-pad") return "numeric";
+    return keyboardType;
+};
 
 const FloatingLabelInput = ({
     label,
@@ -85,7 +92,8 @@ const FloatingLabelInput = ({
                     onChangeText={onChangeText}
                     value={value}
                     secureTextEntry={secureTextEntry}
-                    keyboardType={keyboardType}
+                    keyboardType={normalizeKeyboardType(keyboardType)}
+                    inputMode={keyboardType === "number-pad" ? "numeric" : props.inputMode}
                     autoCapitalize={autoCapitalize}
                     placeholder="" // We use the floating label instead of placeholder
                 />

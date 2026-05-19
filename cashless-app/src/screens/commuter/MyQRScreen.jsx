@@ -136,7 +136,7 @@ export default function MyQRScreen({ navigation }) {
               {
                 key: "send_load",
                 icon: FlashIcon,
-                title: "Send Load",
+                title: "Send Money",
                 onPress: () => navigation.navigate("SendLoad")
               },
               {

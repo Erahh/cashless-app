@@ -24,7 +24,7 @@ function titleFor(item) {
   switch (item.kind) {
     case "topup_credit": return "PayMongo Top Up";
     case "fare_debit": return "Ride Fare Payment";
-    case "load_transfer_debit": return item.description || "Send Load";
+    case "load_transfer_debit": return item.description || "Send Money";
     case "load_transfer_credit": return item.description || "Received Load";
     default:
       if (String(item.kind).includes("fare")) return "Ride Fare";

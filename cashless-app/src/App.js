@@ -93,7 +93,24 @@ function AppWithLock() {
       }
     });
 
+    let cancelled = false;
+    let notificationModule;
+    try {
+      notificationModule = require("expo-notifications");
+    } catch {
+      notificationModule = null;
+    }
+
+    if (notificationModule?.getLastNotificationResponseAsync) {
+      notificationModule.getLastNotificationResponseAsync().then((response) => {
+        if (cancelled || !response) return;
+        const data = response?.notification?.request?.content?.data || {};
+        DeviceEventEmitter.emit("PUSH_NOTIFICATION_RESPONSE", data);
+      }).catch(() => {});
+    }
+
     return () => {
+      cancelled = true;
       sub.remove();
       sessionSub.remove();
       pushSub.remove();

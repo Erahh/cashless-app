@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     View,
     Text,
@@ -61,6 +61,8 @@ export default function FriendsMapScreen({ navigation, route }) {
     const refreshPauseUntilRef = useRef(0);
     const broadcastPauseUntilRef = useRef(0);
     const failureNoticeTimeoutRef = useRef(null);
+    const mapReadyRef = useRef(false);
+    const pendingMapDataRef = useRef(null);
 
     const handleBackendFailure = (scope, error) => {
         const now = Date.now();
@@ -203,10 +205,7 @@ export default function FriendsMapScreen({ navigation, route }) {
             const response = await api('/friends/locations-realtime');
 
             if (response.ok) {
-                const newFriends = (response.friends || []).map((friend) => ({
-                    ...friend,
-                    avatar_url: friend.avatar_url || friend.profile_picture || friend.friend_avatar_url || null,
-                }));
+                const newFriends = normalizeFriendRows(response.friends || []);
 
                 // Detect friends who just came online
                 newFriends.forEach(f => {
@@ -474,6 +473,10 @@ export default function FriendsMapScreen({ navigation, route }) {
         };
     }, [followMode, selectedFriendId, friends]);
 
+    useEffect(() => {
+        syncMapToWebView();
+    }, [myLocation, friends, mapMode, selectedFriendId, friendTrails]);
+
     const escapeHtml = (value) => String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -488,6 +491,94 @@ export default function FriendsMapScreen({ navigation, route }) {
         return `${API_BASE_URL}${raw.startsWith('/') ? '' : '/'}${raw}`;
     };
 
+    const normalizeFriendRows = (rows = []) => {
+        const byFriendId = new Map();
+
+        rows.forEach((row) => {
+            const friendId = row?.friend_id;
+            if (friendId == null) return;
+
+            const key = String(friendId);
+            const existing = byFriendId.get(key);
+            const rowUpdatedAt = new Date(row.location_updated || row.last_seen || 0).getTime() || 0;
+            const existingUpdatedAt = existing
+                ? new Date(existing.location_updated || existing.last_seen || 0).getTime() || 0
+                : 0;
+
+            const merged = existing
+                ? {
+                    ...existing,
+                    ...row,
+                    friend_id: key,
+                    can_show_on_map: Boolean(existing.can_show_on_map || row.can_show_on_map),
+                    is_online: Boolean(existing.is_online || row.is_online),
+                    location_updated: rowUpdatedAt >= existingUpdatedAt
+                        ? (row.location_updated || existing.location_updated || null)
+                        : (existing.location_updated || row.location_updated || null),
+                    last_seen: rowUpdatedAt >= existingUpdatedAt
+                        ? (row.last_seen || existing.last_seen || null)
+                        : (existing.last_seen || row.last_seen || null),
+                    avatar_url: existing.avatar_url || row.avatar_url || row.profile_picture || row.friend_avatar_url || null,
+                }
+                : {
+                    ...row,
+                    friend_id: key,
+                    can_show_on_map: Boolean(row.can_show_on_map),
+                    is_online: Boolean(row.is_online),
+                    avatar_url: row.avatar_url || row.profile_picture || row.friend_avatar_url || null,
+                };
+
+            byFriendId.set(key, merged);
+        });
+
+        return Array.from(byFriendId.values())
+            .map((friend) => {
+                const updatedAt = new Date(friend.location_updated || friend.last_seen || 0).getTime() || 0;
+                const inferredOnline = updatedAt > 0 && Date.now() - updatedAt <= 5 * 60 * 1000;
+
+                return {
+                    ...friend,
+                    is_online: Boolean(friend.is_online || inferredOnline),
+                    status_label: friend.status_label || ((friend.is_online || inferredOnline) ? 'Online' : 'Offline'),
+                };
+            })
+            .sort((a, b) => String(a.friend_name || '').localeCompare(String(b.friend_name || '')));
+    };
+
+    const buildMapPayload = () => {
+        const friendsForMap = friends.filter(
+            (f) => f.can_show_on_map && typeof f.latitude === 'number' && typeof f.longitude === 'number'
+        );
+
+        return {
+            myLocation: myLocation || { latitude: 14.5995, longitude: 120.9842 },
+            mapMode,
+            selectedFriendId: selectedFriendId ? String(selectedFriendId) : null,
+            friends: friendsForMap.map((f) => ({
+                friend_id: String(f.friend_id),
+                friend_name: f.friend_name || 'Friend',
+                latitude: f.latitude,
+                longitude: f.longitude,
+                is_online: !!f.is_online,
+                status_label: f.status_label || (f.is_online ? 'Online' : 'Offline'),
+                location_updated: f.location_updated || null,
+                last_seen: f.last_seen || null,
+                avatar_url: resolveAvatarUrl(
+                    f.avatar_url || f.friend_avatar_url || f.profile_picture || f.profile_image_url || ''
+                ),
+                trail: (friendTrails[String(f.friend_id)] || []).slice(-25),
+            })),
+        };
+    };
+
+    const syncMapToWebView = () => {
+        if (!webViewRef.current) return;
+        const payload = JSON.stringify(buildMapPayload());
+        pendingMapDataRef.current = payload;
+        if (!mapReadyRef.current) return;
+        webViewRef.current.injectJavaScript(`window.renderMapData(${payload}); true;`);
+    };
+
     // Generate HTML for the map
     const generateMapHtml = () => {
         const lat = myLocation?.latitude || 14.5995;
@@ -499,71 +590,6 @@ export default function FriendsMapScreen({ navigation, route }) {
         const tileAttribution = isSatelliteMode
             ? 'Tiles © Esri'
             : '© OpenStreetMap';
-
-        const friendsForMap = friends.filter(
-            (f) => f.can_show_on_map && typeof f.latitude === 'number' && typeof f.longitude === 'number'
-        );
-
-        const friendMarkers = friendsForMap.map(f => {
-            const displayName = f.friend_name || 'Friend';
-            const markerInitial = escapeHtml((displayName || '?').charAt(0).toUpperCase() || '?');
-            const statusText = escapeHtml(f.status_label || (f.is_online ? 'Online' : 'Offline'));
-            const seenText = escapeHtml(
-                f.is_online
-                    ? getTimeSince(f.location_updated)
-                    : `Last seen ${getTimeSince(f.last_seen || f.location_updated)}`
-            );
-            const popupHtml = `<b>${escapeHtml(displayName)}</b><br>${statusText}<br>${seenText}`;
-            const isSelected = String(selectedFriendId || "") === String(f.friend_id || "");
-            const avatarUrl = String(
-                f.avatar_url ||
-                f.friend_avatar_url ||
-                f.profile_picture ||
-                f.profile_image_url ||
-                ""
-            ).trim();
-            const resolvedAvatarUrl = resolveAvatarUrl(avatarUrl);
-            
-            // Use profile picture if available, otherwise use initial letter
-            let markerHtml;
-            if (resolvedAvatarUrl) {
-                // Profile picture available - create circular image marker
-                const picUrl = escapeHtml(resolvedAvatarUrl);
-                markerHtml = `<div style="width: 36px; height: 36px; border-radius: 50%; border: 3px solid ${isSelected ? '#FFD36A' : 'white'}; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.3); background-color: ${f.is_online ? '#4CAF50' : '#8A8A8A'};"><img src="${picUrl}" alt="${escapeHtml(displayName)}" style="width: 100%; height: 100%; object-fit: cover; display: block;" /></div>`;
-            } else {
-                // Fallback to initial letter
-                markerHtml = `<div style="background: ${f.is_online ? '#4CAF50' : '#8A8A8A'}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; border: 3px solid ${isSelected ? '#FFD36A' : 'white'}; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">${markerInitial}</div>`;
-            }
-
-            return `
-            L.marker([${f.latitude}, ${f.longitude}], {
-                icon: L.divIcon({
-                    className: 'friend-marker',
-                    html: ${JSON.stringify(markerHtml)},
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 18]
-                })
-            }).addTo(map).bindPopup(${JSON.stringify(popupHtml)});
-        `;
-        }).join('\n');
-
-        const trailLines = friendsForMap
-            .map((f) => {
-                const trail = friendTrails[String(f.friend_id)] || [];
-                if (trail.length < 2) return "";
-                const latLngs = trail.map((p) => [p.lat, p.lng]);
-                const isSelected = String(selectedFriendId || "") === String(f.friend_id || "");
-                const color = isSelected ? "#FFD36A" : (f.is_online ? "#63D66A" : "#9A9A9A");
-                return `L.polyline(${JSON.stringify(latLngs)}, { color: '${color}', weight: ${isSelected ? 5 : 3}, opacity: ${isSelected ? 0.95 : 0.65} }).addTo(map);`;
-            })
-            .join("\n");
-
-        const selectedFriend = friendsForMap.find(
-            (f) => String(selectedFriendId || "") === String(f.friend_id || "")
-        );
-        const focusScript = selectedFriend
-            ? `map.setView([${selectedFriend.latitude}, ${selectedFriend.longitude}], 16);`
-            : "";
 
         return `
 <!DOCTYPE html>
@@ -590,30 +616,137 @@ export default function FriendsMapScreen({ navigation, route }) {
     <div id="map"></div>
     <script>
         var map = L.map('map').setView([${lat}, ${lng}], 15);
-        
-        L.tileLayer(${JSON.stringify(tileUrl)}, {
+        var currentMode = ${JSON.stringify(mapMode)};
+        var myMarker = null;
+        var friendLayer = L.layerGroup().addTo(map);
+        var trailLayer = L.layerGroup().addTo(map);
+        var tileLayer = L.tileLayer(${JSON.stringify(tileUrl)}, {
             attribution: ${JSON.stringify(tileAttribution)}
         }).addTo(map);
 
-        // My location marker
-        L.marker([${lat}, ${lng}], {
-            icon: L.divIcon({
-                className: 'my-marker-container',
-                html: '<div class="my-marker"></div>',
-                iconSize: [28, 28],
-                iconAnchor: [14, 14]
-            })
-        }).addTo(map).bindPopup('<b>You are here</b>');
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
-        // Friend markers
-        ${friendMarkers}
-        ${trailLines}
-        ${focusScript}
+        function getTimeSince(timestamp) {
+            if (!timestamp) return 'Unknown';
+            var diff = Date.now() - new Date(timestamp).getTime();
+            var minutes = Math.floor(diff / 60000);
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return minutes + 'm ago';
+            var hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h ago';
+            return Math.floor(hours / 24) + 'd ago';
+        }
+
+        function buildMarkerHtml(friend, selectedId) {
+            var displayName = friend.friend_name || 'Friend';
+            var markerInitial = escapeHtml((displayName || '?').charAt(0).toUpperCase() || '?');
+            var isSelected = String(selectedId || '') === String(friend.friend_id || '');
+            var avatarUrl = String(friend.avatar_url || '').trim();
+            if (avatarUrl) {
+                return '<div style="width: 36px; height: 36px; border-radius: 50%; border: 3px solid ' + (isSelected ? '#FFD36A' : 'white') + '; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.3); background-color: ' + (friend.is_online ? '#4CAF50' : '#8A8A8A') + ';"><img src="' + escapeHtml(avatarUrl) + '" alt="' + escapeHtml(displayName) + '" style="width: 100%; height: 100%; object-fit: cover; display: block;" /></div>';
+            }
+            return '<div style="background: ' + (friend.is_online ? '#4CAF50' : '#8A8A8A') + '; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; border: 3px solid ' + (isSelected ? '#FFD36A' : 'white') + '; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">' + markerInitial + '</div>';
+        }
+
+        function updateMyLocationMarker(payload) {
+            var loc = payload.myLocation || { latitude: 14.5995, longitude: 120.9842 };
+            if (!myMarker) {
+                myMarker = L.marker([loc.latitude, loc.longitude], {
+                    icon: L.divIcon({
+                        className: 'my-marker-container',
+                        html: '<div class="my-marker"></div>',
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    })
+                }).addTo(map).bindPopup('<b>You are here</b>');
+            } else {
+                myMarker.setLatLng([loc.latitude, loc.longitude]);
+            }
+        }
+
+        function renderFriendData(payload) {
+            friendLayer.clearLayers();
+            trailLayer.clearLayers();
+
+            var selectedId = payload.selectedFriendId || null;
+            var focus = null;
+
+            (payload.friends || []).forEach(function(friend) {
+                var popupHtml = '<b>' + escapeHtml(friend.friend_name || 'Friend') + '</b><br>' + escapeHtml(friend.status_label || (friend.is_online ? 'Online' : 'Offline')) + '<br>' + escapeHtml(friend.is_online ? getTimeSince(friend.location_updated) : ('Last seen ' + getTimeSince(friend.last_seen || friend.location_updated)));
+                var marker = L.marker([friend.latitude, friend.longitude], {
+                    icon: L.divIcon({
+                        className: 'friend-marker',
+                        html: buildMarkerHtml(friend, selectedId),
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 18]
+                    })
+                }).bindPopup(popupHtml);
+
+                marker.addTo(friendLayer);
+
+                if (String(selectedId || '') === String(friend.friend_id || '')) {
+                    focus = [friend.latitude, friend.longitude];
+                }
+
+                var trail = friend.trail || [];
+                if (trail.length >= 2) {
+                    var latLngs = trail.map(function(point) { return [point.lat, point.lng]; });
+                    var color = String(selectedId || '') === String(friend.friend_id || '') ? '#FFD36A' : (friend.is_online ? '#63D66A' : '#9A9A9A');
+                    L.polyline(latLngs, { color: color, weight: String(selectedId || '') === String(friend.friend_id || '') ? 5 : 3, opacity: String(selectedId || '') === String(friend.friend_id || '') ? 0.95 : 0.65 }).addTo(trailLayer);
+                }
+            });
+
+            updateMyLocationMarker(payload);
+
+            if (focus) {
+                map.setView(focus, 16);
+            }
+        }
+
+        window.renderMapData = function(payload) {
+            try {
+                if (typeof payload === 'string') payload = JSON.parse(payload);
+                payload = payload || {};
+
+                if (payload.mapMode && payload.mapMode !== currentMode) {
+                    currentMode = payload.mapMode;
+                    tileLayer.remove();
+                    tileLayer = L.tileLayer(
+                        payload.mapMode === 'satellite'
+                            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        { attribution: payload.mapMode === 'satellite' ? 'Tiles © Esri' : '© OpenStreetMap' }
+                    ).addTo(map);
+                }
+
+                renderFriendData(payload);
+            } catch (e) {}
+            return true;
+        };
+
+        window.renderMapData(${JSON.stringify({
+            myLocation: { latitude: lat, longitude: lng },
+            mapMode,
+            selectedFriendId: selectedFriendId ? String(selectedFriendId) : null,
+            friends: [],
+        })});
     </script>
 </body>
 </html>
         `;
     };
+
+    const mapHtml = useMemo(
+        () => generateMapHtml(),
+        [myLocation?.latitude, myLocation?.longitude, mapMode, selectedFriendId]
+    );
 
     if (loading) {
         return (
@@ -652,16 +785,25 @@ export default function FriendsMapScreen({ navigation, route }) {
             {/* Map WebView */}
             <WebView
                 ref={webViewRef}
-                source={{ html: generateMapHtml() }}
+                source={{ html: mapHtml }}
                 style={styles.map}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
+                originWhitelist={['*']}
+                cacheEnabled={true}
+                setSupportMultipleWindows={false}
                 startInLoadingState={true}
                 renderLoading={() => (
                     <View style={styles.mapLoading}>
                         <ActivityIndicator size="large" color="#FFD36A" />
                     </View>
                 )}
+                onLoadEnd={() => {
+                    mapReadyRef.current = true;
+                    if (pendingMapDataRef.current && webViewRef.current) {
+                        webViewRef.current.injectJavaScript(`window.renderMapData(${pendingMapDataRef.current}); true;`);
+                    }
+                }}
             />
 
             {/* Top controls */}

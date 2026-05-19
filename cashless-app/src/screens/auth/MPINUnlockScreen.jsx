@@ -211,9 +211,14 @@ export default function MPINUnlockScreen({ navigation }) {
               onChangeText={(t) => {
                 if (!loading) setMpin(t.replace(/[^\d]/g, "").slice(0, 6));
               }}
-              keyboardType="number-pad"
+              keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+              inputMode="numeric"
               secureTextEntry
               maxLength={6}
+              autoCorrect={false}
+              autoComplete="off"
+              showSoftInputOnFocus
+              caretHidden
               style={styles.hiddenInput}
             />
 
@@ -310,10 +315,12 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
     borderColor: isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
   },
   hiddenInput: {
-    width: 0,
-    height: 0,
-    opacity: 0,
+    width: 1,
+    height: 1,
+    opacity: 0.01,
     position: "absolute",
+    top: 0,
+    left: 0,
   },
   statusContainer: {
     height: 24,

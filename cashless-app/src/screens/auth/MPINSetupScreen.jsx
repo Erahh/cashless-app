@@ -159,29 +159,32 @@ export default function MPINSetupScreen({ navigation, route }) {
           {/* MPIN Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Enter 6-digit MPIN</Text>
-            <View style={styles.inputRow}>
-              <TextInput
-                value={mpin}
-                onChangeText={(t) => setMpin(t.replace(/[^\d]/g, ""))}
-                placeholder="• • • • • •"
-                placeholderTextColor={theme.textMuted}
-                style={styles.input}
-                keyboardType="number-pad"
-                secureTextEntry={!showMpin}
-                maxLength={6}
-              />
-              <TouchableOpacity
-                style={styles.eyeBtn}
-                onPress={() => setShowMpin(!showMpin)}
-                activeOpacity={0.7}
-              >
-                <HugeiconsIcon
-                  icon={showMpin ? ViewOffIcon : ViewIcon}
-                  size={20}
-                  color={theme.textMuted}
+              <View style={styles.inputRow}>
+                <TextInput
+                  value={mpin}
+                  onChangeText={(t) => setMpin(t.replace(/[^\d]/g, ""))}
+                  placeholder="• • • • • •"
+                  placeholderTextColor={theme.textMuted}
+                  style={styles.input}
+                  keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+                  inputMode="numeric"
+                  secureTextEntry={!showMpin}
+                  autoCorrect={false}
+                  autoComplete="off"
+                  maxLength={6}
                 />
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={styles.eyeBtn}
+                  onPress={() => setShowMpin(!showMpin)}
+                  activeOpacity={0.7}
+                >
+                  <HugeiconsIcon
+                    icon={showMpin ? ViewOffIcon : ViewIcon}
+                    size={20}
+                    color={theme.textMuted}
+                  />
+                </TouchableOpacity>
+              </View>
             {pinStrength && (
               <Text style={[styles.strengthText, { color: pinStrength.color }]}>
                 {pinStrength.label}
@@ -199,8 +202,11 @@ export default function MPINSetupScreen({ navigation, route }) {
                 placeholder="• • • • • •"
                 placeholderTextColor={theme.textMuted}
                 style={styles.input}
-                keyboardType="number-pad"
+                keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+                inputMode="numeric"
                 secureTextEntry={!showConfirm}
+                autoCorrect={false}
+                autoComplete="off"
                 maxLength={6}
               />
               <TouchableOpacity

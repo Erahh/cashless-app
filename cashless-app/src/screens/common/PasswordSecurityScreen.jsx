@@ -1,5 +1,4 @@
-import React, { useMemo, useState, useContext } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useMemo, useState, useContext, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +9,9 @@ import {
   ActivityIndicator,
   TextInput,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
 } from "react-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {
@@ -25,10 +27,49 @@ import { verifyMpinOnRender, setMpinOnRender } from "../../api/apiHelper";
 import { setMpin as setMpinLocal } from "../../api/mpinLocal";
 import { supabase } from "../../api/supabase";
 import { AppLockContext } from "../../context/AppLockContext";
+import AuthBackground from "../../components/AuthBackground";
 
 function isWeakPin(pin) {
   const bad = new Set(["000000", "111111", "123456", "654321"]);
   return bad.has(pin) || /^(\d)\1{5}$/.test(pin);
+}
+
+function PinField({ label, value, onChangeText, theme, styles, isDarkMode, inputRef }) {
+  const dots = [0, 1, 2, 3, 4, 5].map((i) => (
+    <View
+      key={i}
+      style={[
+        styles.dot,
+        i < value.length ? styles.dotFilled : styles.dotEmpty,
+      ]}
+    />
+  ));
+
+  return (
+    <View style={styles.fieldGroup}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={() => inputRef?.current?.focus()}
+        style={styles.dotsContainer}
+      >
+        <View style={styles.dotsRow}>{dots}</View>
+      </TouchableOpacity>
+      <TextInput
+        ref={inputRef}
+        value={value}
+        onChangeText={(t) => onChangeText((t || "").replace(/[^\d]/g, "").slice(0, 6))}
+        keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+        inputMode="numeric"
+        secureTextEntry
+        maxLength={6}
+        autoCorrect={false}
+        autoComplete="off"
+        caretHidden
+        style={styles.hiddenInput}
+      />
+    </View>
+  );
 }
 
 export default function PasswordSecurityScreen({ navigation }) {
@@ -40,10 +81,11 @@ export default function PasswordSecurityScreen({ navigation }) {
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
 
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const currentPinRef = useRef(null);
+  const newPinRef = useRef(null);
+  const confirmPinRef = useRef(null);
 
   const pinStrength = useMemo(() => {
     if (newPin.length === 0) return null;
@@ -110,186 +152,140 @@ export default function PasswordSecurityScreen({ navigation }) {
     );
   }
 
-  function PinField({ label, value, onChangeText, visible, onToggleVisible }) {
-    return (
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <View style={styles.inputRow}>
-          <TextInput
-            value={value}
-            onChangeText={(t) => onChangeText((t || "").replace(/[^\d]/g, "").slice(0, 6))}
-            keyboardType="number-pad"
-            secureTextEntry={!visible}
-            style={styles.input}
-            placeholder="* * * * * *"
-            placeholderTextColor={theme.textMuted}
-            maxLength={6}
-          />
-          <TouchableOpacity onPress={onToggleVisible} style={styles.eyeBtn} activeOpacity={0.75}>
-            <HugeiconsIcon icon={visible ? ViewOffIcon : ViewIcon} size={20} color={theme.textMuted} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.safe}>
+    <AuthBackground onBack={() => navigation.goBack()} showLogo={false}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Password & Security</Text>
-        <View style={{ width: 44 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroCard}>
-          <View style={styles.heroIcon}>
-            <HugeiconsIcon icon={Shield01Icon || LockIcon} size={22} color={theme.accent} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>Protect Your Account</Text>
-            <Text style={styles.heroSub}>
-              Use a unique 6-digit MPIN and avoid sharing it with anyone.
-            </Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>Change MPIN</Text>
-        <View style={styles.card}>
-          <PinField
-            label="Current MPIN"
-            value={currentPin}
-            onChangeText={setCurrentPin}
-            visible={showCurrent}
-            onToggleVisible={() => setShowCurrent((v) => !v)}
-          />
-
-          <View style={styles.divider} />
-
-          <PinField
-            label="New MPIN"
-            value={newPin}
-            onChangeText={setNewPin}
-            visible={showNew}
-            onToggleVisible={() => setShowNew((v) => !v)}
-          />
-
-          {!!pinStrength && (
-            <Text style={[styles.strengthText, { color: pinStrength.color }]}>{pinStrength.label}</Text>
-          )}
-
-          <View style={styles.divider} />
-
-          <PinField
-            label="Confirm New MPIN"
-            value={confirmPin}
-            onChangeText={setConfirmPin}
-            visible={showConfirm}
-            onToggleVisible={() => setShowConfirm((v) => !v)}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.saveBtn, saving && { opacity: 0.7 }]}
-          onPress={onSave}
-          disabled={saving}
-          activeOpacity={0.85}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {saving ? (
-            <ActivityIndicator size="small" color={isDarkMode ? "#0B0E14" : "#FFFFFF"} />
-          ) : (
-            <Text style={styles.saveBtnText}>Update MPIN</Text>
-          )}
-        </TouchableOpacity>
-
-        <Text style={styles.sectionLabel}>Recovery</Text>
-        <View style={styles.card}>
-          <TouchableOpacity style={styles.rowBtn} onPress={onForgotPin} activeOpacity={0.8}>
-            <View style={styles.rowLeft}>
-              <View style={styles.rowIcon}>
-                <HugeiconsIcon icon={InformationCircleIcon} size={18} color={theme.warning} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>Forgot MPIN</Text>
-                <Text style={styles.rowSub}>Sign out and log in again to recover access.</Text>
-              </View>
+          <View style={styles.iconWrapper}>
+            <View style={styles.iconCircle}>
+              <HugeiconsIcon icon={Shield01Icon || LockIcon} size={32} color={isDarkMode ? theme.accent : theme.primary} />
             </View>
-          </TouchableOpacity>
-        </View>
+          </View>
 
-        <View style={{ height: 120 }} />
-      </ScrollView>
-    </SafeAreaView>
+          <Text style={styles.title}>Password & Security</Text>
+          <Text style={styles.subtitle}>
+            Update your 6-digit MPIN. Keep it private and avoid using easy-to-guess patterns.
+          </Text>
+
+          <Text style={styles.sectionLabel}>Change MPIN</Text>
+          <View style={styles.card}>
+            <PinField
+              label="Current MPIN"
+              value={currentPin}
+              onChangeText={setCurrentPin}
+              theme={theme}
+              styles={styles}
+              isDarkMode={isDarkMode}
+              inputRef={currentPinRef}
+            />
+
+            <View style={styles.divider} />
+
+            <PinField
+              label="New MPIN"
+              value={newPin}
+              onChangeText={setNewPin}
+              theme={theme}
+              styles={styles}
+              isDarkMode={isDarkMode}
+              inputRef={newPinRef}
+            />
+
+            {!!pinStrength && (
+              <Text style={[styles.strengthText, { color: pinStrength.color }]}>{pinStrength.label}</Text>
+            )}
+
+            <View style={styles.divider} />
+
+            <PinField
+              label="Confirm New MPIN"
+              value={confirmPin}
+              onChangeText={setConfirmPin}
+              theme={theme}
+              styles={styles}
+              isDarkMode={isDarkMode}
+              inputRef={confirmPinRef}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.btn, saving && { opacity: 0.7 }]}
+            onPress={onSave}
+            disabled={saving}
+            activeOpacity={0.9}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={isDarkMode ? "#0B0E14" : "#FFFFFF"} />
+            ) : (
+              <Text style={styles.btnText}>Update MPIN</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.recoveryCard}>
+            <TouchableOpacity style={styles.rowBtn} onPress={onForgotPin} activeOpacity={0.8}>
+              <View style={styles.rowLeft}>
+                <View style={styles.rowIcon}>
+                  <HugeiconsIcon icon={InformationCircleIcon} size={18} color={theme.warning} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowTitle}>Forgot MPIN</Text>
+                  <Text style={styles.rowSub}>Sign out and log in again to recover access.</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ height: 120 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </AuthBackground>
   );
 }
 
 const createStyles = (theme, isDarkMode) =>
   StyleSheet.create({
-    safe: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 20,
-      paddingTop: 12,
-      paddingBottom: 8,
-    },
-    backBtn: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    headerTitle: {
-      color: theme.text,
-      fontSize: 18,
-      fontWeight: "900",
-    },
-    content: {
-      paddingHorizontal: 20,
+    scrollContent: {
+      padding: 24,
       paddingTop: 8,
-      paddingBottom: 20,
     },
-    heroCard: {
-      flexDirection: "row",
+    iconWrapper: {
       alignItems: "center",
-      gap: 14,
-      backgroundColor: isDarkMode ? "rgba(247,227,83,0.08)" : "rgba(26,26,26,0.04)",
-      borderWidth: 1,
-      borderColor: isDarkMode ? "rgba(247,227,83,0.2)" : theme.border,
-      borderRadius: 18,
-      padding: 14,
-      marginBottom: 22,
+      marginBottom: 12,
     },
-    heroIcon: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: isDarkMode ? "rgba(247,227,83,0.14)" : "rgba(26,26,26,0.08)",
+    iconCircle: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: isDarkMode ? "rgba(247, 227, 83, 0.08)" : "rgba(26, 26, 26, 0.05)",
+      borderWidth: 1.5,
+      borderColor: isDarkMode ? "rgba(247, 227, 83, 0.2)" : "rgba(26, 26, 26, 0.1)",
       alignItems: "center",
       justifyContent: "center",
     },
-    heroTitle: {
+    title: {
       color: theme.text,
-      fontSize: 15,
+      fontSize: 24,
       fontWeight: "900",
-      marginBottom: 2,
+      marginBottom: 6,
+      textAlign: "center",
+      letterSpacing: -0.5,
     },
-    heroSub: {
+    subtitle: {
       color: theme.textSecondary,
-      fontSize: 12,
-      lineHeight: 18,
+      fontSize: 13,
+      lineHeight: 20,
+      textAlign: "center",
+      marginBottom: 24,
+      paddingHorizontal: 12,
     },
     sectionLabel: {
       color: theme.textMuted,
@@ -302,11 +298,19 @@ const createStyles = (theme, isDarkMode) =>
     },
     card: {
       backgroundColor: theme.card,
-      borderRadius: 18,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.border,
       overflow: "hidden",
       marginBottom: 14,
+    },
+    recoveryCard: {
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      overflow: "hidden",
+      marginTop: 4,
     },
     fieldGroup: {
       paddingHorizontal: 14,
@@ -320,30 +324,42 @@ const createStyles = (theme, isDarkMode) =>
       marginLeft: 2,
       letterSpacing: 0.3,
     },
-    inputRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      borderWidth: 1.5,
-      borderColor: theme.border,
-      borderRadius: 14,
-      backgroundColor: theme.background,
-      height: 54,
-      paddingHorizontal: 14,
-    },
-    input: {
-      flex: 1,
-      color: theme.text,
-      fontSize: 18,
-      fontWeight: "700",
-      letterSpacing: 6,
-      textAlign: "center",
-      paddingVertical: 0,
-    },
-    eyeBtn: {
-      width: 34,
-      height: 34,
-      alignItems: "center",
+    dotsContainer: {
+      marginBottom: 0,
+      height: 44,
       justifyContent: "center",
+      paddingVertical: 12,
+    },
+    dotsRow: {
+      flexDirection: "row",
+      gap: 16,
+      justifyContent: "center",
+    },
+    dot: {
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+    },
+    dotFilled: {
+      backgroundColor: theme.accent,
+      transform: [{ scale: 1.1 }],
+      shadowColor: theme.accent,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.5,
+      shadowRadius: 4,
+    },
+    dotEmpty: {
+      backgroundColor: "transparent",
+      borderWidth: 2,
+      borderColor: isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+    },
+    hiddenInput: {
+      width: 1,
+      height: 1,
+      opacity: 0.01,
+      position: "absolute",
+      top: 0,
+      left: 0,
     },
     divider: {
       height: 1,
@@ -352,20 +368,25 @@ const createStyles = (theme, isDarkMode) =>
     },
     strengthText: {
       fontSize: 12,
-      fontWeight: "700",
-      marginTop: -4,
-      marginBottom: 10,
+      fontWeight: "600",
+      marginTop: 6,
+      marginBottom: 4,
       marginLeft: 16,
     },
-    saveBtn: {
-      height: 54,
+    btn: {
+      height: 56,
       borderRadius: 16,
-      backgroundColor: theme.success,
+      backgroundColor: isDarkMode ? theme.accent : theme.primary,
       alignItems: "center",
       justifyContent: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 4,
       marginBottom: 24,
     },
-    saveBtnText: {
+    btnText: {
       color: isDarkMode ? "#0B0E14" : "#FFFFFF",
       fontWeight: "900",
       fontSize: 16,

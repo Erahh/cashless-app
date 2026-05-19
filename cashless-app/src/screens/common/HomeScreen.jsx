@@ -6,6 +6,7 @@ import { View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   ActivityIndicator,
   Alert,
@@ -311,13 +312,26 @@ export default function HomeScreen({ navigation, route }) {
             <Text style={[styles.smallLabel, { color: theme.text, opacity: 0.7, fontWeight: "600" }]}>Available Balance</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Text style={styles.balance}>₱{hideBalance ? "••••" : computed.balanceText}</Text>
-              <TouchableOpacity onPress={toggleHideBalance} activeOpacity={0.7} style={{ padding: 4 }}>
+              <Pressable
+                onPress={toggleHideBalance}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel={hideBalance ? "Show balance" : "Hide balance"}
+                style={({ pressed }) => ({
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: pressed ? "rgba(255,255,255,0.06)" : "transparent",
+                })}
+              >
                 <MaterialCommunityIcons
                   name={hideBalance ? "eye-off-outline" : "eye-outline"}
                   size={24}
                   color={theme.textMuted}
                 />
-              </TouchableOpacity>
+              </Pressable>
             </View>
             {lastUpdated ? (
               <Text style={{ marginTop: 6, color: theme.textMuted, fontSize: 12 }}>
@@ -331,9 +345,9 @@ export default function HomeScreen({ navigation, route }) {
                   <Text style={styles.businessVerifiedText}>Fully Verified</Text>
                 </View>
               </View>
-            ) : businessVerificationChecked && computed.verificationStatus === "Verified" ? (
+            ) : status && computed.verificationStatus === "Verified" ? (
               <VerifiedBadge size={28} glowColor="rgba(47,128,237,0.30)" glowSize={10} label={`${computed.passengerType} • Verified`} textStyle={{ color: theme.text }} />
-            ) : businessVerificationChecked ? (
+            ) : status ? (
               <View style={[styles.badge, styles[`badge_${computed.badge.tone}`]]}>
                 <Text style={styles.badgeText}>{computed.badge.text}</Text>
               </View>
@@ -422,7 +436,7 @@ export default function HomeScreen({ navigation, route }) {
           items={[
             { key: "commuter_scan", icon: ScanIcon, title: "Scan", onPress: () => navigation.navigate("CommuterScan"), show: computed.isCommuter },
             { key: "topup", icon: WalletAdd01Icon, title: "Top Up", onPress: () => navigation.navigate("TopUp"), show: computed.isCommuter },
-            { key: "sendload", icon: FlashIcon, title: "Send Load", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
+            { key: "sendload", icon: FlashIcon, title: "Send Money", onPress: () => navigation.navigate("SendLoad"), show: computed.isCommuter },
             { key: "tap_pay", icon: SmartphoneWifiIcon, title: "Tap to Pay", onPress: () => navigation.navigate("NFCTapPay"), show: computed.isCommuter },
 
             { key: "op_qr", icon: QrCodeIcon, title: "My QR", onPress: () => navigation.navigate("OperatorApp", { screen: "OperatorMyQR" }), show: computed.isOperator },

@@ -1,12 +1,17 @@
 import React, { useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View,
+import {
+  View,
   Text,
   TextInput,
   TouchableOpacity,
   Alert,
   StyleSheet,
-  ActivityIndicator } from "react-native";
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+} from "react-native";
 
 import { supabase } from "../../api/supabase";
 
@@ -107,6 +112,7 @@ export default function LoginScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0B0E14", justifyContent: "center" },
+  cardScroll: { flexGrow: 1, justifyContent: "center" },
   card: { padding: 20 },
   title: { color: "#fff", fontSize: 28, fontWeight: "900", marginBottom: 6 },
   subtitle: { color: "rgba(255,255,255,0.7)", marginBottom: 18 },

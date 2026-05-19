@@ -257,7 +257,7 @@ export default function BalanceScreen({ navigation }) {
                     break;
                   case "load_transfer_debit":
                     txType = "Sent";
-                    txName = x.description || "Send Load";
+                    txName = x.description || "Send Money";
                     break;
                   case "load_transfer_credit":
                     txType = "Received";
@@ -312,7 +312,7 @@ export default function BalanceScreen({ navigation }) {
                 {
                   key: "send_load",
                   icon: FlashIcon,
-                  title: "Send Load",
+                  title: "Send Money",
                   onPress: () => navigation.navigate("SendLoad")
                 },
                 {

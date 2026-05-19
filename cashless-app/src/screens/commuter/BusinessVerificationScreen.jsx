@@ -614,7 +614,10 @@ export default function BusinessVerificationScreen({ navigation }) {
                                             if (digits && digits.length < 9) setTinError('TIN looks too short'); else setTinError('');
                                         }
                                     }}
-                                    keyboardType="number-pad"
+                                    keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+                                    inputMode="numeric"
+                                    autoCorrect={false}
+                                    autoComplete="off"
                                     maxLength={12}
                                 />
                                 {tinError ? <Text style={{ color: '#FF6B6B', marginTop: 6 }}>{tinError}</Text> : null}

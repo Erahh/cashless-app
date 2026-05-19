@@ -45,8 +45,9 @@ export default function UploadVerificationScreen({ navigation, route }) {
     setLockSuppressed(true);
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'], // Updated from deprecated MediaTypeOptions.Images
+        mediaTypes: [ImagePicker.MediaType.Images],
         allowsEditing: true,
+        aspect: [3, 4],
         quality: 0.8,
         base64: true, // Request base64 for backend upload
       });

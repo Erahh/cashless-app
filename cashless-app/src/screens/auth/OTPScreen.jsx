@@ -142,8 +142,13 @@ export default function OTPScreen({ navigation, route }) {
               ref={inputRef}
               value={otp}
               onChangeText={(t) => setOtp(t.replace(/[^\d]/g, "").slice(0, 6))}
-              keyboardType="number-pad"
+              keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+              inputMode="numeric"
               maxLength={6}
+              autoCorrect={false}
+              autoComplete="off"
+              showSoftInputOnFocus
+              caretHidden
               style={styles.hiddenInput}
             />
 
@@ -185,7 +190,7 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
   otpDigit: { fontSize: 22, fontWeight: "800", color: theme.text },
   otpDigitFilled: { color: theme.text },
   cursor: { position: "absolute", bottom: 12, width: 16, height: 2, backgroundColor: theme.accent },
-  hiddenInput: { position: "absolute", width: 1, height: 1, opacity: 0 },
+  hiddenInput: { position: "absolute", width: 1, height: 1, opacity: 0.01, top: 0, left: 0 },
   errorText: { color: theme.danger || "#ff4444", marginTop: 20, fontWeight: "600", textAlign: 'center' },
   resendSection: { marginTop: 40, alignItems: "center" },
   resendLabel: { fontSize: 14, color: theme.textSecondary, marginBottom: 12 },

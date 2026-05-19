@@ -40,8 +40,9 @@ export default function UploadFrontIDScreen({ navigation, route }) {
         setLockSuppressed(true);
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: [ImagePicker.MediaType.Images],
                 allowsEditing: true,
+                aspect: [3, 4],
                 quality: 0.8,
             });
 
@@ -64,6 +65,7 @@ export default function UploadFrontIDScreen({ navigation, route }) {
         try {
             const result = await ImagePicker.launchCameraAsync({
                 allowsEditing: true,
+                aspect: [3, 4],
                 quality: 0.8,
             });
 

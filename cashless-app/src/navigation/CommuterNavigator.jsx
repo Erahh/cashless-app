@@ -26,6 +26,7 @@ import UploadFrontIDScreen from "../screens/commuter/UploadFrontIDScreen";
 import UploadBackIDScreen from "../screens/commuter/UploadBackIDScreen";
 import UploadVerificationScreen from "../screens/commuter/UploadVerificationScreen";
 import VerificationSubmittedScreen from "../screens/commuter/VerificationSubmittedScreen";
+import VerificationDetailsScreen from "../screens/commuter/VerificationDetailsScreen";
 
 import GuardianLinkScreen from "../screens/commuter/GuardianLinkScreen";
 import FriendsMapScreen from "../screens/commuter/FriendsMapScreen";
@@ -73,6 +74,7 @@ const CapturedUploadFrontIDScreen = withNavCapture(UploadFrontIDScreen);
 const CapturedUploadBackIDScreen = withNavCapture(UploadBackIDScreen);
 const CapturedUploadVerificationScreen = withNavCapture(UploadVerificationScreen);
 const CapturedVerificationSubmittedScreen = withNavCapture(VerificationSubmittedScreen);
+const CapturedVerificationDetailsScreen = withNavCapture(VerificationDetailsScreen);
 const CapturedOperatorApplyScreen = withNavCapture(OperatorApplyScreen);
 const CapturedGuardianLinkScreen = withNavCapture(GuardianLinkScreen);
 const CapturedFriendsMapScreen = withNavCapture(FriendsMapScreen);
@@ -169,6 +171,7 @@ function CommuterContent() {
                 <Stack.Screen name="UploadBackID" component={CapturedUploadBackIDScreen} />
                 <Stack.Screen name="UploadVerification" component={CapturedUploadVerificationScreen} />
                 <Stack.Screen name="VerificationSubmitted" component={CapturedVerificationSubmittedScreen} />
+                <Stack.Screen name="VerificationDetails" component={CapturedVerificationDetailsScreen} />
                 <Stack.Screen name="OperatorApply" component={CapturedOperatorApplyScreen} />
 
                 {/* Guardian */}

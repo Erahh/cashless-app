@@ -21,6 +21,7 @@ import { Notification01Icon, ScanIcon, WalletAdd01Icon, FlashIcon, SmartphoneWif
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import TxIcon from "../../components/TxIcon";
 import VerifiedBadge from "../../components/VerifiedBadge";
+import BusinessVerifiedBadge from "../../components/BusinessVerifiedBadge";
 import { useAppStore } from "../../store/appStore";
 
 // ✅ Helper for timeout logic (increased to 35s for Render cold starts)
@@ -37,6 +38,7 @@ async function fetchWithTimeout(url, options = {}, ms = 35000) {
 let CACHED_STATUS = null;
 let CACHED_RECENT = [];
 let CACHED_WALLET = null;
+let CACHED_BUSINESS_VERIFICATION = null;
 
 export default function HomeScreen({ navigation, route }) {
   const { theme, isDarkMode } = useTheme();
@@ -44,6 +46,8 @@ export default function HomeScreen({ navigation, route }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(!CACHED_STATUS);
   const [status, setStatus] = useState(CACHED_STATUS);
+  const [businessVerification, setBusinessVerification] = useState(CACHED_BUSINESS_VERIFICATION);
+  const [businessVerificationChecked, setBusinessVerificationChecked] = useState(!!CACHED_BUSINESS_VERIFICATION);
   const [netMsg, setNetMsg] = useState("");
   const [recent, setRecent] = useState(CACHED_RECENT);
   const [wallet, setWallet] = useState(CACHED_WALLET);
@@ -74,10 +78,13 @@ export default function HomeScreen({ navigation, route }) {
       if (!token) throw new Error("No session. Please login again.");
 
       // 🚀 Parallelize dashboard data fetching for a snappier experience
-      const [statusRes, txRes, notifs, walletJson] = await Promise.all([
+      const [statusRes, bizRes, txRes, notifs, walletJson] = await Promise.all([
         fetchWithTimeout(`${API_BASE_URL}/me/status`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetchWithTimeout(`${API_BASE_URL}/me/business-verification`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null),
         fetchWithTimeout(`${API_BASE_URL}/wallet/transactions?limit=5`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => null), // Graceful fallback for transactions
@@ -119,7 +126,22 @@ export default function HomeScreen({ navigation, route }) {
         }
       }
 
-      // 3) Handle notification count
+      // 3) Handle business verification result
+      if (bizRes && bizRes.ok) {
+        try {
+          const bizText = await bizRes.text();
+          if (bizText) {
+            const bizJson = JSON.parse(bizText);
+            setBusinessVerification(bizJson);
+            CACHED_BUSINESS_VERIFICATION = bizJson;
+          }
+        } catch (e) {
+          console.warn("Failed to parse business verification:", e.message);
+        }
+      }
+      setBusinessVerificationChecked(true);
+
+      // 4) Handle notification count
       if (notifs) {
         const cutoff = lastSeenNotif.current;
         const fresh = cutoff
@@ -128,7 +150,7 @@ export default function HomeScreen({ navigation, route }) {
         setNotifCount(fresh.length);
       }
 
-      // 4) Handle wallet summary
+      // 5) Handle wallet summary
       if (walletJson) {
         setWallet(walletJson);
         CACHED_WALLET = walletJson;
@@ -302,13 +324,20 @@ export default function HomeScreen({ navigation, route }) {
                 Last updated: {new Date(lastUpdated).toLocaleTimeString()}
               </Text>
             ) : null}
-            {computed.verificationStatus === "Verified" ? (
-              <VerifiedBadge size={28} label={`${computed.passengerType} • Verified`} textStyle={{ color: theme.text }} />
-            ) : (
+            {businessVerification?.verified ? (
+              <View style={styles.businessBadgeWrap}>
+                <View style={styles.businessVerifiedRow}>
+                  <BusinessVerifiedBadge size={32} withEffect={false} />
+                  <Text style={styles.businessVerifiedText}>Fully Verified</Text>
+                </View>
+              </View>
+            ) : businessVerificationChecked && computed.verificationStatus === "Verified" ? (
+              <VerifiedBadge size={28} glowColor="rgba(47,128,237,0.30)" glowSize={10} label={`${computed.passengerType} • Verified`} textStyle={{ color: theme.text }} />
+            ) : businessVerificationChecked ? (
               <View style={[styles.badge, styles[`badge_${computed.badge.tone}`]]}>
                 <Text style={styles.badgeText}>{computed.badge.text}</Text>
               </View>
-            )}
+            ) : null}
           </View>
 
           {/* ✅ Notifications */}
@@ -594,6 +623,22 @@ const createStyles = (theme) => StyleSheet.create({
   badge_good: { backgroundColor: theme.success },
   badge_warn: { backgroundColor: theme.warning },
   badge_bad: { backgroundColor: theme.danger },
+
+  businessBadgeWrap: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  businessVerifiedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  businessVerifiedText: {
+    color: "#7C3AED",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+  },
 
   notifBtn: {
     padding: 8,

@@ -44,7 +44,7 @@ export function PrimaryButton({ label, onPress, disabled, theme }) {
       disabled={disabled}
       style={[styles.primaryBtn, theme && { backgroundColor: theme.accent }, disabled && { opacity: 0.6 }]}
     >
-      <Text style={[styles.primaryBtnText, theme && { color: theme.primary }]}>{label}</Text>
+      <Text style={[styles.primaryBtnText, theme && { color: "#0B0E14" }]}>{label}</Text>
     </TouchableOpacity>
   );
 }

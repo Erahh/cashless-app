@@ -158,7 +158,7 @@ export default function UploadVerificationScreen({ navigation, route }) {
       }
 
       Alert.alert("Submitted ✅", "Your verification is now pending admin approval.");
-      navigation.navigate("VerificationSubmitted");
+      navigation.navigate("VerificationSubmitted", { flow: "id" });
     } catch (e) {
       console.error("Upload error:", e);
       Alert.alert("Error", e.message);

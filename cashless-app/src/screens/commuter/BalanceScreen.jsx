@@ -12,12 +12,14 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, RefreshIcon, AnalyticsUpIcon, ArrowRight01Icon, WalletAdd01Icon, FlashIcon, QrCodeIcon } from "@hugeicons/core-free-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchWallet } from "../../api/walletApi";
+import { renderApiRequest } from "../../api/apiHelper";
 import QuickActions from "../../components/QuickActions";
 import TxIcon from "../../components/TxIcon";
 import { useTheme } from "../../context/ThemeContext";
 import { useAppStore } from "../../store/appStore";
 
 let CACHED_WALLET = null;
+let CACHED_BUSINESS_VERIFICATION = null;
 
 export default function BalanceScreen({ navigation }) {
   const { theme } = useTheme();
@@ -25,6 +27,7 @@ export default function BalanceScreen({ navigation }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(!CACHED_WALLET);
   const [wallet, setWallet] = useState(CACHED_WALLET);
+  const [businessVerification, setBusinessVerification] = useState(CACHED_BUSINESS_VERIFICATION);
   const hideBalance = useAppStore((state) => state.hideBalance);
 
   const load = async (silent = false) => {
@@ -34,6 +37,16 @@ export default function BalanceScreen({ navigation }) {
       const json = await fetchWallet();
       setWallet(json);
       CACHED_WALLET = json;
+
+      // Fetch business verification status to determine balance limits
+      try {
+        const biz = await renderApiRequest("/me/business-verification");
+        setBusinessVerification(biz);
+        CACHED_BUSINESS_VERIFICATION = biz;
+      } catch (e) {
+        // ignore; keep previous value
+        console.warn("Failed to fetch business verification:", e.message);
+      }
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
@@ -53,8 +66,9 @@ export default function BalanceScreen({ navigation }) {
   }, [wallet]);
 
   // Calculate max balance limit and remaining capacity
-  const MAX_BALANCE = 100000;
+  const MAX_BALANCE = businessVerification?.verified ? 500000 : 100000;
   const currentBalance = Number(wallet?.balance ?? 0);
+  const formattedMaxBalance = MAX_BALANCE.toLocaleString(undefined, { maximumFractionDigits: 0 });
   const remainingCapacity = Math.max(0, MAX_BALANCE - currentBalance);
   const percentageUsed = Math.round((currentBalance / MAX_BALANCE) * 100);
 
@@ -156,7 +170,7 @@ export default function BalanceScreen({ navigation }) {
                 <View style={styles.limitInfo}>
                   <Text style={[styles.limitLabel, { color: theme.text }]}>Balance Limit</Text>
                   <Text style={[styles.limitValue, { color: theme.textSecondary }]}>
-                    ₱{currentBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} / ₱100,000
+                    ₱{currentBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} / ₱{formattedMaxBalance}
                   </Text>
                 </View>
               </View>

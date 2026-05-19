@@ -158,7 +158,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
             }
 
             Alert.alert("Success", "Your verification request has been submitted!");
-            navigation.navigate("VerificationSubmitted");
+            navigation.navigate("VerificationSubmitted", { flow: "id" });
         } catch (err) {
             Alert.alert("Error", err.message || "Failed to submit verification");
         } finally {

@@ -13,7 +13,6 @@ import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {
   ArrowLeft01Icon,
-  CheckmarkCircle02Icon,
   UserIcon,
   Location01Icon,
   FingerprintIcon,
@@ -22,6 +21,7 @@ import {
   InformationCircleIcon,
 } from "@hugeicons/core-free-icons";
 import AuthBackground from "../../components/AuthBackground";
+import VerifiedBadge from "../../components/VerifiedBadge";
 
 export default function ReviewInfoScreen({ route, navigation }) {
   const p = route.params?.profile;
@@ -79,7 +79,7 @@ export default function ReviewInfoScreen({ route, navigation }) {
         </View>
 
         <View style={styles.statusBadge}>
-          <HugeiconsIcon icon={CheckmarkCircle02Icon || UserIcon} size={18} color={theme.success} />
+          <VerifiedBadge size={18} glowColor="rgba(47,128,237,0.30)" glowSize={8} />
           <Text style={styles.statusText}>
             Identity data synchronized. Please confirm to finalize.
           </Text>

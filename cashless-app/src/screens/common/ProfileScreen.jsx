@@ -12,7 +12,8 @@ import { View,
   StyleSheet,
   Image,
   Linking,
-  StatusBar } from "react-native";
+  StatusBar,
+  Animated } from "react-native";
 
 import { supabase } from "../../api/supabase";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -26,20 +27,27 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { renderApiRequest } from "../../api/apiHelper";
 import AboutUsModal from "../../components/AboutUsModal";
+import BusinessVerifiedBadge from "../../components/BusinessVerifiedBadge";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import VerifiedBadge from "../../components/VerifiedBadge";
 
+let CACHED_PROFILE = null;
+let CACHED_ACCOUNT = null;
+let CACHED_BUSINESS_VERIFICATION = null;
+let CACHED_IS_OPERATOR = null;
+let CACHED_OPERATOR_APP = null;
 
 export default function ProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
-  const [account, setAccount] = useState(null);
-  const [businessVerification, setBusinessVerification] = useState(null);
+  const hasCachedData = !!(CACHED_PROFILE && CACHED_ACCOUNT);
+  const [loading, setLoading] = useState(!hasCachedData);
+  const [profile, setProfile] = useState(CACHED_PROFILE);
+  const [account, setAccount] = useState(CACHED_ACCOUNT);
+  const [businessVerification, setBusinessVerification] = useState(CACHED_BUSINESS_VERIFICATION);
   const [uploading, setUploading] = useState(false);
   const [aboutModalVisible, setAboutModalVisible] = useState(false);
-  const [isOperator, setIsOperator] = useState(false);
-  const [operatorApp, setOperatorApp] = useState(null);
+  const [isOperator, setIsOperator] = useState(!!CACHED_IS_OPERATOR);
+  const [operatorApp, setOperatorApp] = useState(CACHED_OPERATOR_APP);
   const { setLocked, setLockSuppressed } = useContext(AppLockContext);
 
   const { theme, isDarkMode, toggleTheme } = useTheme();
@@ -79,8 +87,39 @@ export default function ProfileScreen({ navigation }) {
     return { name, initials, passengerLabel, verLabel, verTone, chipText, passengerType, discountActive };
   }, [profile, account]);
 
-  async function load() {
-    setLoading(true);
+  // Pulse animation for verified ring
+  const pulse = React.useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    let loop;
+    if (computed.verLabel === 'Verified') {
+      loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 0, duration: 900, useNativeDriver: true }),
+        ])
+      );
+      loop.start();
+    } else {
+      pulse.setValue(0);
+    }
+    return () => { if (loop) loop.stop(); };
+  }, [computed.verLabel, businessVerification]);
+
+  const handleVerificationPress = () => {
+    const v = computed.verLabel;
+    if (v === "Verified") {
+      // Open Verification Details for verified users
+      return navigation.navigate("VerificationDetails", { profile, account, businessVerification, operatorApp });
+    }
+    if (v === "Pending") {
+      return navigation.navigate("VerificationSubmitted", { flow: "id" });
+    }
+    // Unverified / Rejected -> open upload flow
+    return navigation.navigate("UploadVerification", { passenger_type: computed.passengerType });
+  };
+
+  async function load({ silent = false } = {}) {
+    if (!silent) setLoading(true);
     try {
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       const userId = userRes?.user?.id;
@@ -104,12 +143,15 @@ export default function ProfileScreen({ navigation }) {
       if (aErr) throw aErr;
 
       setProfile(p);
+      CACHED_PROFILE = p;
       setAccount(a);
+      CACHED_ACCOUNT = a;
 
       // Fetch business verification status
       try {
         const biz = await renderApiRequest("/me/business-verification");
         setBusinessVerification(biz);
+        CACHED_BUSINESS_VERIFICATION = biz;
       } catch (e) {
         console.warn("Failed to fetch business verification:", e.message);
       }
@@ -117,10 +159,12 @@ export default function ProfileScreen({ navigation }) {
       // Check Operator Status
       const { data: op } = await supabase.from("operator_users").select("*").eq("user_id", userId).single();
       setIsOperator(!!op);
+      CACHED_IS_OPERATOR = !!op;
 
       // Check Application Status
       const { data: app } = await supabase.from("operator_applications").select("*").eq("user_id", userId).order("submitted_at", { ascending: false }).limit(1).single();
       setOperatorApp(app);
+      CACHED_OPERATOR_APP = app;
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to load profile");
     } finally {
@@ -248,11 +292,14 @@ export default function ProfileScreen({ navigation }) {
   };
 
   useEffect(() => {
-    const unsub = navigation.addListener("focus", load);
+    const unsub = navigation.addListener("focus", () => load({ silent: true }));
     return unsub;
   }, [navigation]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load({ silent: hasCachedData });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) {
     return (
@@ -298,13 +345,36 @@ export default function ProfileScreen({ navigation }) {
             disabled={uploading}
             style={styles.avatarWrap}
           >
-            {profile?.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{computed.initials}</Text>
-              </View>
-            )}
+            {(() => {
+              const ringColor = businessVerification?.verified ? '#7C3AED' : '#2F80ED';
+              const ringActive = computed.verLabel === 'Verified';
+              const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
+              return (
+                <Animated.View
+                  style={[
+                    styles.avatarRing,
+                    ringActive ? {
+                      borderWidth: 4,
+                      borderColor: ringColor,
+                      shadowColor: ringColor,
+                      shadowOpacity: 0.35,
+                      shadowRadius: 10,
+                      shadowOffset: { width: 0, height: 4 },
+                      elevation: 6,
+                    } : {},
+                    { transform: [{ scale }] }
+                  ]}
+                >
+                  {profile?.avatar_url ? (
+                    <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                  ) : (
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>{computed.initials}</Text>
+                    </View>
+                  )}
+                </Animated.View>
+              );
+            })()}
             <View style={styles.cameraBadge}>
               {uploading ? (
                 <ActivityIndicator size={10} color={isDarkMode ? "#0B0E14" : "#fff"} />
@@ -319,10 +389,6 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.profileEmail} numberOfLines={1}>
               {profile?.email || profile?.phone || "—"}
             </Text>
-
-            {computed.verLabel === "Verified" && (
-              <VerifiedBadge size={28} label={`${computed.passengerLabel} • Verified`} textStyle={{ color: theme.text }} />
-            )}
           </View>
         </View>
 
@@ -352,22 +418,32 @@ export default function ProfileScreen({ navigation }) {
             )}
 
             {businessVerification.verified && (
-              <View style={[styles.businessUpgradeCard, styles.businessCardVerified]}>
+              <TouchableOpacity
+                style={[styles.businessUpgradeCard, styles.businessCardVerified]}
+                onPress={() => navigation.navigate('BusinessVerification')}
+                activeOpacity={0.85}
+              >
                 <View style={styles.businessCardHeader}>
-                  <Text style={styles.businessCardIcon}>✔</Text>
+                  <View style={styles.businessBadgeContainer}>
+                    <BusinessVerifiedBadge size={36} withEffect={true} effect="small" />
+                  </View>
                   <View style={styles.businessCardTitleWrap}>
                     <Text style={styles.businessCardTitle}>Business Account</Text>
-                    <Text style={styles.businessCardSubtitle}>Verified</Text>
+                    <Text style={styles.businessCardSubtitle}>Fully Verified</Text>
                   </View>
                 </View>
                 <Text style={styles.businessCardDescription}>
                   Your wallet limit is now ₱500,000. Thank you for your trust!
                 </Text>
-              </View>
+              </TouchableOpacity>
             )}
 
             {businessVerification.application?.status === 'pending' && (
-              <View style={[styles.businessUpgradeCard, styles.businessCardPending]}>
+              <TouchableOpacity
+                style={[styles.businessUpgradeCard, styles.businessCardPending]}
+                onPress={() => navigation.navigate('BusinessVerification')}
+                activeOpacity={0.85}
+              >
                 <View style={styles.businessCardHeader}>
                   <Text style={styles.businessCardIcon}>⏳</Text>
                   <View style={styles.businessCardTitleWrap}>
@@ -378,7 +454,7 @@ export default function ProfileScreen({ navigation }) {
                 <Text style={styles.businessCardDescription}>
                   Your business verification is under review. We'll notify you within 3-5 days.
                 </Text>
-              </View>
+              </TouchableOpacity>
             )}
           </>
         )}
@@ -421,7 +497,9 @@ export default function ProfileScreen({ navigation }) {
                 computed.verTone === "warn" ? theme.warning : theme.danger
             }
             onPress={() => {
-              if (computed.verLabel === "Verified" || computed.verLabel === "Pending") return;
+              if (computed.verLabel === "Verified" || computed.verLabel === "Pending") {
+                return handleVerificationPress();
+              }
               navigation.navigate("PassengerType");
             }}
             theme={theme}
@@ -652,6 +730,14 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
   avatarWrap: {
     position: "relative",
   },
+  avatarRing: {
+    borderRadius: 40,
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // default transparent ring
+    borderWidth: 0,
+  },
   avatar: {
     width: 64,
     height: 64,
@@ -707,6 +793,38 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
   verifiedRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
   verifiedPill: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   verifiedText: { fontSize: 13, fontWeight: '700' },
+  businessBadgeWrap: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    alignItems: "center",
+  },
+  businessBadgeAura: {
+    width: 56,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(124,58,237,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(124,58,237,0.34)",
+    shadowColor: "#7C3AED",
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  businessBadgeCore: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(124,58,237,0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#C084FC",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
 
   // Section labels
   sectionLabel: {
@@ -794,9 +912,17 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
     alignItems: "center",
     gap: 12,
     marginBottom: 12,
+    paddingTop: 4,
+  },
+  businessBadgeContainer: {
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    width: 48,
   },
   businessCardIcon: {
     fontSize: 28,
+    color: "#10B981",
   },
   businessCardTitleWrap: {
     flex: 1,
@@ -805,11 +931,12 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
     color: theme.text,
     fontSize: 16,
     fontWeight: "700",
-    marginBottom: 2,
+    marginBottom: 3,
   },
   businessCardSubtitle: {
     color: theme.textSecondary,
     fontSize: 12,
+    fontWeight: "500",
   },
   businessCardDescription: {
     color: theme.textSecondary,

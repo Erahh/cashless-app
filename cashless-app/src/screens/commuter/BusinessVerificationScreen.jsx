@@ -21,6 +21,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import VerifiedBadge from "../../components/VerifiedBadge";
 
 export default function BusinessVerificationScreen({ navigation }) {
     const { theme, isDarkMode } = useTheme();
@@ -340,7 +341,7 @@ export default function BusinessVerificationScreen({ navigation }) {
                     {
                         text: "OK",
                         onPress: () => {
-                            navigation.navigate('VerificationSubmitted');
+                                navigation.navigate('VerificationSubmitted', { flow: 'business' });
                         },
                     }
                 ]
@@ -367,17 +368,11 @@ export default function BusinessVerificationScreen({ navigation }) {
         return (
             <Screen title="Business Verification" theme={theme} onBack={() => navigation.goBack()}>
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
-                    <MaterialCommunityIcons name="check-circle" size={80} color="#4CAF50" style={{ marginBottom: 16 }} />
+                    <VerifiedBadge size={92} glowColor="rgba(47,128,237,0.32)" glowSize={18} />
                     <Text style={[styles.title, { color: theme.text }]}>Verified</Text>
                     <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
                         Your business account has been verified. You can now top up and hold up to ₱500,000 in your wallet.
                     </Text>
-                    <TouchableOpacity
-                        style={[styles.button, { backgroundColor: theme.warning }]}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Text style={[styles.buttonText, { color: '#000' }]}>Back to Wallet</Text>
-                    </TouchableOpacity>
                 </View>
             </Screen>
         );
@@ -395,12 +390,6 @@ export default function BusinessVerificationScreen({ navigation }) {
                     <Text style={[styles.note, { color: theme.textMuted }]}>
                         You'll receive a notification once your application has been reviewed.
                     </Text>
-                    <TouchableOpacity
-                        style={[styles.button, { backgroundColor: theme.textSecondary }]}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Text style={[styles.buttonText, { color: '#000' }]}>Back to Wallet</Text>
-                    </TouchableOpacity>
                 </View>
             </Screen>
         );
@@ -450,12 +439,6 @@ export default function BusinessVerificationScreen({ navigation }) {
                         <Text style={[styles.buttonText, { color: '#000' }]}>Submit New Application</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[styles.button, { backgroundColor: theme.textSecondary }]}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Text style={[styles.buttonText, { color: '#000' }]}>Back to Wallet</Text>
-                    </TouchableOpacity>
                 </ScrollView>
             </Screen>
         );

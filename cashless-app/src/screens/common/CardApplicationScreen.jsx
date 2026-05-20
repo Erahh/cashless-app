@@ -983,23 +983,12 @@ export default function CardApplicationScreen({ navigation, route }) {
               <Text style={styles.frozenBannerText}>
                 All transactions using this card are blocked. Contact support or visit a branch to request a replacement.
               </Text>
-              <TouchableOpacity
-                style={[styles.secondaryAction, { marginTop: 12 }]}
-                onPress={() => navigation.goBack()}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.secondaryActionText}>Back to Profile</Text>
-              </TouchableOpacity>
             </View>
           )}
 
           {/* Active Card Actions */}
           {!isFrozen && (
             <>
-              <TouchableOpacity style={styles.primaryAction} onPress={() => navigation.goBack()} activeOpacity={0.9}>
-                <Text style={styles.primaryActionText}>Back to Profile</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={[styles.lostCardBtn, reportingLost && { opacity: 0.55 }]}
                 onPress={handleReportLost}
@@ -1080,9 +1069,6 @@ export default function CardApplicationScreen({ navigation, route }) {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.secondaryAction} onPress={() => navigation.goBack()} activeOpacity={0.9}>
-              <Text style={styles.secondaryActionText}>Back to Profile</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={{ height: 80 }} />

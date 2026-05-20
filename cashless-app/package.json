@@ -5,6 +5,8 @@
   "scripts": {
     "start": "cross-env EXPO_NO_REDIRECT_PAGE=1 expo start --lan --go",
     "start:tunnel": "cross-env EXPO_NO_REDIRECT_PAGE=1 expo start --tunnel",
+    "start:tunnel:go": "cross-env EXPO_NO_REDIRECT_PAGE=1 expo start --tunnel --go",
+    "start:tunnel:dev": "cross-env EXPO_NO_REDIRECT_PAGE=1 expo start --tunnel --dev-client",
     "start:lan": "cross-env EXPO_NO_REDIRECT_PAGE=1 expo start --lan",
     "android": "expo run:android",
     "ios": "expo run:ios"

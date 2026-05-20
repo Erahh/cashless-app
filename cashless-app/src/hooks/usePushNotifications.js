@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { DeviceEventEmitter, Platform } from "react-native";
+import { Alert, DeviceEventEmitter, Platform } from "react-native";
 import Constants from "expo-constants";
 import { supabase } from "../api/supabase";
 import { fetchNotifications } from "../api/notificationsApi";
@@ -16,7 +16,6 @@ try {
 if (NotificationsModule && typeof NotificationsModule.setNotificationHandler === "function") {
     NotificationsModule.setNotificationHandler({
         handleNotification: async () => ({
-            shouldShowAlert: true,   // backward compat (SDK < 53)
             shouldShowBanner: true,  // SDK 53+
             shouldShowList: true,
             shouldPlaySound: true,
@@ -206,6 +205,12 @@ export function usePushNotifications() {
                         const data = rawPayload;
 
                         try {
+                            if (isExpoGoAndroidRef.current) {
+                                DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", data);
+                                Alert.alert(title, body);
+                                continue;
+                            }
+
                             await Notifications.scheduleNotificationAsync({
                                 content: {
                                     title,

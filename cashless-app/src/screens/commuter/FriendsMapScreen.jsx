@@ -10,6 +10,7 @@ import {
     ScrollView,
     Modal,
     Linking,
+    AppState,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
@@ -130,6 +131,24 @@ export default function FriendsMapScreen({ navigation, route }) {
     }, [isAutoRefreshEnabled]);
 
     useEffect(() => {
+        const subscription = AppState.addEventListener('change', async (nextState) => {
+            if (nextState !== 'active') return;
+
+            try {
+                await refreshFriendsLocations();
+
+                if (!walkingMode && !broadcastIntervalRef.current) {
+                    startBroadcasting();
+                }
+            } catch (error) {
+                handleBackendFailure('refresh', error);
+            }
+        });
+
+        return () => subscription.remove();
+    }, [walkingMode]);
+
+    useEffect(() => {
         if (route?.params?.friendId) {
             setSelectedFriendId(String(route.params.friendId));
         }
@@ -156,8 +175,19 @@ export default function FriendsMapScreen({ navigation, route }) {
 
             await refreshFriendsLocations();
 
+            // Make the commuter visible automatically whenever the map opens.
+            try {
+                await api('/friends/share-location', {
+                    method: 'PUT',
+                    body: JSON.stringify({ enabled: true })
+                });
+                setShareLocation(true);
+            } catch (shareError) {
+                handleBackendFailure('broadcast', shareError);
+            }
+
             // Start broadcasting location
-            if (shareLocation) {
+            if (!walkingMode) {
                 startBroadcasting();
             }
         } catch (error) {

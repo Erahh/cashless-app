@@ -169,6 +169,17 @@ function AppWithLock() {
     const nav = navigationRef.current;
     const destination = resolveNotificationDestination(payload.data || payload, [], { fallbackRouteName: "Notifications" });
 
+    // Acknowledge the notification on the server so it won't reappear
+    try {
+      const nid = (payload.data && (payload.data._notificationId || payload.data._nid || payload.data.id));
+      if (nid) {
+        // Lazy-load the API helper to avoid circular imports at module scope
+        // eslint-disable-next-line global-require
+        const { markNotificationRead } = require('./api/notificationsApi');
+        markNotificationRead(nid).catch(() => {});
+      }
+    } catch (e) {}
+
     hideNotificationBanner();
 
     if (nav?.navigate && destination?.routeName) {

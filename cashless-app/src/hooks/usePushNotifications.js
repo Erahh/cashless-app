@@ -302,11 +302,13 @@ export function usePushNotifications() {
                                         });
                                         // persist seen key so we don't reshow
                                         try { await saveSeenKeysToStorage(); } catch (e) {}
-                                        DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", {
-                                            title,
-                                            body,
-                                            data,
-                                        });
+                                                        // Attach server notification id for client acknowledgement
+                                                        const emitData = Object.assign({}, data, { _notificationId: item.id || item._notification_id || null });
+                                                        DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", {
+                                                            title,
+                                                            body,
+                                                            data: emitData,
+                                                        });
                                     } else {
                                         // Fallback: emit the event; UI can listen to the event.
                                         DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", {
@@ -346,10 +348,12 @@ export function usePushNotifications() {
                                 // ignore
                             }
 
+                            // Emit with server id for acknowledgment
+                            const emitData2 = Object.assign({}, data, { _notificationId: item.id || item._notification_id || null });
                             DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", {
                                 title,
                                 body,
-                                data,
+                                data: emitData2,
                             });
                         } catch (scheduleErr) {
                             console.warn("Failed to schedule notification:", scheduleErr?.message || scheduleErr);
@@ -383,7 +387,8 @@ export function usePushNotifications() {
                         if (!key || seenNotificationKeysRef.current.has(key)) return; // ignore old/seen
                         // persist seen key before emitting to avoid duplicates
                         addSeenKeyAndSave(key).catch(() => {});
-                        DeviceEventEmitter.emit('PUSH_NOTIFICATION_RECEIVED', { title, body, data });
+                        const emitDataRealtime = Object.assign({}, data, { _notificationId: item.id || item._notification_id || null });
+                        DeviceEventEmitter.emit('PUSH_NOTIFICATION_RECEIVED', { title, body, data: emitDataRealtime });
                     } catch (e) {
                         // ignore
                     }
@@ -398,7 +403,8 @@ export function usePushNotifications() {
                         const key = notificationKey(item, title, body, data);
                         if (!key || seenNotificationKeysRef.current.has(key)) return; // ignore old/seen
                         addSeenKeyAndSave(key).catch(() => {});
-                        DeviceEventEmitter.emit('PUSH_NOTIFICATION_RECEIVED', { title, body, data });
+                        const emitDataRealtime2 = Object.assign({}, data, { _notificationId: item.id || item._notification_id || null });
+                        DeviceEventEmitter.emit('PUSH_NOTIFICATION_RECEIVED', { title, body, data: emitDataRealtime2 });
                     } catch (e) {}
                 });
 

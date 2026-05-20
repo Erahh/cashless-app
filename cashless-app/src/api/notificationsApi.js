@@ -86,6 +86,22 @@ export async function deleteNotification(id) {
 }
 
 /**
+ * Mark a single notification as read.
+ */
+export async function markNotificationRead(id) {
+  const token = await getToken();
+
+  const res = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || 'Failed to mark notification read');
+  return json;
+}
+
+/**
  * Clear all notifications.
  */
 export async function clearNotifications() {

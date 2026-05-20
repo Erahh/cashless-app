@@ -666,7 +666,7 @@ export default function CardApplicationScreen({ navigation, route }) {
                 <HugeiconsIcon icon={Shield01Icon} size={20} color={theme.accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.subtitleTitle}>Create your card account</Text>
+                <Text style={styles.subtitleTitle}>Activate your Card account</Text>
                 <Text style={styles.subtitle}>
                   Your details are automatically filled in. Select a branch below for card pickup to activate your account.
                 </Text>

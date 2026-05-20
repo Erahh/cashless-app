@@ -14,6 +14,7 @@ import { View,
   Linking,
   StatusBar,
   Animated } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { supabase } from "../../api/supabase";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -36,6 +37,45 @@ let CACHED_ACCOUNT = null;
 let CACHED_BUSINESS_VERIFICATION = null;
 let CACHED_IS_OPERATOR = null;
 let CACHED_OPERATOR_APP = null;
+let CACHED_CARD_APP = null;
+
+function normalizeCardStatus(json) {
+  const source = json && typeof json === "object" ? json : {};
+  const card = source.card || null;
+  const latest = source.latest_request || source.latest_application || source.application || source.item || source.data || null;
+  const rawStatus = String(
+    card?.status || latest?.status || source.status || source.card_status || source.approval_status || source.state || ""
+  ).toLowerCase();
+
+  const isLost = rawStatus === "lost";
+  const isDisabled = rawStatus === "disabled";
+
+  const approved = Boolean(
+    !isLost && !isDisabled && (
+      source.verified ||
+      source.approved ||
+      latest?.verified ||
+      latest?.approved ||
+      ["approved", "active", "activated", "verified"].includes(rawStatus)
+    )
+  );
+
+  let status;
+  if (isLost) status = "lost";
+  else if (isDisabled) status = "disabled";
+  else if (approved) status = "approved";
+  else if (["pending", "review", "processing"].includes(rawStatus)) status = "pending";
+  else if (["rejected", "declined", "denied"].includes(rawStatus)) status = "rejected";
+  else status = "form";
+
+  return {
+    status,
+    number: String(card?.card_number || source.card_number || latest?.card_number || source.account_number || "").trim(),
+    cardId: card?.id || source.card_id || null,
+    issuedAt: card?.issued_at || source.issued_at || null,
+    cvv: String(card?.cvv || source.cvv || "001").trim(),
+  };
+}
 
 export default function ProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -48,6 +88,7 @@ export default function ProfileScreen({ navigation }) {
   const [aboutModalVisible, setAboutModalVisible] = useState(false);
   const [isOperator, setIsOperator] = useState(!!CACHED_IS_OPERATOR);
   const [operatorApp, setOperatorApp] = useState(CACHED_OPERATOR_APP);
+  const [cardApp, setCardApp] = useState(CACHED_CARD_APP);
   const { setLocked, setLockSuppressed } = useContext(AppLockContext);
 
   const { theme, isDarkMode, toggleTheme } = useTheme();
@@ -128,7 +169,7 @@ export default function ProfileScreen({ navigation }) {
         return;
       }
 
-      const [profileRes, accountRes, businessRes, operatorUserRes, operatorAppRes] = await Promise.all([
+      const [profileRes, accountRes, businessRes, operatorUserRes, operatorAppRes, cardAppRes] = await Promise.all([
         supabase
           .from("profiles")
           .select("full_name, phone, email, birthdate, province, city, barangay, zip_code, address_line, first_name, middle_name, last_name, avatar_url")
@@ -157,6 +198,7 @@ export default function ProfileScreen({ navigation }) {
             return { data: null };
           }
         })(),
+        renderApiRequest("/registrations/my-card-application").catch(() => null),
       ]);
 
       const { data: p, error: pErr } = profileRes;
@@ -188,6 +230,56 @@ export default function ProfileScreen({ navigation }) {
       const app = operatorAppRes?.data;
       setOperatorApp(app);
       CACHED_OPERATOR_APP = app;
+
+      // Card Application Status — backend API + direct Supabase fallback
+      let cardRes = cardAppRes;
+      if (!cardRes) {
+        // Backend API not available — check credentials table directly
+        try {
+          const [credResult, walletResult, countResult] = await Promise.all([
+            supabase
+              .from("credentials")
+              .select("id, value, type, status, issued_at")
+              .eq("commuter_id", userId)
+              .eq("type", "rfid")
+              .order("issued_at", { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+            supabase.from("wallets").select("balance").eq("commuter_id", userId).maybeSingle(),
+            supabase.from("credentials").select("id", { count: "exact", head: true }).eq("commuter_id", userId).eq("type", "rfid"),
+          ]);
+
+          const credential = credResult.data;
+          const cvvCount = countResult?.count || 1;
+          
+          if (credential) {
+            const cardSt = String(credential.status || "active").toLowerCase();
+            cardRes = {
+              status: ["lost", "disabled"].includes(cardSt) ? cardSt : "approved",
+              card: { id: credential.id, card_number: credential.value, status: cardSt, issued_at: credential.issued_at, cvv: String(cvvCount).padStart(3, "0") },
+              balance: Number(walletResult.data?.balance ?? 0),
+            };
+          } else {
+            // Check card_applications for pending status
+            for (const { table, key } of [
+              { table: "card_applications", key: "user_id" },
+              { table: "card_applications", key: "commuter_id" },
+              { table: "commuter_card_applications", key: "user_id" },
+              { table: "commuter_card_applications", key: "commuter_id" },
+            ]) {
+              try {
+                const { data } = await supabase.from(table).select("id, status, submitted_at").eq(key, userId).order("submitted_at", { ascending: false }).limit(1).maybeSingle();
+                if (data) { cardRes = { status: data.status || "pending", latest_request: data }; break; }
+              } catch (_) { /* try next */ }
+            }
+          }
+        } catch (fallbackErr) {
+          console.warn("Card status fallback failed:", fallbackErr?.message);
+        }
+      }
+      const normalizedCard = normalizeCardStatus(cardRes);
+      setCardApp(normalizedCard);
+      CACHED_CARD_APP = normalizedCard;
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to load profile");
     } finally {
@@ -273,9 +365,6 @@ export default function ProfileScreen({ navigation }) {
         setLockSuppressed(false);
         return;
       }
-
-      // Keep suppressed until we start the upload or finish processing
-      // but actually finally block handles it better.
 
       const asset = result.assets[0];
       const ext = (asset.uri || "").split(".").pop()?.toLowerCase();
@@ -484,6 +573,128 @@ export default function ProfileScreen({ navigation }) {
           </>
         )}
 
+        {/* My Card Section */}
+        <Text style={[styles.sectionLabel, { marginTop: 8 }]}>My Card</Text>
+        {(cardApp?.status === "approved" || cardApp?.status === "lost" || cardApp?.status === "disabled") ? (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate("CardApplication", { profile, account })}
+            style={{ marginBottom: 24 }}
+          >
+            <View style={[
+              styles.cardShell, 
+              { minHeight: 180, padding: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" }, 
+              cardApp.status !== "approved" && { opacity: 0.85 }
+            ]}>
+              <LinearGradient
+                colors={cardApp.status === "approved"
+                  ? ["#FAF0D4", "#F4C271", "#E58E38", "#D96827"]
+                  : ["#9CA3AF", "#6B7280", "#4B5563", "#374151"]
+                }
+                start={{ x: -0.2, y: -0.2 }}
+                end={{ x: 1.2, y: 1.2 }}
+                style={[StyleSheet.absoluteFillObject, { opacity: 0.9, borderRadius: 20 }]}
+              />
+              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(255,255,255,0.4)", borderRadius: 20 }]} />
+              
+              <View style={styles.cardTopRow}>
+                <Text style={[styles.cardBrand, { color: "#FFFFFF", textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>MotoCard</Text>
+                {cardApp.status !== "approved" && (
+                  <View style={[styles.activePill, { backgroundColor: "rgba(239,68,68,0.35)", alignSelf: "flex-start" }]}>
+                    <HugeiconsIcon icon={LockIcon} size={12} color="#FFFFFF" />
+                    <Text style={[styles.activePillText, { color: "#FFFFFF" }]}>
+                      {cardApp.status === "lost" ? "FROZEN" : "DISABLED"}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              
+              <View style={[styles.cardMidRow, { marginTop: 16 }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <View style={[styles.chip, { borderColor: "rgba(255,255,255,0.4)", backgroundColor: "rgba(255,255,255,0.2)" }]} />
+                  <HugeiconsIcon icon={CheckmarkCircle02Icon} size={20} color="rgba(255,255,255,0.8)" style={{ transform: [{ rotate: "90deg" }] }} />
+                </View>
+                <Text style={[
+                  styles.cardNumber, 
+                  { 
+                    color: "#FFFFFF", 
+                    fontSize: 22, 
+                    letterSpacing: 2, 
+                    marginTop: 8,
+                    textShadowColor: "rgba(0,0,0,0.25)",
+                    textShadowOffset: { width: 0, height: 2 },
+                    textShadowRadius: 6
+                  }
+                ]}>
+                  {cardApp.number ? cardApp.number.replace(/(.{4})/g, "$1 ").trim() : "•••• •••• •••• ••••"}
+                </Text>
+              </View>
+
+              <View style={[styles.cardTopRow, { marginTop: 'auto', alignItems: "flex-end" }]}>
+                <View>
+                  <Text style={[styles.cardMetaLabel, { color: "rgba(255,255,255,0.7)" }]}>CARD HOLDER</Text>
+                  <Text style={[styles.cardMetaValue, { color: "#FFFFFF", fontSize: 13, textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>
+                    {computed.name}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: "row", gap: 16 }}>
+                  <View>
+                    <Text style={[styles.cardMetaLabel, { color: "rgba(255,255,255,0.7)" }]}>VALID THRU</Text>
+                    <Text style={[styles.cardMetaValue, { color: "#FFFFFF", fontSize: 13, textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>
+                      04/31
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={[styles.cardMetaLabel, { color: "rgba(255,255,255,0.7)" }]}>CVV</Text>
+                    <Text style={[styles.cardMetaValue, { color: "#FFFFFF", fontSize: 13, textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>
+                      {cardApp.cvv || "001"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ) : cardApp?.status === "pending" ? (
+          <TouchableOpacity 
+            style={[styles.businessUpgradeCard, styles.businessCardPending, { marginBottom: 24 }]}
+            onPress={() => navigation.navigate("CardApplication", { profile, account })}
+            activeOpacity={0.85}
+          >
+            <View style={styles.businessCardHeader}>
+              <Text style={styles.businessCardIcon}>⏳</Text>
+              <View style={styles.businessCardTitleWrap}>
+                <Text style={styles.businessCardTitle}>Card Application Pending</Text>
+                <Text style={styles.businessCardSubtitle}>Under review</Text>
+              </View>
+            </View>
+            <Text style={styles.businessCardDescription}>
+              We are reviewing your application. You will be notified once it is approved.
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={[styles.businessUpgradeCard, { marginBottom: 24, backgroundColor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF", borderColor: theme.border }]}
+            onPress={() => navigation.navigate("CardApplication", { profile, account })}
+            activeOpacity={0.85}
+          >
+            <View style={styles.businessCardHeader}>
+              <View style={[styles.businessBadgeContainer, { backgroundColor: theme.accent, width: 40, height: 40, borderRadius: 12 }]}>
+                 <HugeiconsIcon icon={QrCodeIcon} size={20} color="#0B0E14" />
+              </View>
+              <View style={styles.businessCardTitleWrap}>
+                <Text style={styles.businessCardTitle}>Activate your Card</Text>
+                <Text style={styles.businessCardSubtitle}>Unlock NFC & Payments</Text>
+              </View>
+            </View>
+            <Text style={styles.businessCardDescription}>
+              You haven't activated your card yet. Apply now to get your physical MotoCard for fast rides.
+            </Text>
+            <View style={[styles.businessCardButton, { backgroundColor: theme.text }]}>
+              <Text style={[styles.businessCardButtonText, { color: theme.background }]}>Apply Now →</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Account Section */}
         <Text style={styles.sectionLabel}>Account</Text>
         <View style={styles.menuCard}>
@@ -503,13 +714,6 @@ export default function ProfileScreen({ navigation }) {
             rightText={account?.pin_set ? "SET" : "NOT SET"}
             rightColor={account?.pin_set ? theme.success : theme.danger}
             onPress={() => navigation.navigate("PasswordSecurity")}
-            theme={theme}
-          />
-          <View style={styles.menuDivider} />
-          <MenuItem
-            icon={QrCodeIcon}
-            title="My Card"
-            onPress={() => navigation.navigate("CardApplication", { profile })}
             theme={theme}
           />
           <View style={styles.menuDivider} />
@@ -909,45 +1113,40 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
     gap: 8,
   },
   menuRightText: {
-    color: theme.textMuted,
+    color: theme.text,
     fontSize: 13,
     fontWeight: "600",
   },
 
   // Business Upgrade Card
   businessUpgradeCard: {
-    backgroundColor: isDarkMode
-      ? "linear-gradient(135deg, rgba(247, 227, 83, 0.1) 0%, rgba(247, 227, 83, 0.05) 100%)"
-      : "linear-gradient(135deg, rgba(26, 26, 26, 0.04) 0%, rgba(26, 26, 26, 0.02) 100%)",
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: isDarkMode ? "rgba(247, 227, 83, 0.2)" : "rgba(26, 26, 26, 0.1)",
-    padding: 18,
+    backgroundColor: isDarkMode ? "rgba(255,211,106,0.1)" : "rgba(255,211,106,0.15)",
+    borderRadius: 20,
+    padding: 16,
     marginBottom: 24,
-    backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: isDarkMode ? "rgba(255,211,106,0.3)" : "rgba(255,211,106,0.5)",
   },
   businessCardVerified: {
-    borderColor: isDarkMode ? "rgba(52, 211, 153, 0.3)" : "rgba(52, 211, 153, 0.2)",
+    backgroundColor: isDarkMode ? "rgba(34,197,94,0.1)" : "rgba(34,197,94,0.08)",
+    borderColor: isDarkMode ? "rgba(34,197,94,0.3)" : "rgba(34,197,94,0.4)",
   },
   businessCardPending: {
-    borderColor: isDarkMode ? "rgba(251, 191, 36, 0.3)" : "rgba(251, 191, 36, 0.2)",
+    backgroundColor: isDarkMode ? "rgba(168,162,158,0.1)" : "rgba(243,244,246,1)",
+    borderColor: isDarkMode ? "rgba(168,162,158,0.2)" : "rgba(229,231,235,1)",
   },
   businessCardHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 12,
-    paddingTop: 4,
+    marginBottom: 8,
   },
   businessBadgeContainer: {
-    marginRight: 12,
     alignItems: "center",
     justifyContent: "center",
-    width: 48,
   },
   businessCardIcon: {
-    fontSize: 28,
-    color: "#10B981",
+    fontSize: 24,
   },
   businessCardTitleWrap: {
     flex: 1,
@@ -955,13 +1154,12 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
   businessCardTitle: {
     color: theme.text,
     fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 3,
+    fontWeight: "900",
   },
   businessCardSubtitle: {
     color: theme.textSecondary,
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: 13,
+    fontWeight: "600",
   },
   businessCardDescription: {
     color: theme.textSecondary,
@@ -971,16 +1169,14 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
   },
   businessCardButton: {
     backgroundColor: theme.accent,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 12,
     alignItems: "center",
-    justifyContent: "center",
   },
   businessCardButtonText: {
-    color: isDarkMode ? "#0B0E14" : "#fff",
+    color: "#0B0E14",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "900",
   },
 
   // Version
@@ -988,7 +1184,87 @@ const createStyles = (theme, isDarkMode) => StyleSheet.create({
     textAlign: "center",
     color: theme.textMuted,
     fontSize: 12,
+    fontWeight: "600",
     marginTop: 8,
+    marginBottom: 24,
+  },
+
+  // Card Shell
+  cardShell: {
+    borderRadius: 24,
+    padding: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.55)",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  cardGlowOne: {
+    position: "absolute",
+    right: -32,
+    top: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  cardGlowTwo: {
+    position: "absolute",
+    left: -20,
+    bottom: -30,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  cardTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 20,
+  },
+  cardBrand: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "900",
+    letterSpacing: 0.4,
+  },
+  activePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.42)",
+  },
+  activePillText: {
+    color: "#0B0E14",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+  },
+  cardMidRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 'auto',
+  },
+  chip: {
+    width: 38,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  cardNumber: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "900",
+    letterSpacing: 2,
   },
 });

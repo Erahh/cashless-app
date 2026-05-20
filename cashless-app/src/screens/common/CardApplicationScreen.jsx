@@ -9,14 +9,16 @@ import {
   StyleSheet,
   StatusBar,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
 
 import { useTheme } from "../../context/ThemeContext";
 import { supabase } from "../../api/supabase";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { ArrowLeft01Icon, CheckmarkCircle01Icon, Clock01Icon, Shield01Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, CheckmarkCircle01Icon, Clock01Icon, Shield01Icon, Camera01Icon, LockIcon } from "@hugeicons/core-free-icons";
 import { Picker } from "@react-native-picker/picker";
 import FloatingLabelInput from "../../components/Input";
 import { renderApiRequest } from "../../api/apiHelper";
@@ -179,6 +181,38 @@ function SummaryField({ label, value, theme }) {
   );
 }
 
+function IdUploadCard({ title, description, asset, onPress, theme }) {
+  return (
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[
+      {
+        flex: 1,
+        minHeight: 170,
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: theme.border,
+        backgroundColor: theme.background,
+        padding: 14,
+        overflow: "hidden",
+      }
+    ]}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <Text style={{ color: theme.text, fontWeight: "900", fontSize: 14 }}>{title}</Text>
+        <View style={{ width: 32, height: 32, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: theme.card }}>
+          <HugeiconsIcon icon={Camera01Icon} size={15} color={theme.accent} />
+        </View>
+      </View>
+      <Text style={{ color: theme.textSecondary, fontSize: 12, lineHeight: 17, marginBottom: 12 }}>{description}</Text>
+      {asset?.uri ? (
+        <Image source={{ uri: asset.uri }} style={{ width: "100%", height: 92, borderRadius: 16, backgroundColor: theme.card }} />
+      ) : (
+        <View style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderStyle: "dashed", borderColor: theme.border, alignItems: "center", justifyContent: "center", minHeight: 92 }}>
+          <Text style={{ color: theme.textMuted, fontWeight: "800", fontSize: 12 }}>Tap to upload</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
 // ------- Themed Select Field (Touchable dropdown) -------
 function SelectField({ label, value, placeholder, onPress, theme }) {
   const isSelected = !!value;
@@ -305,34 +339,52 @@ function PickerModal({ visible, title, value, items, onChange, onClose, placehol
 function normalizeCardApplicationPayload(payload) {
   const source = payload && typeof payload === "object" ? payload : {};
   const latest = source.latest_request || source.latest_application || source.application || source.item || source.data || null;
+  const card = source.card || null;
   const rawStatus = String(
-    latest?.status || source.status || source.card_status || source.approval_status || source.state || ""
+    card?.status || latest?.status || source.status || source.card_status || source.approval_status || source.state || ""
   ).toLowerCase();
 
-  const approved = Boolean(
-    source.verified ||
-    source.approved ||
-    latest?.verified ||
-    latest?.approved ||
-    ["approved", "active", "activated", "verified"].includes(rawStatus)
-  );
+  const isLost = rawStatus === "lost";
+  const isDisabled = rawStatus === "disabled";
 
-  const pending = ["pending", "review", "processing"].includes(rawStatus);
-  const rejected = ["rejected", "declined", "denied"].includes(rawStatus);
+  const approved = Boolean(
+    !isLost && !isDisabled && (
+      source.verified ||
+      source.approved ||
+      latest?.verified ||
+      latest?.approved ||
+      ["approved", "active", "activated", "verified"].includes(rawStatus)
+    )
+  );
+  const pending = !isLost && !isDisabled && ["pending", "review", "processing"].includes(rawStatus);
+  const rejected = !isLost && !isDisabled && ["rejected", "declined", "denied"].includes(rawStatus);
+
+  let status;
+  if (isLost) status = "lost";
+  else if (isDisabled) status = "disabled";
+  else if (approved) status = "approved";
+  else if (pending) status = "pending";
+  else if (rejected) status = "rejected";
+  else status = "form";
 
   return {
     latest,
-    status: approved ? "approved" : pending ? "pending" : rejected ? "rejected" : latest ? "form" : "form",
+    card,
+    cardId: card?.id || source.card_id || null,
+    status,
     number: String(
-      source.card_number || source.card?.card_number || latest?.card_number || source.account_number || ""
+      source.card_number || card?.card_number || latest?.card_number || source.account_number || ""
     ).trim(),
     validThru: String(
-      source.valid_thru || source.card?.valid_thru || latest?.valid_thru || source.expiry || "04/31"
+      source.valid_thru || card?.valid_thru || latest?.valid_thru || source.expiry || "04/31"
     ).trim(),
+    cvv: String(card?.cvv || source.cvv || "001").trim(),
     branch: String(
       latest?.preferred_branch || latest?.branch || source.preferred_branch || source.branch || ""
     ).trim(),
     submittedAt: latest?.submitted_at || source.submitted_at || null,
+    issuedAt: card?.issued_at || source.issued_at || null,
+    balance: Number(source.balance ?? 0),
     rawStatus,
   };
 }
@@ -347,10 +399,16 @@ export default function CardApplicationScreen({ navigation, route }) {
   const [cardApplication, setCardApplication] = useState(null);
 
   const [profile, setProfile] = useState(route?.params?.profile || null);
+  const [account, setAccount] = useState(route?.params?.account || null);
   const [branch, setBranch] = useState("");
   const [branchModal, setBranchModal] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
+  const [frontId, setFrontId] = useState(null);
+  const [backId, setBackId] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [cardId, setCardId] = useState(null);
+  const [reportingLost, setReportingLost] = useState(false);
 
   const cardHolderName = useMemo(() => {
     const name = String(profile?.full_name || "Card Holder").trim();
@@ -364,9 +422,10 @@ export default function CardApplicationScreen({ navigation, route }) {
     return raw.replace(/.(?=.{4})/g, "•");
   }, [cardApplication]);
 
-  const derivedApproved = cardStatus === "approved";
+  const derivedApproved = cardStatus === "approved" || cardStatus === "lost" || cardStatus === "disabled";
   const derivedPending = cardStatus === "pending";
   const derivedRejected = cardStatus === "rejected";
+  const idVerified = Boolean(account?.verified || ["verified", "active", "activated"].includes(String(account?.verification_status || "").toLowerCase()) || account?.verified_at);
 
   const missingProfileFields = useMemo(() => {
     const checks = [
@@ -400,13 +459,28 @@ export default function CardApplicationScreen({ navigation, route }) {
     },
     {
       id: 3,
+      title: "Valid ID verification",
+      subtitle: idVerified ? "Already verified in your account" : "Upload your valid ID to continue",
+      complete: idVerified || (frontId && backId),
+    },
+    {
+      id: 4,
       title: "Branch & declaration",
       subtitle: "Select pickup branch and accept activation terms",
       complete: Boolean(branch) && acceptTerms,
     },
-  ]), [acceptTerms, branch, isProfileComplete]);
+  ]), [acceptTerms, backId, branch, frontId, idVerified, isProfileComplete]);
 
   const currentStep = applicationSteps.find((step) => step.id === activeStep) || applicationSteps[0];
+
+  useEffect(() => {
+    if (idVerified && activeStep < 3) {
+      setActiveStep(3);
+    }
+    if (!idVerified && activeStep === 3 && frontId && backId) {
+      setActiveStep(4);
+    }
+  }, [activeStep, backId, frontId, idVerified]);
 
   async function loadProfile() {
     setLoading(true);
@@ -429,17 +503,116 @@ export default function CardApplicationScreen({ navigation, route }) {
       }
 
       try {
+        const json = await renderApiRequest("/me/status");
+        setAccount(json?.account || route?.params?.account || null);
+      } catch (statusErr) {
+        if (__DEV__) {
+          console.warn("Failed to load account status:", statusErr?.message || statusErr);
+        }
+      }
+
+      // ── Card status: try backend API first, fallback to direct Supabase ──
+      try {
         const json = await renderApiRequest("/registrations/my-card-application");
         const normalized = normalizeCardApplicationPayload(json);
         setCardApplication(normalized);
         setCardStatus(normalized.status);
+        setWalletBalance(normalized.balance ?? 0);
+        setCardId(normalized.cardId ?? null);
       } catch (cardErr) {
-        setCardApplication(null);
-        setCardStatus("form");
+        // API endpoint not deployed yet or network issue — query Supabase directly
         if (__DEV__) {
-          console.warn("Failed to load card application status:", cardErr?.message || cardErr);
+          console.warn("Backend card API failed, using Supabase fallback:", cardErr?.message);
+        }
+        try {
+          const { data: userRes } = await supabase.auth.getUser();
+          const userId = userRes?.user?.id;
+
+          if (userId) {
+            const [credResult, walletResult] = await Promise.all([
+              supabase
+                .from("credentials")
+                .select("id, value, type, status, issued_at")
+                .eq("commuter_id", userId)
+                .eq("type", "rfid")
+                .order("issued_at", { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+              supabase
+                .from("wallets")
+                .select("balance")
+                .eq("commuter_id", userId)
+                .maybeSingle(),
+            ]);
+
+            const credential = credResult.data;
+            const balance = Number(walletResult.data?.balance ?? 0);
+            setWalletBalance(balance);
+
+            if (credential) {
+              // Admin has issued a card
+              const cardSt = String(credential.status || "active").toLowerCase();
+              const responseStatus = ["lost", "disabled"].includes(cardSt) ? cardSt : "approved";
+              const normalized = normalizeCardApplicationPayload({
+                status: responseStatus,
+                card: {
+                  id: credential.id,
+                  card_number: credential.value,
+                  status: cardSt,
+                  issued_at: credential.issued_at,
+                },
+                balance,
+              });
+              setCardApplication(normalized);
+              setCardStatus(normalized.status);
+              setCardId(credential.id);
+            } else {
+              // No card issued — check for a pending application
+              let foundApp = null;
+              for (const { table, key } of [
+                { table: "card_applications", key: "user_id" },
+                { table: "card_applications", key: "commuter_id" },
+                { table: "commuter_card_applications", key: "user_id" },
+                { table: "commuter_card_applications", key: "commuter_id" },
+              ]) {
+                try {
+                  const { data } = await supabase
+                    .from(table)
+                    .select("id, status, preferred_branch, branch, submitted_at")
+                    .eq(key, userId)
+                    .order("submitted_at", { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                  if (data) { foundApp = data; break; }
+                } catch (_) { /* try next */ }
+              }
+
+              if (foundApp) {
+                const normalized = normalizeCardApplicationPayload({
+                  status: foundApp.status || "pending",
+                  latest_request: foundApp,
+                  balance,
+                });
+                setCardApplication(normalized);
+                setCardStatus(normalized.status);
+              } else {
+                setCardApplication(null);
+                setCardStatus("form");
+              }
+            }
+          } else {
+            setCardApplication(null);
+            setCardStatus("form");
+          }
+        } catch (fallbackErr) {
+          if (__DEV__) {
+            console.warn("Supabase fallback also failed:", fallbackErr?.message);
+          }
+          setCardApplication(null);
+          setCardStatus("form");
         }
       }
+
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to load profile. Please make sure your profile is complete.");
       navigation.goBack();
@@ -450,6 +623,59 @@ export default function CardApplicationScreen({ navigation, route }) {
 
   useEffect(() => {
     loadProfile();
+  }, []);
+
+  // ── Realtime: auto-activate when admin issues a card ──
+  // The moment admin inserts an RFID credential for this user,
+  // the screen automatically switches to the activated card view.
+  useEffect(() => {
+    let channel = null;
+
+    const setupRealtime = async () => {
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id;
+      if (!userId) return;
+
+      channel = supabase
+        .channel(`card-issued-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "credentials",
+            filter: `commuter_id=eq.${userId}`,
+          },
+          (payload) => {
+            // Admin issued a new RFID card — reload to show the card
+            if (String(payload.new?.type || "").toLowerCase() === "rfid") {
+              loadProfile();
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "credentials",
+            filter: `commuter_id=eq.${userId}`,
+          },
+          (payload) => {
+            // Card status updated (activated, lost, disabled) — sync the UI
+            if (String(payload.new?.type || "").toLowerCase() === "rfid") {
+              loadProfile();
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setupRealtime();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
 
   function hasMissingRequiredProfileData() {
@@ -477,6 +703,10 @@ export default function CardApplicationScreen({ navigation, route }) {
           },
         ]
       );
+    }
+
+    if (!idVerified && (!frontId || !backId)) {
+      return Alert.alert("Valid ID required", "Please upload both front and back of a valid ID to continue.");
     }
 
     if (!branch) {
@@ -546,15 +776,78 @@ export default function CardApplicationScreen({ navigation, route }) {
       return Alert.alert("Profile required", "Please complete your registration profile first.");
     }
 
-    setActiveStep((step) => Math.min(3, step + 1));
+    if (activeStep === 3 && !idVerified && (!frontId || !backId)) {
+      return Alert.alert("Valid ID required", "Please upload both front and back ID photos before you continue.");
+    }
+
+    setActiveStep((step) => Math.min(4, step + 1));
   };
 
   const goBackStep = () => {
     setActiveStep((step) => Math.max(1, step - 1));
   };
 
+  const handleReportLost = () => {
+    if (!cardId) return Alert.alert("Error", "Card ID not found. Please reload the screen and try again.");
+    Alert.alert(
+      "⚠️ Report Card as Lost",
+      "This will immediately freeze your card and block ALL transactions. You will need to visit a branch or contact support to get a replacement.\n\nAre you absolutely sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Freeze Card",
+          style: "destructive",
+          onPress: async () => {
+            setReportingLost(true);
+            try {
+              let frozeOk = false;
+              try {
+                const res = await renderApiRequest(`/credentials/${cardId}/status`, {
+                  method: "PATCH",
+                  body: JSON.stringify({ status: "lost" }),
+                });
+                frozeOk = res?.ok === true;
+              } catch (_) {
+                // Backend not reachable — update directly via Supabase
+                const { error: updateErr } = await supabase
+                  .from("credentials")
+                  .update({ status: "lost" })
+                  .eq("id", cardId);
+                if (!updateErr) frozeOk = true;
+              }
+
+              if (frozeOk) {
+                setCardStatus("lost");
+                setCardApplication((prev) => prev ? { ...prev, status: "lost", rawStatus: "lost" } : prev);
+                Alert.alert(
+                  "Card Frozen ✅",
+                  "Your card has been reported as lost. All transactions are now blocked. Contact support to request a replacement card."
+                );
+              } else {
+                Alert.alert("Failed", "Could not freeze the card. Please try again.");
+              }
+            } catch (e) {
+              Alert.alert("Error", e.message || "Failed to freeze card.");
+            } finally {
+              setReportingLost(false);
+            }
+
+          },
+        },
+      ]
+    );
+  };
+
   const renderApprovedState = () => {
-    const branchText = cardApplication?.branch || cardApplication?.preferred_branch || "Assigned after activation";
+    const isLost = cardStatus === "lost";
+    const isDisabled = cardStatus === "disabled";
+    const isFrozen = isLost || isDisabled;
+
+    const cardGradientColors = isFrozen
+      ? ["#9CA3AF", "#6B7280", "#4B5563", "#374151"]
+      : ["#FFF7DA", "#F6D48A", "#E7B15D", "#F4E7CF"];
+
+    const statusLabel = isLost ? "FROZEN" : isDisabled ? "DISABLED" : "ACTIVE";
 
     return (
       <SafeAreaView style={styles.safe}>
@@ -569,73 +862,161 @@ export default function CardApplicationScreen({ navigation, route }) {
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.stateIntro}>
-            <Text style={styles.stateEyebrow}>ACTIVE CARD ACCOUNT</Text>
-            <Text style={styles.stateTitle}>Your account is activated and ready.</Text>
-            <Text style={styles.stateSub}>
-              This is your clean card view. Keep it handy for pickup, verification, and future NFC activation.
+
+          {/* Balance Card */}
+          <View style={styles.balanceCard}>
+            <Text style={styles.balanceMeta}>WALLET BALANCE</Text>
+            <Text style={styles.balanceAmount}>
+              ₱{Number(walletBalance).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
+            {isFrozen && (
+              <View style={styles.frozenPill}>
+                <Text style={styles.frozenPillText}>🔒 Card Frozen — Transactions Blocked</Text>
+              </View>
+            )}
           </View>
 
-          <LinearGradient
-            colors={["#FFF7DA", "#F6D48A", "#E7B15D", "#F4E7CF"]}
-            start={{ x: 0.02, y: 0.02 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardShell}
-          >
-            <View style={styles.cardGlowOne} />
-            <View style={styles.cardGlowTwo} />
-
+          {/* Card Visual */}
+          <View style={[
+            styles.cardShell, 
+            { minHeight: 180, padding: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" }, 
+            isFrozen && { opacity: 0.85 }
+          ]}>
+            <LinearGradient
+              colors={!isFrozen
+                ? ["#FAF0D4", "#F4C271", "#E58E38", "#D96827"]
+                : ["#9CA3AF", "#6B7280", "#4B5563", "#374151"]
+              }
+              start={{ x: -0.2, y: -0.2 }}
+              end={{ x: 1.2, y: 1.2 }}
+              style={[StyleSheet.absoluteFillObject, { opacity: 0.9, borderRadius: 20 }]}
+            />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(255,255,255,0.4)", borderRadius: 20 }]} />
+            
             <View style={styles.cardTopRow}>
-              <Text style={styles.cardBrand}>MotoCard</Text>
-              <View style={styles.activePill}>
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} color="#0B0E14" />
-                <Text style={styles.activePillText}>ACTIVE</Text>
+              <Text style={[styles.cardBrand, { color: "#FFFFFF", textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>MotoCard</Text>
+              {!isFrozen ? (
+                <View style={{ height: 14 }} /> 
+              ) : (
+                <View style={[styles.activePill, { backgroundColor: "rgba(239,68,68,0.35)", alignSelf: "flex-start" }]}>
+                  <HugeiconsIcon icon={LockIcon} size={12} color="#FFFFFF" />
+                  <Text style={[styles.activePillText, { color: "#FFFFFF" }]}>
+                    {statusLabel}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            <View style={[styles.cardMidRow, { marginTop: 16 }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={[styles.chip, { borderColor: "rgba(255,255,255,0.4)", backgroundColor: "rgba(255,255,255,0.2)" }]} />
+                <View style={styles.contactlessWrap}>
+                  <View style={[styles.contactlessWave, { borderColor: "rgba(255,255,255,0.8)" }]} />
+                  <View style={[styles.contactlessWave, { borderColor: "rgba(255,255,255,0.8)", transform: [{ scale: 0.74 }] }]} />
+                  <View style={[styles.contactlessWave, { borderColor: "rgba(255,255,255,0.8)", transform: [{ scale: 0.48 }] }]} />
+                </View>
               </View>
+              <Text style={[
+                styles.cardNumber, 
+                { 
+                  color: "#FFFFFF", 
+                  fontSize: 22, 
+                  letterSpacing: 2, 
+                  marginTop: 8,
+                  textShadowColor: "rgba(0,0,0,0.25)",
+                  textShadowOffset: { width: 0, height: 2 },
+                  textShadowRadius: 6
+                }
+              ]}>
+                {cardNumberDisplay}
+              </Text>
             </View>
 
-            <View style={styles.cardMidRow}>
-              <View style={styles.chip} />
-              <View style={styles.contactlessWrap}>
-                <View style={styles.contactlessWave} />
-                <View style={[styles.contactlessWave, { transform: [{ scale: 0.74 }] }]} />
-                <View style={[styles.contactlessWave, { transform: [{ scale: 0.48 }] }]} />
+            <View style={[styles.cardTopRow, { marginTop: 'auto', alignItems: "flex-end" }]}>
+              <View>
+                <Text style={[styles.cardMetaLabel, { color: "rgba(255,255,255,0.7)" }]}>CARD HOLDER</Text>
+                <Text style={[styles.cardMetaValue, { color: "#FFFFFF", fontSize: 13, textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>
+                  {cardHolderName}
+                </Text>
               </View>
-              <Text style={styles.cardNumber}>{cardNumberDisplay}</Text>
-            </View>
-
-            <View style={styles.cardBottomRow}>
-              <View style={styles.cardMetaBlock}>
-                <Text style={styles.cardMetaLabel}>CARD HOLDER</Text>
-                <Text style={styles.cardMetaValue}>{cardHolderName}</Text>
-              </View>
-              <View style={styles.cardMetaBlock}>
-                <Text style={styles.cardMetaLabel}>VALID THRU</Text>
-                <Text style={styles.cardMetaValue}>{cardApplication?.validThru || "04/31"}</Text>
-              </View>
-              <View style={styles.cardMetaBlock}>
-                <Text style={styles.cardMetaLabel}>CVV</Text>
-                <Text style={styles.cardMetaValue}>•••</Text>
+              <View style={{ flexDirection: "row", gap: 16 }}>
+                <View>
+                  <Text style={[styles.cardMetaLabel, { color: "rgba(255,255,255,0.7)" }]}>VALID THRU</Text>
+                  <Text style={[styles.cardMetaValue, { color: "#FFFFFF", fontSize: 13, textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>
+                    {cardApplication?.validThru || "04/31"}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={[styles.cardMetaLabel, { color: "rgba(255,255,255,0.7)" }]}>CVV</Text>
+                  <Text style={[styles.cardMetaValue, { color: "#FFFFFF", fontSize: 13, textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>
+                    {cardApplication?.cvv || "001"}
+                  </Text>
+                </View>
               </View>
             </View>
-          </LinearGradient>
+          </View>
 
+          {/* Info Grid */}
           <View style={styles.heroGrid}>
             <View style={styles.heroStatCard}>
-              <HugeiconsIcon icon={Shield01Icon} size={18} color={theme.accent} />
-              <Text style={styles.heroStatTitle}>Activated by admin</Text>
-              <Text style={styles.heroStatText}>Your card account is now approved for use.</Text>
+              <HugeiconsIcon icon={Shield01Icon} size={18} color={isFrozen ? "#EF4444" : theme.accent} />
+              <Text style={styles.heroStatTitle}>Card Status</Text>
+              <Text style={[styles.heroStatText, { color: isFrozen ? "#EF4444" : "#22C55E", fontWeight: "900" }]}>
+                {isLost ? "Frozen / Lost" : isDisabled ? "Disabled" : "Active ✓"}
+              </Text>
             </View>
             <View style={styles.heroStatCard}>
               <HugeiconsIcon icon={Clock01Icon} size={18} color={theme.success} />
-              <Text style={styles.heroStatTitle}>Pickup branch</Text>
-              <Text style={styles.heroStatText}>{branchText}</Text>
+              <Text style={styles.heroStatTitle}>Issued On</Text>
+              <Text style={styles.heroStatText}>
+                {cardApplication?.issuedAt
+                  ? new Date(cardApplication.issuedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+                  : "Issued by Admin"}
+              </Text>
             </View>
           </View>
 
-          <TouchableOpacity style={styles.primaryAction} onPress={() => navigation.goBack()} activeOpacity={0.9}>
-            <Text style={styles.primaryActionText}>Back to Profile</Text>
-          </TouchableOpacity>
+          {/* Frozen Banner */}
+          {isFrozen && (
+            <View style={styles.frozenBanner}>
+              <Text style={styles.frozenBannerTitle}>🔒 Your card is currently frozen</Text>
+              <Text style={styles.frozenBannerText}>
+                All transactions using this card are blocked. Contact support or visit a branch to request a replacement.
+              </Text>
+              <TouchableOpacity
+                style={[styles.secondaryAction, { marginTop: 12 }]}
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.secondaryActionText}>Back to Profile</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Active Card Actions */}
+          {!isFrozen && (
+            <>
+              <TouchableOpacity style={styles.primaryAction} onPress={() => navigation.goBack()} activeOpacity={0.9}>
+                <Text style={styles.primaryActionText}>Back to Profile</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.lostCardBtn, reportingLost && { opacity: 0.55 }]}
+                onPress={handleReportLost}
+                disabled={reportingLost}
+                activeOpacity={0.85}
+              >
+                {reportingLost ? (
+                  <ActivityIndicator size="small" color="#EF4444" />
+                ) : (
+                  <>
+                    <HugeiconsIcon icon={LockIcon} size={15} color="#EF4444" />
+                    <Text style={styles.lostCardBtnText}>Report Card as Lost / Freeze</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
 
           <View style={{ height: 100 }} />
         </ScrollView>
@@ -710,6 +1091,34 @@ export default function CardApplicationScreen({ navigation, route }) {
     );
   };
 
+  const pickIdImage = async (side) => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        return Alert.alert("Permission needed", "Allow photo access so you can upload your ID.");
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [3, 4],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      if (side === "front") {
+        setFrontId(asset);
+      } else {
+        setBackId(asset);
+      }
+    } catch (error) {
+      Alert.alert("Upload error", error.message || "Could not open photo library.");
+    }
+  };
+
   const renderStrictFormStep = (step) => {
     if (step === 1) {
       return (
@@ -759,10 +1168,67 @@ export default function CardApplicationScreen({ navigation, route }) {
       );
     }
 
+    if (step === 3) {
+      return (
+        <View style={styles.stepCard}>
+          <View style={styles.stepCardHeader}>
+            <Text style={styles.stepCardTitle}>Step 3 · Valid ID verification</Text>
+            <View style={[styles.stepPill, idVerified || (frontId && backId) ? styles.stepPillDone : styles.stepPillWarn]}>
+              <Text style={styles.stepPillText}>{idVerified ? "ALREADY VERIFIED" : (frontId && backId) ? "READY" : "UPLOAD REQUIRED"}</Text>
+            </View>
+          </View>
+
+          {idVerified ? (
+            <View style={styles.verifiedBox}>
+              <View style={styles.verifiedBadgeRow}>
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} color={theme.success} />
+                <Text style={styles.verifiedBadgeText}>Your ID is already verified</Text>
+              </View>
+              <Text style={styles.stepCardText}>
+                We already have your valid ID on file. You can continue to the next step right away.
+              </Text>
+              <View style={styles.verifiedMetaRow}>
+                <SummaryField label="Verification status" value={String(account?.verification_status || "verified").toUpperCase()} theme={theme} />
+                <SummaryField label="Verified at" value={account?.verified_at || "Recorded in your account"} theme={theme} />
+              </View>
+            </View>
+          ) : (
+            <View>
+              <Text style={styles.stepCardText}>
+                Upload the front and back of a valid ID so your activation can proceed like a proper bank-style review.
+              </Text>
+              <View style={styles.idUploadGrid}>
+                <IdUploadCard
+                  title="Front ID"
+                  description="Tap to upload the front side of your valid ID."
+                  asset={frontId}
+                  onPress={() => pickIdImage("front")}
+                  theme={theme}
+                />
+                <IdUploadCard
+                  title="Back ID"
+                  description="Tap to upload the back side of your valid ID."
+                  asset={backId}
+                  onPress={() => pickIdImage("back")}
+                  theme={theme}
+                />
+              </View>
+              <View style={styles.uploadHintBox}>
+                <Text style={styles.uploadHintTitle}>Required for activation</Text>
+                <Text style={styles.uploadHintText}>
+                  Make sure the images are clear, uncropped, and readable before continuing.
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+      );
+    }
+
     return (
       <View style={styles.stepCard}>
         <View style={styles.stepCardHeader}>
-          <Text style={styles.stepCardTitle}>Step 3 · Branch and declaration</Text>
+          <Text style={styles.stepCardTitle}>Step 4 · Branch and declaration</Text>
           <View style={[styles.stepPill, branch && acceptTerms ? styles.stepPillDone : styles.stepPillWarn]}>
             <Text style={styles.stepPillText}>{branch && acceptTerms ? "READY TO SUBMIT" : "REQUIRED"}</Text>
           </View>
@@ -940,11 +1406,15 @@ export default function CardApplicationScreen({ navigation, route }) {
             <Text style={styles.requirementText}>Complete profile details from registration</Text>
           </View>
           <View style={styles.requirementRow}>
-            <Text style={styles.requirementDot}>{branch ? "✓" : "2"}</Text>
+            <Text style={styles.requirementDot}>{idVerified || (frontId && backId) ? "✓" : "2"}</Text>
+            <Text style={styles.requirementText}>Verify your valid ID or use the one already verified in your account</Text>
+          </View>
+          <View style={styles.requirementRow}>
+            <Text style={styles.requirementDot}>{branch ? "✓" : "3"}</Text>
             <Text style={styles.requirementText}>Select a pickup branch</Text>
           </View>
           <View style={styles.requirementRow}>
-            <Text style={styles.requirementDot}>{acceptTerms ? "✓" : "3"}</Text>
+            <Text style={styles.requirementDot}>{acceptTerms ? "✓" : "4"}</Text>
             <Text style={styles.requirementText}>Accept the activation declaration</Text>
           </View>
         </View>
@@ -1634,5 +2104,81 @@ const createStyles = (theme, isDarkMode) =>
       color: isDarkMode ? "#0B0E14" : "#FFFFFF",
       fontWeight: "900",
       fontSize: 16,
+    },
+
+    // ── My Card: Balance & Frozen States ──
+    balanceCard: {
+      backgroundColor: theme.card,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 20,
+      marginBottom: 16,
+      alignItems: "center",
+    },
+    balanceMeta: {
+      color: theme.textMuted,
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.4,
+      marginBottom: 8,
+    },
+    balanceAmount: {
+      color: theme.text,
+      fontSize: 38,
+      fontWeight: "900",
+      letterSpacing: -0.5,
+      marginBottom: 4,
+    },
+    frozenPill: {
+      marginTop: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor: isDarkMode ? "rgba(239,68,68,0.15)" : "rgba(239,68,68,0.10)",
+      borderWidth: 1,
+      borderColor: isDarkMode ? "rgba(239,68,68,0.25)" : "rgba(239,68,68,0.20)",
+    },
+    frozenPillText: {
+      color: "#EF4444",
+      fontSize: 12,
+      fontWeight: "800",
+      textAlign: "center",
+    },
+    frozenBanner: {
+      backgroundColor: isDarkMode ? "rgba(239,68,68,0.10)" : "rgba(239,68,68,0.07)",
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: isDarkMode ? "rgba(239,68,68,0.22)" : "rgba(239,68,68,0.18)",
+      padding: 18,
+      marginBottom: 18,
+    },
+    frozenBannerTitle: {
+      color: "#EF4444",
+      fontSize: 16,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    frozenBannerText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    lostCardBtn: {
+      height: 50,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+      marginTop: 12,
+      borderWidth: 1.5,
+      borderColor: isDarkMode ? "rgba(239,68,68,0.30)" : "rgba(239,68,68,0.25)",
+      backgroundColor: isDarkMode ? "rgba(239,68,68,0.08)" : "rgba(239,68,68,0.06)",
+    },
+    lostCardBtnText: {
+      color: "#EF4444",
+      fontSize: 14,
+      fontWeight: "900",
     },
   });

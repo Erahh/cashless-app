@@ -11,11 +11,12 @@ import {
   Modal,
   ActivityIndicator
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { useTheme } from "../../context/ThemeContext";
 import { supabase } from "../../api/supabase";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, CheckmarkCircle01Icon, Clock01Icon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { Picker } from "@react-native-picker/picker";
 import FloatingLabelInput from "../../components/Input";
 import { renderApiRequest } from "../../api/apiHelper";
@@ -279,37 +280,102 @@ function PickerModal({ visible, title, value, items, onChange, onClose, placehol
   );
 }
 
+function normalizeCardApplicationPayload(payload) {
+  const source = payload && typeof payload === "object" ? payload : {};
+  const latest = source.latest_request || source.latest_application || source.application || source.item || source.data || null;
+  const rawStatus = String(
+    latest?.status || source.status || source.card_status || source.approval_status || source.state || ""
+  ).toLowerCase();
+
+  const approved = Boolean(
+    source.verified ||
+    source.approved ||
+    latest?.verified ||
+    latest?.approved ||
+    ["approved", "active", "activated", "verified"].includes(rawStatus)
+  );
+
+  const pending = ["pending", "review", "processing"].includes(rawStatus);
+  const rejected = ["rejected", "declined", "denied"].includes(rawStatus);
+
+  return {
+    latest,
+    status: approved ? "approved" : pending ? "pending" : rejected ? "rejected" : latest ? "form" : "form",
+    number: String(
+      source.card_number || source.card?.card_number || latest?.card_number || source.account_number || ""
+    ).trim(),
+    validThru: String(
+      source.valid_thru || source.card?.valid_thru || latest?.valid_thru || source.expiry || "04/31"
+    ).trim(),
+    branch: String(
+      latest?.preferred_branch || latest?.branch || source.preferred_branch || source.branch || ""
+    ).trim(),
+    submittedAt: latest?.submitted_at || source.submitted_at || null,
+    rawStatus,
+  };
+}
+
 export default function CardApplicationScreen({ navigation, route }) {
   const { theme, isDarkMode } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDarkMode), [theme, isDarkMode]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [cardStatus, setCardStatus] = useState("loading");
+  const [cardApplication, setCardApplication] = useState(null);
 
   const [profile, setProfile] = useState(route?.params?.profile || null);
   const [branch, setBranch] = useState("");
   const [branchModal, setBranchModal] = useState(false);
+
+  const cardHolderName = useMemo(() => {
+    const name = String(profile?.full_name || "Card Holder").trim();
+    return name || "Card Holder";
+  }, [profile]);
+
+  const cardNumberDisplay = useMemo(() => {
+    const raw = String(cardApplication?.number || "").replace(/\s+/g, "");
+    if (!raw) return "7A4E7CD1";
+    if (raw.length <= 8) return raw.toUpperCase();
+    return raw.replace(/.(?=.{4})/g, "•");
+  }, [cardApplication]);
+
+  const derivedApproved = cardStatus === "approved";
+  const derivedPending = cardStatus === "pending";
+  const derivedRejected = cardStatus === "rejected";
 
   async function loadProfile() {
     setLoading(true);
     try {
       if (route?.params?.profile) {
         setProfile(route.params.profile);
-        return;
+      } else {
+        const { data: userRes, error: userErr } = await supabase.auth.getUser();
+        const userId = userRes?.user?.id;
+        if (userErr || !userId) throw new Error("Could not find user.");
+
+        const { data: p, error: pErr } = await supabase
+          .from("profiles")
+          .select("full_name, phone, email, birthdate, province, city, barangay, zip_code, address_line, first_name, middle_name, last_name")
+          .eq("id", userId)
+          .single();
+        if (pErr) throw pErr;
+
+        setProfile(p);
       }
 
-      const { data: userRes, error: userErr } = await supabase.auth.getUser();
-      const userId = userRes?.user?.id;
-      if (userErr || !userId) throw new Error("Could not find user.");
-
-      const { data: p, error: pErr } = await supabase
-        .from("profiles")
-        .select("full_name, phone, email, birthdate, province, city, barangay, zip_code, address_line, first_name, middle_name, last_name")
-        .eq("id", userId)
-        .single();
-      if (pErr) throw pErr;
-
-      setProfile(p);
+      try {
+        const json = await renderApiRequest("/registrations/my-card-application");
+        const normalized = normalizeCardApplicationPayload(json);
+        setCardApplication(normalized);
+        setCardStatus(normalized.status);
+      } catch (cardErr) {
+        setCardApplication(null);
+        setCardStatus("form");
+        if (__DEV__) {
+          console.warn("Failed to load card application status:", cardErr?.message || cardErr);
+        }
+      }
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to load profile. Please make sure your profile is complete.");
       navigation.goBack();
@@ -376,15 +442,179 @@ export default function CardApplicationScreen({ navigation, route }) {
         });
       }
 
-      Alert.alert("Application Successful", "Your NFC Card application has been submitted. Please wait for SMS confirmation for pickup at " + branch, [
-        { text: "OK", onPress: () => navigation.goBack() }
-      ]);
+      const nextApplication = {
+        status: "pending",
+        branch,
+        preferred_branch: branch,
+        submitted_at: new Date().toISOString(),
+      };
+      setCardApplication(normalizeCardApplicationPayload(nextApplication));
+      setCardStatus("pending");
+
+      Alert.alert("Submitted ✅", "Your card application is now pending activation. We will update the status once admin approves it.");
     } catch (error) {
       Alert.alert("Submission Failed", error.message);
     } finally {
       setSubmitting(false);
     }
   }
+
+  const renderApprovedState = () => {
+    const branchText = cardApplication?.branch || cardApplication?.preferred_branch || "Assigned after activation";
+
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My Card</Text>
+          <View style={{ width: 44 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.stateIntro}>
+            <Text style={styles.stateEyebrow}>ACTIVE CARD ACCOUNT</Text>
+            <Text style={styles.stateTitle}>Your account is activated and ready.</Text>
+            <Text style={styles.stateSub}>
+              This is your clean card view. Keep it handy for pickup, verification, and future NFC activation.
+            </Text>
+          </View>
+
+          <LinearGradient
+            colors={["#FFF7DA", "#F6D48A", "#E7B15D", "#F4E7CF"]}
+            start={{ x: 0.02, y: 0.02 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardShell}
+          >
+            <View style={styles.cardGlowOne} />
+            <View style={styles.cardGlowTwo} />
+
+            <View style={styles.cardTopRow}>
+              <Text style={styles.cardBrand}>MotoCard</Text>
+              <View style={styles.activePill}>
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} color="#0B0E14" />
+                <Text style={styles.activePillText}>ACTIVE</Text>
+              </View>
+            </View>
+
+            <View style={styles.cardMidRow}>
+              <View style={styles.chip} />
+              <View style={styles.contactlessWrap}>
+                <View style={styles.contactlessWave} />
+                <View style={[styles.contactlessWave, { transform: [{ scale: 0.74 }] }]} />
+                <View style={[styles.contactlessWave, { transform: [{ scale: 0.48 }] }]} />
+              </View>
+              <Text style={styles.cardNumber}>{cardNumberDisplay}</Text>
+            </View>
+
+            <View style={styles.cardBottomRow}>
+              <View style={styles.cardMetaBlock}>
+                <Text style={styles.cardMetaLabel}>CARD HOLDER</Text>
+                <Text style={styles.cardMetaValue}>{cardHolderName}</Text>
+              </View>
+              <View style={styles.cardMetaBlock}>
+                <Text style={styles.cardMetaLabel}>VALID THRU</Text>
+                <Text style={styles.cardMetaValue}>{cardApplication?.validThru || "04/31"}</Text>
+              </View>
+              <View style={styles.cardMetaBlock}>
+                <Text style={styles.cardMetaLabel}>CVV</Text>
+                <Text style={styles.cardMetaValue}>•••</Text>
+              </View>
+            </View>
+          </LinearGradient>
+
+          <View style={styles.heroGrid}>
+            <View style={styles.heroStatCard}>
+              <HugeiconsIcon icon={Shield01Icon} size={18} color={theme.accent} />
+              <Text style={styles.heroStatTitle}>Activated by admin</Text>
+              <Text style={styles.heroStatText}>Your card account is now approved for use.</Text>
+            </View>
+            <View style={styles.heroStatCard}>
+              <HugeiconsIcon icon={Clock01Icon} size={18} color={theme.success} />
+              <Text style={styles.heroStatTitle}>Pickup branch</Text>
+              <Text style={styles.heroStatText}>{branchText}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.primaryAction} onPress={() => navigation.goBack()} activeOpacity={0.9}>
+            <Text style={styles.primaryActionText}>Back to Profile</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  };
+
+  const renderPendingState = () => {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My Card</Text>
+          <View style={{ width: 44 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={[styles.stateIntro, styles.pendingIntro]}>
+            <Text style={styles.stateEyebrow}>PENDING ACTIVATION</Text>
+            <Text style={styles.stateTitle}>Your card account is under review.</Text>
+            <Text style={styles.stateSub}>
+              We already received your card application. Once admin approves it, your account will switch to the active card view automatically.
+            </Text>
+          </View>
+
+          <View style={styles.pendingShell}>
+            <View style={styles.pendingBadgeRow}>
+              <View style={styles.pendingBadge}>
+                <HugeiconsIcon icon={Clock01Icon} size={14} color="#F4C15A" />
+                <Text style={styles.pendingBadgeText}>Waiting for approval</Text>
+              </View>
+            </View>
+
+            <View style={styles.pendingTimeline}>
+              <View style={styles.timelineItemActive}>
+                <View style={styles.timelineDotActive} />
+                <View style={styles.timelineCopy}>
+                  <Text style={styles.timelineTitle}>Requirements submitted</Text>
+                  <Text style={styles.timelineText}>Your personal details and pickup branch were received.</Text>
+                </View>
+              </View>
+              <View style={styles.timelineLine} />
+              <View style={styles.timelineItemActive}>
+                <View style={styles.timelineDotActive} />
+                <View style={styles.timelineCopy}>
+                  <Text style={styles.timelineTitle}>Admin review</Text>
+                  <Text style={styles.timelineText}>Pending approval from the admin team.</Text>
+                </View>
+              </View>
+              <View style={styles.timelineLine} />
+              <View style={styles.timelineItemMuted}>
+                <View style={styles.timelineDotMuted} />
+                <View style={styles.timelineCopy}>
+                  <Text style={styles.timelineTitle}>Card activated</Text>
+                  <Text style={styles.timelineText}>The clean card view will appear here once approved.</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.secondaryAction} onPress={() => navigation.goBack()} activeOpacity={0.9}>
+              <Text style={styles.secondaryActionText}>Back to Profile</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ height: 80 }} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  };
 
   if (loading) {
     return (
@@ -398,6 +628,14 @@ export default function CardApplicationScreen({ navigation, route }) {
     );
   }
 
+  if (derivedApproved) {
+    return renderApprovedState();
+  }
+
+  if (derivedPending) {
+    return renderPendingState();
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
@@ -407,7 +645,7 @@ export default function CardApplicationScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Open Card Account</Text>
+        <Text style={styles.headerTitle}>My Card</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -416,9 +654,33 @@ export default function CardApplicationScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.subtitle}>
-          Your details are automatically filled in. Select a branch below for card pickup to activate your account for a physical NFC card.
-        </Text>
+        <View style={styles.formHeroCard}>
+          <LinearGradient
+            colors={["rgba(255,211,106,0.24)", "rgba(255,255,255,0.03)"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.formHeroGradient}
+          >
+            <View style={styles.formHeroTop}>
+              <View style={styles.formHeroIconWrap}>
+                <HugeiconsIcon icon={Shield01Icon} size={20} color={theme.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.subtitleTitle}>Create your card account</Text>
+                <Text style={styles.subtitle}>
+                  Your details are automatically filled in. Select a branch below for card pickup to activate your account.
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {derivedRejected ? (
+          <View style={styles.rejectedBanner}>
+            <Text style={styles.rejectedTitle}>Previous application was declined</Text>
+            <Text style={styles.rejectedText}>You can review your details below and submit again.</Text>
+          </View>
+        ) : null}
 
         {/* ── PERSONAL DETAILS ── */}
         <Text style={styles.sectionLabel}>Personal Details</Text>
@@ -520,6 +782,351 @@ const createStyles = (theme, isDarkMode) =>
       fontSize: 14,
       marginBottom: 24,
       lineHeight: 20,
+    },
+    subtitleTitle: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    formHeroCard: {
+      marginBottom: 16,
+    },
+    formHeroGradient: {
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 16,
+      overflow: "hidden",
+    },
+    formHeroTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    formHeroIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    rejectedBanner: {
+      marginBottom: 16,
+      padding: 16,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: "rgba(239,68,68,0.25)",
+      backgroundColor: isDarkMode ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.08)",
+    },
+    rejectedTitle: {
+      color: theme.text,
+      fontWeight: "900",
+      fontSize: 15,
+      marginBottom: 4,
+    },
+    rejectedText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    stateIntro: {
+      marginBottom: 18,
+      borderRadius: 26,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+    },
+    pendingIntro: {
+      backgroundColor: isDarkMode ? "rgba(255,211,106,0.08)" : "rgba(255,211,106,0.12)",
+      borderColor: isDarkMode ? "rgba(255,211,106,0.18)" : "rgba(255,211,106,0.32)",
+    },
+    stateEyebrow: {
+      color: theme.accent,
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.4,
+      marginBottom: 8,
+    },
+    stateTitle: {
+      color: theme.text,
+      fontSize: 26,
+      lineHeight: 32,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    stateSub: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    cardShell: {
+      borderRadius: 30,
+      padding: 20,
+      minHeight: 220,
+      overflow: "hidden",
+      marginBottom: 18,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.55)",
+      shadowColor: "#000",
+      shadowOpacity: 0.18,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 12 },
+      elevation: 8,
+    },
+    cardGlowOne: {
+      position: "absolute",
+      right: -32,
+      top: -20,
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: "rgba(255,255,255,0.18)",
+    },
+    cardGlowTwo: {
+      position: "absolute",
+      left: -20,
+      bottom: -30,
+      width: 110,
+      height: 110,
+      borderRadius: 55,
+      backgroundColor: "rgba(255,255,255,0.12)",
+    },
+    cardTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 24,
+    },
+    cardBrand: {
+      color: "#FFFFFF",
+      fontSize: 20,
+      fontWeight: "900",
+      letterSpacing: 0.4,
+    },
+    activePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor: "rgba(255,255,255,0.42)",
+    },
+    activePillText: {
+      color: "#0B0E14",
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.1,
+    },
+    cardMidRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 28,
+    },
+    chip: {
+      width: 44,
+      height: 34,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.35)",
+      backgroundColor: "rgba(255,255,255,0.16)",
+      shadowColor: "#000",
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    contactlessWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2,
+      marginLeft: "auto",
+      marginRight: 12,
+    },
+    contactlessWave: {
+      width: 8,
+      height: 18,
+      borderTopRightRadius: 10,
+      borderBottomRightRadius: 10,
+      borderWidth: 2,
+      borderLeftWidth: 0,
+      borderColor: "rgba(255,255,255,0.82)",
+      opacity: 0.95,
+      transform: [{ rotate: "-12deg" }],
+    },
+    cardNumber: {
+      color: "#FFFFFF",
+      fontSize: 20,
+      letterSpacing: 3.2,
+      fontWeight: "900",
+      textAlign: "right",
+      textShadowColor: "rgba(0,0,0,0.18)",
+      textShadowOffset: { width: 0, height: 2 },
+      textShadowRadius: 4,
+    },
+    cardBottomRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    cardMetaBlock: {
+      flex: 1,
+    },
+    cardMetaLabel: {
+      color: "rgba(255,255,255,0.68)",
+      fontSize: 10,
+      fontWeight: "800",
+      letterSpacing: 1.1,
+      marginBottom: 5,
+    },
+    cardMetaValue: {
+      color: "#FFFFFF",
+      fontSize: 13,
+      fontWeight: "900",
+    },
+    heroGrid: {
+      flexDirection: "row",
+      gap: 12,
+      marginBottom: 18,
+    },
+    heroStatCard: {
+      flex: 1,
+      padding: 16,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+    },
+    heroStatTitle: {
+      marginTop: 10,
+      color: theme.text,
+      fontSize: 14,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    heroStatText: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    primaryAction: {
+      height: 54,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.accent,
+      shadowColor: "#000",
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+    primaryActionText: {
+      color: "#0B0E14",
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    pendingShell: {
+      borderRadius: 28,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      marginBottom: 18,
+    },
+    pendingBadgeRow: {
+      marginBottom: 16,
+    },
+    pendingBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: isDarkMode ? "rgba(255,211,106,0.12)" : "rgba(255,211,106,0.22)",
+      borderWidth: 1,
+      borderColor: isDarkMode ? "rgba(255,211,106,0.18)" : "rgba(255,211,106,0.32)",
+    },
+    pendingBadgeText: {
+      color: theme.text,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    pendingTimeline: {
+      paddingVertical: 6,
+      marginBottom: 16,
+    },
+    timelineItemActive: {
+      flexDirection: "row",
+      gap: 12,
+      alignItems: "flex-start",
+    },
+    timelineItemMuted: {
+      flexDirection: "row",
+      gap: 12,
+      alignItems: "flex-start",
+      opacity: 0.72,
+    },
+    timelineDotActive: {
+      width: 12,
+      height: 12,
+      marginTop: 4,
+      borderRadius: 6,
+      backgroundColor: theme.accent,
+      shadowColor: theme.accent,
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    timelineDotMuted: {
+      width: 12,
+      height: 12,
+      marginTop: 4,
+      borderRadius: 6,
+      backgroundColor: theme.border,
+    },
+    timelineCopy: {
+      flex: 1,
+      paddingBottom: 18,
+    },
+    timelineTitle: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: "900",
+      marginBottom: 4,
+    },
+    timelineText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    timelineLine: {
+      width: 2,
+      height: 24,
+      marginLeft: 5,
+      marginVertical: 2,
+      backgroundColor: theme.border,
+    },
+    secondaryAction: {
+      height: 52,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    secondaryActionText: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: "900",
     },
     sectionLabel: {
       color: theme.textSecondary,

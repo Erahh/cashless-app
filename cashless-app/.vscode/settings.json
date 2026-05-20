@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "**/node_modules/**/tsconfig.json": "jsonc"
+  },
+  "typescript.enablePromptUseWorkspaceTsdk": false
+}

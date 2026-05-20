@@ -15,17 +15,14 @@ export default function BusinessVerifiedBadge({ size = 36, style, withEffect = t
     if (!withEffect || !isSmall) return;
 
     let loop;
-    // start slightly smaller so the mount feels natural
-    auraScale.setValue(0.95);
-    Animated.timing(auraScale, { toValue: 1, duration: 300, useNativeDriver: true }).start(() => {
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(auraScale, { toValue: 1.04, duration: 900, useNativeDriver: true }),
-          Animated.timing(auraScale, { toValue: 0.98, duration: 900, useNativeDriver: true }),
-        ])
-      );
-      loop.start();
-    });
+    auraScale.setValue(1);
+    loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(auraScale, { toValue: 1.04, duration: 900, useNativeDriver: true }),
+        Animated.timing(auraScale, { toValue: 0.98, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
 
     return () => {
       if (loop && typeof loop.stop === "function") loop.stop();

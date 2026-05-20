@@ -3,6 +3,14 @@ import { View, Text, Image, StyleSheet, Animated } from 'react-native';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { CheckmarkBadge01Icon } from '@hugeicons/core-free-icons';
 
+let VERIFIED_ROSETTE_IMAGE = null;
+try {
+  // eslint-disable-next-line global-require, import/no-dynamic-require
+  VERIFIED_ROSETTE_IMAGE = require('../assets/verified-rosette.png');
+} catch (e) {
+  VERIFIED_ROSETTE_IMAGE = null;
+}
+
 export default function VerifiedBadge({
   size = 20,
   label = null,
@@ -18,22 +26,8 @@ export default function VerifiedBadge({
 }) {
   const iconSize = Math.max(12, Math.floor(size * 0.7));
   const pulse = useRef(new Animated.Value(0)).current;
-  if (glow) usePulse(pulse);
-
-  // Prefer a local asset if present. Place your rosette image at
-  // src/assets/verified-rosette.png and the component will use it.
-  let localImage = null;
-  try {
-    // relative to this file: src/components -> ../assets
-    // bundlers will inline this if file exists; if not, require will throw
-    // and we will fall back to the icon.
-    // eslint-disable-next-line global-require, import/no-dynamic-require
-    localImage = require('../assets/verified-rosette.png');
-  } catch (e) {
-    localImage = null;
-  }
-
-  const imageSource = imageUri ? { uri: imageUri } : localImage ? localImage : null;
+  usePulse(pulse, glow);
+  const imageSource = imageUri ? { uri: imageUri } : VERIFIED_ROSETTE_IMAGE;
 
   return (
     <View style={[styles.wrap, style]}>
@@ -81,8 +75,13 @@ const styles = StyleSheet.create({
 });
 
 // start pulse animation when component mounts
-function usePulse(pulseRef) {
+function usePulse(pulseRef, enabled = true) {
   useEffect(() => {
+    if (!enabled) {
+      pulseRef.setValue(0);
+      return undefined;
+    }
+
     const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseRef, { toValue: 1, duration: 900, useNativeDriver: true }),
@@ -91,5 +90,5 @@ function usePulse(pulseRef) {
     );
     anim.start();
     return () => anim.stop();
-  }, [pulseRef]);
+  }, [enabled, pulseRef]);
 }

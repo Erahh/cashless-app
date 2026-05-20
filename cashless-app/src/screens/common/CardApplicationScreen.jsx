@@ -157,6 +157,28 @@ function Field({ label, value, theme, disabled = true }) {
   );
 }
 
+function SummaryField({ label, value, theme }) {
+  return (
+    <View style={[
+      {
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: theme.border,
+        backgroundColor: theme.card,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+      }
+    ]}>
+      <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1, marginBottom: 6 }}>
+        {label}
+      </Text>
+      <Text style={{ color: theme.text, fontSize: 14, fontWeight: "800", lineHeight: 20 }} numberOfLines={2}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 // ------- Themed Select Field (Touchable dropdown) -------
 function SelectField({ label, value, placeholder, onPress, theme }) {
   const isSelected = !!value;
@@ -327,6 +349,8 @@ export default function CardApplicationScreen({ navigation, route }) {
   const [profile, setProfile] = useState(route?.params?.profile || null);
   const [branch, setBranch] = useState("");
   const [branchModal, setBranchModal] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [activeStep, setActiveStep] = useState(1);
 
   const cardHolderName = useMemo(() => {
     const name = String(profile?.full_name || "Card Holder").trim();
@@ -343,6 +367,46 @@ export default function CardApplicationScreen({ navigation, route }) {
   const derivedApproved = cardStatus === "approved";
   const derivedPending = cardStatus === "pending";
   const derivedRejected = cardStatus === "rejected";
+
+  const missingProfileFields = useMemo(() => {
+    const checks = [
+      { key: "full_name", label: "Full name" },
+      { key: "phone", label: "Mobile number" },
+      { key: "email", label: "Email address" },
+      { key: "birthdate", label: "Birthdate" },
+      { key: "province", label: "Province" },
+      { key: "city", label: "City" },
+      { key: "barangay", label: "Barangay" },
+      { key: "address_line", label: "Address line" },
+    ];
+
+    return checks.filter(({ key }) => !String(profile?.[key] || "").trim());
+  }, [profile]);
+
+  const isProfileComplete = missingProfileFields.length === 0;
+
+  const applicationSteps = useMemo(() => ([
+    {
+      id: 1,
+      title: "Personal details",
+      subtitle: "Auto-filled from your registration profile",
+      complete: isProfileComplete,
+    },
+    {
+      id: 2,
+      title: "Residential details",
+      subtitle: "Used for card activation and verification",
+      complete: isProfileComplete,
+    },
+    {
+      id: 3,
+      title: "Branch & declaration",
+      subtitle: "Select pickup branch and accept activation terms",
+      complete: Boolean(branch) && acceptTerms,
+    },
+  ]), [acceptTerms, branch, isProfileComplete]);
+
+  const currentStep = applicationSteps.find((step) => step.id === activeStep) || applicationSteps[0];
 
   async function loadProfile() {
     setLoading(true);
@@ -401,25 +465,29 @@ export default function CardApplicationScreen({ navigation, route }) {
   }
 
   async function handleSubmit() {
-    if (!branch) {
-      return Alert.alert("Missing Branch", "Please select a branch to pick up your card.");
-    }
-    if (hasMissingRequiredProfileData()) {
+    if (!isProfileComplete) {
       return Alert.alert(
-        "Incomplete Personal Details",
-        "Please complete your profile details first before opening a card account.",
+        "Complete your profile",
+        `Your registration profile is still missing: ${missingProfileFields.map((field) => field.label).join(", ")}.`,
         [
-          { text: "Not now", style: "cancel" },
+          { text: "Cancel", style: "cancel" },
           {
-            text: "Complete Profile",
-            onPress: () =>
-              navigation.navigate("PersonalInfo", {
-                editMode: true,
-                profile,
-              }),
+            text: "Finish Profile",
+            onPress: () => navigation.navigate("PersonalInfo", { editMode: true, profile }),
           },
         ]
       );
+    }
+
+    if (!branch) {
+      return Alert.alert("Missing Branch", "Please select a branch to pick up your card.");
+    }
+    if (!acceptTerms) {
+      return Alert.alert("Declaration Required", "Please accept the activation declaration to continue.");
+    }
+
+    if (!hasMissingRequiredProfileData()) {
+      // keep the stricter check above, but retain this guard for any legacy fields
     }
 
     setSubmitting(true);
@@ -458,6 +526,32 @@ export default function CardApplicationScreen({ navigation, route }) {
       setSubmitting(false);
     }
   }
+
+  const goNextStep = () => {
+    if (activeStep === 1 && !isProfileComplete) {
+      return Alert.alert(
+        "Incomplete registration profile",
+        `Please complete: ${missingProfileFields.map((field) => field.label).join(", ")}.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Go to Profile",
+            onPress: () => navigation.navigate("PersonalInfo", { editMode: true, profile }),
+          },
+        ]
+      );
+    }
+
+    if (activeStep === 2 && !isProfileComplete) {
+      return Alert.alert("Profile required", "Please complete your registration profile first.");
+    }
+
+    setActiveStep((step) => Math.min(3, step + 1));
+  };
+
+  const goBackStep = () => {
+    setActiveStep((step) => Math.max(1, step - 1));
+  };
 
   const renderApprovedState = () => {
     const branchText = cardApplication?.branch || cardApplication?.preferred_branch || "Assigned after activation";
@@ -616,6 +710,92 @@ export default function CardApplicationScreen({ navigation, route }) {
     );
   };
 
+  const renderStrictFormStep = (step) => {
+    if (step === 1) {
+      return (
+        <View style={styles.stepCard}>
+          <View style={styles.stepCardHeader}>
+            <Text style={styles.stepCardTitle}>Step 1 · Personal details</Text>
+            <View style={[styles.stepPill, isProfileComplete ? styles.stepPillDone : styles.stepPillWarn]}>
+              <Text style={styles.stepPillText}>{isProfileComplete ? "AUTO-FILLED" : "NEEDS PROFILE"}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.stepCardText}>
+            These details are pulled from your existing registration profile. If anything is missing, complete your profile first.
+          </Text>
+
+          <View style={styles.summaryGrid}>
+            <SummaryField label="Full Name" value={profile?.full_name || "Not set"} theme={theme} />
+            <SummaryField label="Mobile Number" value={profile?.phone || "Not set"} theme={theme} />
+            <SummaryField label="Email Address" value={profile?.email || "Not set"} theme={theme} />
+            <SummaryField label="Birthdate" value={profile?.birthdate || "Not set"} theme={theme} />
+          </View>
+        </View>
+      );
+    }
+
+    if (step === 2) {
+      return (
+        <View style={styles.stepCard}>
+          <View style={styles.stepCardHeader}>
+            <Text style={styles.stepCardTitle}>Step 2 · Residential details</Text>
+            <View style={[styles.stepPill, isProfileComplete ? styles.stepPillDone : styles.stepPillWarn]}>
+              <Text style={styles.stepPillText}>{isProfileComplete ? "READY" : "INCOMPLETE"}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.stepCardText}>
+            We use your current profile address for card verification and pickup processing.
+          </Text>
+
+          <View style={styles.summaryGrid}>
+            <SummaryField label="Province" value={profile?.province || "Not set"} theme={theme} />
+            <SummaryField label="City" value={profile?.city || "Not set"} theme={theme} />
+            <SummaryField label="Barangay" value={profile?.barangay || "Not set"} theme={theme} />
+            <SummaryField label="Address Line" value={profile?.address_line || "Not set"} theme={theme} />
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.stepCard}>
+        <View style={styles.stepCardHeader}>
+          <Text style={styles.stepCardTitle}>Step 3 · Branch and declaration</Text>
+          <View style={[styles.stepPill, branch && acceptTerms ? styles.stepPillDone : styles.stepPillWarn]}>
+            <Text style={styles.stepPillText}>{branch && acceptTerms ? "READY TO SUBMIT" : "REQUIRED"}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.stepCardText}>
+          Pick the branch where you want to activate or claim your card, then accept the activation declaration.
+        </Text>
+
+        <SelectField
+          label="Preferred Branch *"
+          value={branch}
+          placeholder="Select branch for pickup"
+          onPress={() => setBranchModal(true)}
+          theme={theme}
+        />
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={styles.checkboxRow}
+          onPress={() => setAcceptTerms((value) => !value)}
+        >
+          <View style={[styles.checkboxBox, acceptTerms && styles.checkboxBoxChecked]}>
+            {acceptTerms ? <Text style={styles.checkboxCheck}>✓</Text> : null}
+          </View>
+          <Text style={styles.checkboxText}>
+            I confirm that the details above are correct and I agree to activate my card account under the stated requirements.
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -682,47 +862,92 @@ export default function CardApplicationScreen({ navigation, route }) {
           </View>
         ) : null}
 
-        {/* ── PERSONAL DETAILS ── */}
-        <Text style={styles.sectionLabel}>Personal Details</Text>
-        <View style={styles.cardInfo}>
-            <Field label="Full Name" value={profile?.full_name || ""} theme={theme} />
-            <Field label="Phone Number" value={profile?.phone || ""} theme={theme} />
-            <Field label="Email Address" value={profile?.email || ""} theme={theme} />
-            <Field label="Birthdate" value={profile?.birthdate || ""} theme={theme} />
+        <View style={styles.stepperWrap}>
+          {applicationSteps.map((step, index) => {
+            const isActive = activeStep === step.id;
+            const isDone = step.complete && step.id < activeStep;
+            return (
+              <React.Fragment key={step.id}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => setActiveStep(step.id)}
+                  style={[
+                    styles.stepperItem,
+                    isActive && styles.stepperItemActive,
+                    isDone && styles.stepperItemDone,
+                  ]}
+                >
+                  <View style={[styles.stepperDot, isDone && styles.stepperDotDone, isActive && styles.stepperDotActive]}>
+                    <Text style={styles.stepperDotText}>{isDone ? "✓" : step.id}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.stepperTitle}>{step.title}</Text>
+                    <Text style={styles.stepperSubtitle}>{step.subtitle}</Text>
+                  </View>
+                </TouchableOpacity>
+                {index < applicationSteps.length - 1 ? <View style={styles.stepperLine} /> : null}
+              </React.Fragment>
+            );
+          })}
         </View>
 
-        {/* ── ADDRESS SECTION ── */}
-        <Text style={[styles.sectionLabel, { marginTop: 16 }]}>Delivery / Pick-Up Address</Text>
-        <View style={styles.cardInfo}>
-            <Field label="Province" value={profile?.province || ""} theme={theme} />
-            <Field label="City" value={profile?.city || ""} theme={theme} />
-            <Field label="Barangay" value={profile?.barangay || ""} theme={theme} />
-            <Field label="Address Line" value={profile?.address_line || ""} theme={theme} />
+        <View style={styles.stepHeaderCard}>
+          <Text style={styles.stepHeaderKicker}>CURRENT STEP</Text>
+          <Text style={styles.stepHeaderTitle}>{currentStep?.title}</Text>
+          <Text style={styles.stepHeaderText}>{currentStep?.subtitle}</Text>
         </View>
 
-        {/* ── BRANCH SELECTION ── */}
-        <Text style={[styles.sectionLabel, { marginTop: 16 }]}>Choose Branch</Text>
-        <SelectField
-          label="Preferred Branch *"
-          value={branch}
-          placeholder="Select branch for pickup"
-          onPress={() => setBranchModal(true)}
-          theme={theme}
-        />
+        {renderStrictFormStep(activeStep)}
 
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={[styles.saveBtn, submitting && { opacity: 0.6 }]}
-          onPress={handleSubmit}
-          disabled={submitting}
-          activeOpacity={0.85}
-        >
-          {submitting ? (
-             <ActivityIndicator size="small" color={isDarkMode ? "#0B0E14" : "#FFFFFF"} />
+        <View style={styles.stepActionsRow}>
+          <TouchableOpacity
+            style={[styles.stepActionSecondary, activeStep === 1 && styles.stepActionDisabled]}
+            onPress={goBackStep}
+            disabled={activeStep === 1}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.stepActionSecondaryText}>Back</Text>
+          </TouchableOpacity>
+
+          {activeStep < 3 ? (
+            <TouchableOpacity
+              style={styles.stepActionPrimary}
+              onPress={goNextStep}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.stepActionPrimaryText}>Continue</Text>
+            </TouchableOpacity>
           ) : (
-             <Text style={styles.saveBtnText}>Submit Application</Text>
+            <TouchableOpacity
+              style={[styles.stepActionPrimary, (submitting || !isProfileComplete) && styles.stepActionDisabled]}
+              onPress={handleSubmit}
+              disabled={submitting || !isProfileComplete}
+              activeOpacity={0.9}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color={isDarkMode ? "#0B0E14" : "#FFFFFF"} />
+              ) : (
+                <Text style={styles.stepActionPrimaryText}>Submit Activation</Text>
+              )}
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+        </View>
+
+        <View style={styles.requirementsCard}>
+          <Text style={styles.requirementsTitle}>Activation requirements</Text>
+          <View style={styles.requirementRow}>
+            <Text style={styles.requirementDot}>{isProfileComplete ? "✓" : "1"}</Text>
+            <Text style={styles.requirementText}>Complete profile details from registration</Text>
+          </View>
+          <View style={styles.requirementRow}>
+            <Text style={styles.requirementDot}>{branch ? "✓" : "2"}</Text>
+            <Text style={styles.requirementText}>Select a pickup branch</Text>
+          </View>
+          <View style={styles.requirementRow}>
+            <Text style={styles.requirementDot}>{acceptTerms ? "✓" : "3"}</Text>
+            <Text style={styles.requirementText}>Accept the activation declaration</Text>
+          </View>
+        </View>
 
         <View style={{ height: 120 }} />
       </ScrollView>
@@ -832,6 +1057,258 @@ const createStyles = (theme, isDarkMode) =>
       color: theme.textSecondary,
       fontSize: 13,
       lineHeight: 18,
+    },
+    stepperWrap: {
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      padding: 14,
+      marginBottom: 16,
+    },
+    stepperItem: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+      borderRadius: 16,
+    },
+    stepperItemActive: {
+      backgroundColor: isDarkMode ? "rgba(255,211,106,0.10)" : "rgba(255,211,106,0.16)",
+    },
+    stepperItemDone: {
+      backgroundColor: isDarkMode ? "rgba(47,128,237,0.08)" : "rgba(47,128,237,0.09)",
+    },
+    stepperDot: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+      backgroundColor: theme.background,
+    },
+    stepperDotActive: {
+      borderColor: theme.accent,
+      backgroundColor: theme.accent,
+    },
+    stepperDotDone: {
+      borderColor: theme.success,
+      backgroundColor: theme.success,
+    },
+    stepperDotText: {
+      color: isDarkMode ? "#0B0E14" : theme.text,
+      fontSize: 11,
+      fontWeight: "900",
+    },
+    stepperTitle: {
+      color: theme.text,
+      fontSize: 14,
+      fontWeight: "900",
+      marginBottom: 3,
+    },
+    stepperSubtitle: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    stepperLine: {
+      height: 8,
+    },
+    stepHeaderCard: {
+      borderRadius: 22,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      marginBottom: 14,
+    },
+    stepHeaderKicker: {
+      color: theme.accent,
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.2,
+      marginBottom: 8,
+    },
+    stepHeaderTitle: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    stepHeaderText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    stepCard: {
+      borderRadius: 26,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      padding: 18,
+      marginBottom: 16,
+    },
+    stepCardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      marginBottom: 10,
+    },
+    stepCardTitle: {
+      color: theme.text,
+      fontSize: 16,
+      fontWeight: "900",
+      flex: 1,
+    },
+    stepPill: {
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    stepPillDone: {
+      backgroundColor: isDarkMode ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.16)",
+      borderColor: isDarkMode ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.24)",
+    },
+    stepPillWarn: {
+      backgroundColor: isDarkMode ? "rgba(245,158,11,0.12)" : "rgba(245,158,11,0.16)",
+      borderColor: isDarkMode ? "rgba(245,158,11,0.18)" : "rgba(245,158,11,0.24)",
+    },
+    stepPillText: {
+      color: theme.text,
+      fontSize: 10,
+      fontWeight: "900",
+      letterSpacing: 0.8,
+    },
+    stepCardText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      lineHeight: 19,
+      marginBottom: 14,
+    },
+    summaryGrid: {
+      gap: 10,
+    },
+    checkboxRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+      marginTop: 14,
+      padding: 14,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+    },
+    checkboxBox: {
+      width: 22,
+      height: 22,
+      borderRadius: 7,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 1,
+      backgroundColor: theme.background,
+    },
+    checkboxBoxChecked: {
+      backgroundColor: theme.accent,
+      borderColor: theme.accent,
+    },
+    checkboxCheck: {
+      color: isDarkMode ? "#0B0E14" : "#FFFFFF",
+      fontSize: 12,
+      fontWeight: "900",
+      lineHeight: 12,
+    },
+    checkboxText: {
+      flex: 1,
+      color: theme.text,
+      fontSize: 13,
+      lineHeight: 19,
+      fontWeight: "600",
+    },
+    stepActionsRow: {
+      flexDirection: "row",
+      gap: 12,
+      marginBottom: 16,
+    },
+    stepActionSecondary: {
+      flex: 1,
+      height: 54,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+    },
+    stepActionPrimary: {
+      flex: 1.4,
+      height: 54,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.accent,
+    },
+    stepActionDisabled: {
+      opacity: 0.45,
+    },
+    stepActionSecondaryText: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    stepActionPrimaryText: {
+      color: "#0B0E14",
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    requirementsCard: {
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      padding: 16,
+      marginBottom: 12,
+    },
+    requirementsTitle: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: "900",
+      marginBottom: 12,
+    },
+    requirementRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+      marginBottom: 10,
+    },
+    requirementDot: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
+      color: theme.text,
+      fontSize: 11,
+      fontWeight: "900",
+      alignItems: "center",
+      justifyContent: "center",
+      textAlign: "center",
+      lineHeight: 22,
+      overflow: "hidden",
+    },
+    requirementText: {
+      flex: 1,
+      color: theme.textSecondary,
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: "600",
     },
     stateIntro: {
       marginBottom: 18,

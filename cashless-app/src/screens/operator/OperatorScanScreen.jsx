@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import logger from '../../utils/logger';
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   View,
@@ -54,7 +55,7 @@ export default function OperatorScanScreen({ navigation }) {
           return;
         }
       } catch (e) {
-        console.error("Error loading vehicle:", e);
+        logger.error("Error loading vehicle:", e);
         navigation.navigate("OperatorSetup");
         return;
       }

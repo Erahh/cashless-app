@@ -324,7 +324,7 @@ export default function SendLoadScreen({ navigation }) {
                             <Text style={[styles.summaryTitle, { color: theme.accentWarm }]}>Transfer Summary</Text>
                             <View style={[styles.summaryRow, { borderTopColor: theme.border }]}>
                                 <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>To</Text>
-                                <Text style={[styles.summaryValue, { color: theme.text }]}>{formattedPhone}</Text>
+                                <Text selectable={true} style={[styles.summaryValue, { color: theme.text }]}>{formattedPhone}</Text>
                             </View>
                             <View style={[styles.summaryRow, { borderTopColor: theme.border }]}>
                                 <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Amount</Text>

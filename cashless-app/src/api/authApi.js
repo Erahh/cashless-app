@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { normalizePHPhone } from "../utils/phone";
+import logger from '../utils/logger';
 
 // SEND OTP
 export async function sendOtp(rawPhone) {
@@ -12,7 +13,7 @@ export async function sendOtp(rawPhone) {
   const { error } = await supabase.auth.signInWithOtp({ phone });
 
   if (error) {
-    console.error("OTP SEND ERROR:", error.message);
+    logger.error("OTP SEND ERROR:", error.message);
     throw error;
   }
 
@@ -30,7 +31,7 @@ export async function verifyOtp(rawPhone, otp) {
   });
 
   if (error) {
-    console.error("OTP VERIFY ERROR:", error.message);
+    logger.error("OTP VERIFY ERROR:", error.message);
     throw error;
   }
 

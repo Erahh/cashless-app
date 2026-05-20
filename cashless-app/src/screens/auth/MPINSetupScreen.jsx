@@ -24,6 +24,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LockIcon, ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import AuthBackground from "../../components/AuthBackground";
+import logger from '../../utils/logger';
 
 export default function MPINSetupScreen({ navigation, route }) {
   const { setLocked } = useContext(AppLockContext);
@@ -104,7 +105,7 @@ export default function MPINSetupScreen({ navigation, route }) {
         setLocked(false);
         navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
       } catch (err) {
-        console.error("Signup finalize error:", err);
+        logger.error("Signup finalize error:", err);
         Alert.alert("Registration Error", err.message || "Failed to complete signup.");
       } finally {
         setLoading(false);
@@ -126,7 +127,7 @@ export default function MPINSetupScreen({ navigation, route }) {
       setLocked(false);
       navigation.reset({ index: 0, routes: [{ name: "RoleGate" }] });
     } catch (e) {
-      console.error("Set MPIN error:", e);
+      logger.error("Set MPIN error:", e);
       Alert.alert("Error", e?.message || "Failed to set MPIN");
     } finally {
       setLoading(false);

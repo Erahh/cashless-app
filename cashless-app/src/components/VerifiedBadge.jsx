@@ -73,8 +73,8 @@ export default function VerifiedBadge({
   );
 }
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  circle: { backgroundColor: '#2f80ed', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, elevation: 2 },
+  wrap: { flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 20 },
+  circle: { backgroundColor: '#2f80ed', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, elevation: 4, zIndex: 22, overflow: 'visible' },
   label: { color: '#111', fontWeight: '700', marginLeft: 6 },
   image: { resizeMode: 'cover' },
   glow: {},

@@ -32,23 +32,27 @@ export default function UploadFrontIDScreen({ navigation, route }) {
     const [uploading, setUploading] = useState(false);
 
     const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const granted = perm?.granted === true || perm?.status === "granted" || perm?.accessPrivileges === "limited";
+        if (!granted) {
             return Alert.alert("Permission needed", "Please allow access to your photos.");
         }
 
         setLockSuppressed(true);
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: [ImagePicker.MediaType.Images],
+                mediaTypes: ["images"],
                 allowsEditing: true,
                 aspect: [3, 4],
                 quality: 0.8,
+                base64: true,
             });
 
-            if (!result.canceled && result.assets?.[0]?.uri) {
-                setFrontImage(result.assets[0].uri);
+            if (!result.canceled && result.assets?.[0]) {
+                setFrontImage(result.assets[0]);
             }
+        } catch (err) {
+            Alert.alert("Gallery Error", "Could not open photo library. Please try again.");
         } finally {
             // Give 1 second delay before re-enabling lock lock to ensure app is active
             setTimeout(() => setLockSuppressed(false), 1000);
@@ -67,10 +71,11 @@ export default function UploadFrontIDScreen({ navigation, route }) {
                 allowsEditing: true,
                 aspect: [3, 4],
                 quality: 0.8,
+                base64: true,
             });
 
-            if (!result.canceled && result.assets?.[0]?.uri) {
-                setFrontImage(result.assets[0].uri);
+            if (!result.canceled && result.assets?.[0]) {
+                setFrontImage(result.assets[0]);
             }
         } finally {
             setTimeout(() => setLockSuppressed(false), 1000);
@@ -133,7 +138,7 @@ export default function UploadFrontIDScreen({ navigation, route }) {
                 <View style={styles.uploadSection}>
                     {frontImage ? (
                         <View style={styles.imagePreviewContainer}>
-                            <Image source={{ uri: frontImage }} style={styles.imagePreview} />
+                            <Image source={{ uri: frontImage?.uri || frontImage }} style={styles.imagePreview} />
                             <View style={styles.checkmarkOverlay}>
                                 <HugeiconsIcon icon={CheckmarkCircle01Icon} size={48} color={theme.success} />
                             </View>

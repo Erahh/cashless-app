@@ -46,6 +46,8 @@ export default function BusinessVerifiedBadge({ size = 36, style, withEffect = t
     <Animated.View
       style={[
         {
+          zIndex: 18,
+          overflow: 'visible',
           width: scaledSize,
           height: scaledSize,
           borderRadius: scaledSize / 2,

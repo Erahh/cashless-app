@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import logger from '../utils/logger';
 import { supabase } from '../api/supabase';
 import { API_BASE_URL } from '../config/api';
 import { fetchNotifications } from '../api/notificationsApi';
@@ -63,7 +64,7 @@ export const UserProvider = ({ children }) => {
             }
 
         } catch (err) {
-            console.error('Error in UserContext:', err);
+            logger.error('Error in UserContext:', err);
             setError(err.message);
         } finally {
             setLoading(false);

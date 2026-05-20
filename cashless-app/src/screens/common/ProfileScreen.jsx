@@ -128,18 +128,41 @@ export default function ProfileScreen({ navigation }) {
         return;
       }
 
-      const { data: p, error: pErr } = await supabase
-        .from("profiles")
-        .select("full_name, phone, email, birthdate, province, city, barangay, zip_code, address_line, first_name, middle_name, last_name, avatar_url")
-        .eq("id", userId)
-        .single();
+      const [profileRes, accountRes, businessRes, operatorUserRes, operatorAppRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("full_name, phone, email, birthdate, province, city, barangay, zip_code, address_line, first_name, middle_name, last_name, avatar_url")
+          .eq("id", userId)
+          .single(),
+        supabase
+          .from("commuter_accounts")
+          .select("passenger_type, verification_status, verified, verified_at, pin_set, account_active")
+          .eq("commuter_id", userId)
+          .single(),
+        renderApiRequest("/me/business-verification").catch((e) => {
+          console.warn("Failed to fetch business verification:", e.message);
+          return null;
+        }),
+        (async () => {
+          try {
+            return await supabase.from("operator_users").select("*").eq("user_id", userId).single();
+          } catch (e) {
+            return { data: null };
+          }
+        })(),
+        (async () => {
+          try {
+            return await supabase.from("operator_applications").select("*").eq("user_id", userId).order("submitted_at", { ascending: false }).limit(1).single();
+          } catch (e) {
+            return { data: null };
+          }
+        })(),
+      ]);
+
+      const { data: p, error: pErr } = profileRes;
       if (pErr) throw pErr;
 
-      const { data: a, error: aErr } = await supabase
-        .from("commuter_accounts")
-        .select("passenger_type, verification_status, verified, verified_at, pin_set, account_active")
-        .eq("commuter_id", userId)
-        .single();
+      const { data: a, error: aErr } = accountRes;
       if (aErr) throw aErr;
 
       setProfile(p);
@@ -149,7 +172,7 @@ export default function ProfileScreen({ navigation }) {
 
       // Fetch business verification status
       try {
-        const biz = await renderApiRequest("/me/business-verification");
+        const biz = businessRes;
         setBusinessVerification(biz);
         CACHED_BUSINESS_VERIFICATION = biz;
       } catch (e) {
@@ -157,18 +180,20 @@ export default function ProfileScreen({ navigation }) {
       }
 
       // Check Operator Status
-      const { data: op } = await supabase.from("operator_users").select("*").eq("user_id", userId).single();
+      const op = operatorUserRes?.data;
       setIsOperator(!!op);
       CACHED_IS_OPERATOR = !!op;
 
       // Check Application Status
-      const { data: app } = await supabase.from("operator_applications").select("*").eq("user_id", userId).order("submitted_at", { ascending: false }).limit(1).single();
+      const app = operatorAppRes?.data;
       setOperatorApp(app);
       CACHED_OPERATOR_APP = app;
     } catch (e) {
       Alert.alert("Error", e.message || "Failed to load profile");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }
 

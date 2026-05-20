@@ -14,6 +14,8 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, Camera01Icon, Image01Icon, CheckmarkCircle01Icon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
+import logger from '../../utils/logger';
+import * as FileSystem from 'expo-file-system';
 import { useTheme } from "../../context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { AppLockContext } from "../../context/AppLockContext";
@@ -34,23 +36,27 @@ export default function UploadBackIDScreen({ navigation, route }) {
     const [uploading, setUploading] = useState(false);
 
     const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const granted = perm?.granted === true || perm?.status === "granted" || perm?.accessPrivileges === "limited";
+        if (!granted) {
             return Alert.alert("Permission needed", "Please allow access to your photos.");
         }
 
         setLockSuppressed(true);
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: [ImagePicker.MediaType.Images],
+                mediaTypes: ["images"],
                 allowsEditing: true,
                 aspect: [3, 4],
                 quality: 0.8,
+                base64: true,
             });
 
-            if (!result.canceled && result.assets?.[0]?.uri) {
-                setBackImage(result.assets[0].uri);
+            if (!result.canceled && result.assets?.[0]) {
+                setBackImage(result.assets[0]);
             }
+        } catch (err) {
+            Alert.alert("Gallery Error", "Could not open photo library. Please try again.");
         } finally {
             setTimeout(() => setLockSuppressed(false), 1000);
         }
@@ -68,54 +74,60 @@ export default function UploadBackIDScreen({ navigation, route }) {
                 allowsEditing: true,
                 aspect: [3, 4],
                 quality: 0.8,
+                base64: true,
             });
 
-            if (!result.canceled && result.assets?.[0]?.uri) {
-                setBackImage(result.assets[0].uri);
+            if (!result.canceled && result.assets?.[0]) {
+                setBackImage(result.assets[0]);
             }
         } finally {
             setTimeout(() => setLockSuppressed(false), 1000);
         }
     };
 
-    const uploadToBackend = async (uri, side) => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
-            if (!token) throw new Error("No auth token");
+    const uploadToBackend = async (asset, side) => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const token = session?.access_token;
+                if (!token) throw new Error("No auth token");
 
-            // Get base64 data from URI
-            const response = await fetch(uri);
-            const blob = await response.blob();
+                const uri = typeof asset === "string" ? asset : asset?.uri;
+                if (!uri) {
+                    throw new Error("Could not read selected file");
+                }
 
-            // Convert blob to base64
-            const base64Data = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
+                let base64Data = typeof asset === "object" && asset?.base64 ? asset.base64 : null;
+                if (!base64Data) {
+                    try {
+                        base64Data = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+                    } catch (readErr) {
+                        logger.error('Failed to read file as base64', readErr);
+                        throw new Error('Could not read selected file. Try using the camera option instead.');
+                    }
+                }
 
-            const res = await fetch(`${API_BASE_URL}/verification/upload`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    image: base64Data,
-                    document_type: side === "front" ? "id_front" : "id_back"
-                })
-            });
+                base64Data = `data:image/jpeg;base64,${base64Data}`;
 
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error || "Upload failed");
+                const res = await fetch(`${API_BASE_URL}/verification/upload`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        image: base64Data,
+                        document_type: side === "front" ? "id_front" : "id_back"
+                    })
+                });
 
-            return result.file_path;
-        } catch (err) {
-            console.error(`❌ Upload error (${side}):`, err);
-            throw new Error(`Upload failed: ${err.message}`);
-        }
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || "Upload failed");
+
+                return result.file_path;
+            } catch (err) {
+                logger.error(`❌ Upload error (${side}):`, err);
+                throw new Error(`Upload failed: ${err.message}`);
+            }
     };
 
     const handleSubmit = async () => {
@@ -214,16 +226,16 @@ export default function UploadBackIDScreen({ navigation, route }) {
                         <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} color={theme.success} />
                         <Text style={styles.frontPreviewText}>Front ID uploaded</Text>
                     </View>
-                    {frontImage && (
-                        <Image source={{ uri: frontImage }} style={styles.frontPreviewImage} />
+                        {frontImage && (
+                        <Image source={{ uri: frontImage?.uri || frontImage }} style={styles.frontPreviewImage} />
                     )}
                 </View>
 
                 {/* Upload Area */}
                 <View style={styles.uploadSection}>
-                    {backImage ? (
+                        {backImage ? (
                         <View style={styles.imagePreviewContainer}>
-                            <Image source={{ uri: backImage }} style={styles.imagePreview} />
+                            <Image source={{ uri: (typeof backImage === 'string' ? backImage : backImage?.uri) }} style={styles.imagePreview} />
                             <View style={styles.checkmarkOverlay}>
                                 <HugeiconsIcon icon={CheckmarkCircle01Icon} size={48} color={theme.success} />
                             </View>

@@ -10,9 +10,11 @@ import { View,
   ScrollView,
   Dimensions } from "react-native";
 
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
+import logger from '../../utils/logger';
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, Camera01Icon, CheckmarkCircle01Icon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { AppLockContext } from "../../context/AppLockContext";
@@ -38,26 +40,82 @@ export default function UploadVerificationScreen({ navigation, route }) {
 
   const pickImage = async (setFn) => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
+    const granted = (perm && (perm.granted === true || perm.status === 'granted' || perm.accessPrivileges === 'limited'));
+    if (!granted) {
       return Alert.alert("Permission needed", "Allow gallery access to upload ID.");
     }
 
     setLockSuppressed(true);
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: [ImagePicker.MediaType.Images],
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [3, 4],
         quality: 0.8,
-        base64: true, // Request base64 for backend upload
+        base64: true,
       });
 
       if (!result.canceled) {
-        setFn(result.assets[0]);
+        const asset = result.assets[0] || {};
+
+        setFn(asset);
       }
+    } catch (err) {
+      Alert.alert("Gallery Error", "Could not open photo library. Please try again.");
     } finally {
       setTimeout(() => setLockSuppressed(false), 1000);
     }
+  };
+
+  const readAssetAsBase64 = async (asset) => {
+    if (asset?.base64) {
+      return asset.base64;
+    }
+
+    const uri = asset?.uri;
+    if (!uri) {
+      throw new Error("Missing file URI");
+    }
+
+    try {
+      const fromFileSystem = await FileSystem.readAsStringAsync(uri, {
+        encoding: 'base64',
+      });
+      if (fromFileSystem) {
+        return fromFileSystem;
+      }
+    } catch (fsErr) {
+      // Continue to the next fallback.
+    }
+
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      if (typeof FileReader !== "undefined") {
+        const fromBlob = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result;
+            if (typeof result === "string") {
+              resolve(result.includes(",") ? result.split(",")[1] : result);
+            } else {
+              reject(new Error("Unsupported blob result"));
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        if (fromBlob) {
+          return fromBlob;
+        }
+      }
+    } catch (blobErr) {
+      // Fall through to the final error below.
+    }
+
+    throw new Error("Could not read selected file");
   };
 
   // Upload via backend to bypass RLS/MIME restrictions
@@ -67,7 +125,10 @@ export default function UploadVerificationScreen({ navigation, route }) {
     if (!token) throw new Error("No session user");
 
     // Determine mime type from URI extension if possible, default to jpeg
-    const ext = (asset.uri.split("?")[0].split(".").pop() || "jpg").toLowerCase();
+    const uri = typeof asset === "string" ? asset : asset?.uri;
+    if (!uri) throw new Error("Missing file URI");
+
+    const ext = (uri.split("?")[0].split(".").pop() || "jpg").toLowerCase();
     const mimeMap = {
       png: "image/png",
       webp: "image/webp",
@@ -77,15 +138,10 @@ export default function UploadVerificationScreen({ navigation, route }) {
     };
     const mimeType = mimeMap[ext] || "image/jpeg";
 
-    // Construct data URI
-    if (!asset.base64) {
-      console.error("❌ No base64 data found in asset!");
-      throw new Error("Could not read image data. Please try again.");
-    }
+    const base64Data = asset?.base64 || await readAssetAsBase64(asset);
+    console.log(`📤 Uploading ${side} ID... Base64 length:`, base64Data.length);
 
-    console.log(`📤 Uploading ${side} ID... Base64 length:`, asset.base64.length);
-
-    const dataUri = `data:${mimeType};base64,${asset.base64}`;
+    const dataUri = `data:${mimeType};base64,${base64Data}`;
 
     const res = await fetch(`${API_BASE_URL}/verification/upload`, {
       method: "POST",
@@ -147,9 +203,9 @@ export default function UploadVerificationScreen({ navigation, route }) {
 
       const json = await apiRes.json();
       if (!apiRes.ok) {
-        // Show detailed error message
-        const errorMsg = json.error || json.message || "Unknown error";
-        console.error("Verification submit error:", errorMsg);
+      // Show detailed error message
+      const errorMsg = json.error || json.message || "Unknown error";
+      logger.error("Verification submit error:", errorMsg);
         return Alert.alert(
           "Submit failed",
           errorMsg.includes("ON CONFLICT")
@@ -161,7 +217,7 @@ export default function UploadVerificationScreen({ navigation, route }) {
       Alert.alert("Submitted ✅", "Your verification is now pending admin approval.");
       navigation.navigate("VerificationSubmitted", { flow: "id" });
     } catch (e) {
-      console.error("Upload error:", e);
+      logger.error("Upload error:", e);
       Alert.alert("Error", e.message);
     } finally {
       setLoading(false);

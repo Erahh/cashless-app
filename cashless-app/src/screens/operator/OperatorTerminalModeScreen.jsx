@@ -59,7 +59,7 @@ export default function OperatorTerminalModeScreen({ navigation }) {
                     navigation.navigate("OperatorSetup");
                 }
             } catch (e) {
-                console.error("Error loading vehicle:", e);
+                    logger.error("Error loading vehicle:", e);
                 navigation.navigate("OperatorSetup");
             }
         };

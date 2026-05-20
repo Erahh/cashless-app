@@ -6,7 +6,8 @@ import { ScrollView,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert } from "react-native";
+  Alert,
+  RefreshControl } from "react-native";
 
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { ArrowLeft01Icon, RefreshIcon, AnalyticsUpIcon, ArrowRight01Icon, WalletAdd01Icon, FlashIcon, QrCodeIcon } from "@hugeicons/core-free-icons";
@@ -26,6 +27,7 @@ export default function BalanceScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(!CACHED_WALLET);
+  const [refreshing, setRefreshing] = useState(false);
   const [wallet, setWallet] = useState(CACHED_WALLET);
   const [businessVerification, setBusinessVerification] = useState(CACHED_BUSINESS_VERIFICATION);
   const hideBalance = useAppStore((state) => state.hideBalance);
@@ -34,31 +36,40 @@ export default function BalanceScreen({ navigation }) {
     try {
       // Only show full-screen loader if not silent or if we have no data yet
       if (!silent || !CACHED_WALLET) setLoading(true);
-      const json = await fetchWallet();
+
+      const [json, biz] = await Promise.all([
+        fetchWallet(),
+        renderApiRequest("/me/business-verification").catch((e) => {
+          console.warn("Failed to fetch business verification:", e.message);
+          return null;
+        }),
+      ]);
+
       setWallet(json);
       CACHED_WALLET = json;
 
-      // Fetch business verification status to determine balance limits
-      try {
-        const biz = await renderApiRequest("/me/business-verification");
+      if (biz) {
         setBusinessVerification(biz);
         CACHED_BUSINESS_VERIFICATION = biz;
-      } catch (e) {
-        // ignore; keep previous value
-        console.warn("Failed to fetch business verification:", e.message);
       }
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     const unsub = navigation?.addListener?.("focus", () => load(true));
-    load(false); // Initial load is non-silent
+    load(!CACHED_WALLET); // only full-screen load when there is no cached wallet yet
     return unsub;
   }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    load(true);
+  };
 
   const balanceText = useMemo(() => {
     const b = Number(wallet?.balance ?? 0);
@@ -91,7 +102,7 @@ export default function BalanceScreen({ navigation }) {
           <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Wallet</Text>
-        <TouchableOpacity style={styles.refreshBtn} onPress={load} activeOpacity={0.9}>
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => load(false)} activeOpacity={0.9}>
           <HugeiconsIcon icon={RefreshIcon} size={18} color={theme.text} />
         </TouchableOpacity>
       </View>
@@ -102,6 +113,7 @@ export default function BalanceScreen({ navigation }) {
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         automaticallyAdjustsScrollIndicatorInsets={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
       >
         {loading ? (
           <View style={styles.center}>

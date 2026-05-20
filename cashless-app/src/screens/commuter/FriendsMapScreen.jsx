@@ -28,6 +28,7 @@ import {
     ViewOffIcon,
 } from '@hugeicons/core-free-icons';
 import { api } from '../../api/apiHelper';
+import logger from '../../utils/logger';
 import { API_BASE_URL } from '../../config/api';
 
 const { width, height } = Dimensions.get('window');
@@ -160,7 +161,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                 startBroadcasting();
             }
         } catch (error) {
-            console.error('Error initializing map:', error);
+            logger.error('Error initializing map:', error);
             Alert.alert('Error', 'Failed to get your location');
         } finally {
             setLoading(false);
@@ -337,7 +338,7 @@ export default function FriendsMapScreen({ navigation, route }) {
                                 })
                             });
                         } catch (syncErr) {
-                            console.error('Walking mode sync error:', syncErr);
+                            logger.error('Walking mode sync error:', syncErr);
                         }
                     }
                 }
@@ -371,7 +372,7 @@ export default function FriendsMapScreen({ navigation, route }) {
             await startWalkingTracking();
             setWalkingMode(true);
         } catch (error) {
-            console.error('Walking mode error:', error);
+            logger.error('Walking mode error:', error);
             Alert.alert('Error', 'Failed to enable walking mode');
         }
     };
@@ -401,7 +402,7 @@ export default function FriendsMapScreen({ navigation, route }) {
 
             await Linking.openURL(streetViewUrl);
         } catch (error) {
-            console.error('Street View open error:', error);
+            logger.error('Street View open error:', error);
             Alert.alert('Error', 'Failed to open Street View.');
         }
     };

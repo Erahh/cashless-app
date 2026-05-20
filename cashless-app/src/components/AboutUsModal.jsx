@@ -23,6 +23,7 @@ import {
   Link02Icon
 } from "@hugeicons/core-free-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import logger from '../utils/logger';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -64,7 +65,7 @@ export default function AboutUsModal({ visible, onClose, theme, isDarkMode }) {
   if (!visible && slideAnim._value === SCREEN_HEIGHT) return null;
 
   const handleLink = (url) => {
-    Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
+    Linking.openURL(url).catch(err => logger.error("Couldn't load page", err));
   };
 
   return (

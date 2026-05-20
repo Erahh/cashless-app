@@ -1,6 +1,7 @@
 import React, { useEffect, useContext } from "react";
 import { View, StyleSheet } from "react-native";
 import { supabase } from "../../api/supabase";
+import logger from '../../utils/logger';
 import { AppLockContext } from "../../context/AppLockContext";
 import { useTheme } from "../../context/ThemeContext";
 import CEraLogo from "../../components/CEraLogo";
@@ -67,7 +68,7 @@ export default function AuthGateScreen({ navigation }) {
 
         if (mounted) navigation.reset({ index: 0, routes: [{ name: "RoleGate" }] });
       } catch (e) {
-        console.error("AuthGate error:", e);
+        logger.error("AuthGate error:", e);
         if (mounted) navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
       }
     }

@@ -46,6 +46,37 @@ function getPhoneFromUserOrSession(user, sessionUser) {
 // ------- Themed Picker Modal -------
 function PickerModal({ visible, title, value, items, onChange, onClose, placeholder = "Select", theme }) {
   const s = useMemo(() => pickerModalStyles(theme), [theme]);
+
+  // On Android the native Picker/dialog can show a white system dialog
+  // which doesn't follow our theme. Use a custom list inside the modal
+  // on Android so we control colors and avoid white flashes.
+  if (Platform.OS === 'android') {
+    return (
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <View style={s.backdrop}>
+          <View style={s.card}>
+            <Text style={s.title}>{title}</Text>
+            <View style={s.pickerWrap}>
+              <ScrollView>
+                <TouchableOpacity onPress={() => { onChange(''); onClose(); }} style={s.optionRow}>
+                  <Text style={[s.optionText, !value && s.optionSelected]}>{placeholder}</Text>
+                </TouchableOpacity>
+                {(Array.isArray(items) ? items : []).map((it) => (
+                  <TouchableOpacity key={it.value} onPress={() => { onChange(it.value); onClose(); }} style={s.optionRow}>
+                    <Text style={[s.optionText, value === it.value && s.optionSelected]}>{it.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+            <TouchableOpacity style={s.doneBtn} onPress={onClose} activeOpacity={0.9}>
+              <Text style={s.doneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={s.backdrop}>
@@ -431,7 +462,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
         {/* Full name preview */}
         {!!fullName && (
           <View style={styles.infoBox}>
-            <Text style={styles.infoText}>Full Name: {fullName}</Text>
+            <Text selectable={true} style={styles.infoText}>Full Name: {fullName}</Text>
           </View>
         )}
 
@@ -727,6 +758,21 @@ const pickerModalStyles = (theme) =>
     },
     picker: {
       color: theme.text,
+    },
+    optionRow: {
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+      backgroundColor: theme.background,
+    },
+    optionText: {
+      color: theme.text,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    optionSelected: {
+      color: theme.success,
     },
     doneBtn: {
       marginTop: 14,

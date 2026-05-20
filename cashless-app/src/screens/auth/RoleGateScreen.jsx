@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator, StyleSheet, Dimensions, Animated } from 
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
 import { TapGlowOverlay, useTapGlow } from "../../components/TapGlow";
+import logger from '../../utils/logger';
 import { useTheme } from "../../context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -71,7 +72,7 @@ export default function RoleGateScreen({ navigation }) {
                 if (alive) navigation.reset({ index: 0, routes: [{ name: target }] });
 
             } catch (e) {
-                console.error("RoleGate error:", e);
+                logger.error("RoleGate error:", e);
 
                 // Silent retry once on timeout — gives a cold Render server time to wake
                 if ((e?.name === "AbortError") && canRetry) {

@@ -12,6 +12,7 @@ import {
     Platform,
 } from 'react-native';
 import { HugeiconsIcon } from "@hugeicons/react-native";
+import logger from '../../utils/logger';
 import { ArrowLeft01Icon, UserIcon, Cancel01Icon, Delete01Icon, UserAdd01Icon, UserGroup02Icon } from "@hugeicons/core-free-icons";
 import { api } from '../../api/apiHelper';
 
@@ -56,7 +57,7 @@ export default function AddFriendScreen({ navigation, route }) {
                 setFriends(response.friends || []);
             }
         } catch (error) {
-            console.error('Error loading friends:', error);
+            logger.error('Error loading friends:', error);
         } finally {
             setLoading(false);
         }
@@ -154,7 +155,7 @@ export default function AddFriendScreen({ navigation, route }) {
 
                 <View style={styles.friendInfo}>
                     <Text style={styles.friendName}>{item.friend_name}</Text>
-                    <Text style={styles.friendPhone}>{item.friend_phone}</Text>
+                    <Text selectable={true} style={styles.friendPhone}>{item.friend_phone}</Text>
                     {isPending && (
                         <Text style={styles.friendStatus}>
                             {isIncoming ? 'Wants to be friends' : 'Request sent'}

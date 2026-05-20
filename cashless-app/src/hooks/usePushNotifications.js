@@ -1,33 +1,46 @@
 import { useEffect, useRef } from "react";
-import { Alert, DeviceEventEmitter, Platform } from "react-native";
+import { DeviceEventEmitter, Platform } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from "expo-constants";
 import { supabase } from "../api/supabase";
-import { fetchNotifications } from "../api/notificationsApi";
+import { fetchNotifications, deleteNotification } from "../api/notificationsApi";
 import { registerPushToken } from "../api/notificationsApi";
 
-// Configure foreground notification handler immediately at the module level (required by Expo to show pop-ups in foreground)
-let NotificationsModule;
-try {
-    NotificationsModule = require("expo-notifications");
-} catch (err) {
-    // Ignore if not in React Native / Expo environment
+function isExpoGoEnvironment() {
+    return (
+        Constants?.appOwnership === "expo" ||
+        Constants?.executionEnvironment === "storeClient" ||
+        Constants?.executionEnvironment === "expoGo"
+    );
 }
 
-if (NotificationsModule && typeof NotificationsModule.setNotificationHandler === "function") {
-    NotificationsModule.setNotificationHandler({
-        handleNotification: async () => ({
-            shouldShowBanner: true,  // SDK 53+
-            shouldShowList: true,
-            shouldPlaySound: true,
-            shouldSetBadge: true,
-        }),
-    });
+// Register notification handler at module scope, but only when NOT running
+// inside Expo Go / store client. This ensures system banners appear quickly
+// on real/dev clients while avoiding the Expo Go remote-push warning.
+try {
+    if (!isExpoGoEnvironment()) {
+        // eslint-disable-next-line global-require
+        const _Notifications = require('expo-notifications');
+        if (_Notifications && typeof _Notifications.setNotificationHandler === 'function') {
+            _Notifications.setNotificationHandler({
+                handleNotification: async () => ({
+                    shouldShowBanner: true,
+                    shouldShowList: true,
+                    shouldPlaySound: true,
+                    shouldSetBadge: true,
+                }),
+            });
+        }
+    }
+} catch (e) {
+    // ignore: avoiding hard dependency at module load in Expo Go
 }
 
 /**
  * Hook to handle push notifications.
  * For Expo Go Android: uses polling fallback (no remote push support in SDK 53+)
- * For other platforms: uses real push token registration
+ * For Expo Go / store client: uses polling fallback so the app still feels live in demo mode.
+ * For standalone/dev builds: uses real push token registration.
  *
  * This hook is safe - all errors are caught and logged, never thrown.
  */
@@ -36,16 +49,25 @@ export function usePushNotifications() {
     const hasRegisteredRef = useRef(false);
     const notificationsRef = useRef(null);
     const pollIntervalRef = useRef(null);
-    const seenNotificationIdsRef = useRef(new Set());
-    const isExpoGoAndroidRef = useRef(false);
+    const seenNotificationKeysRef = useRef(new Set());
+    const isExpoGoFallbackRef = useRef(false);
 
     useEffect(() => {
         let isMounted = true;
-        const isExpoGo =
-            Constants?.appOwnership === "expo" ||
-            Constants?.executionEnvironment === "storeClient" ||
-            Constants?.executionEnvironment === "expoGo";
-        isExpoGoAndroidRef.current = isExpoGo; // Enable local polling fallback for both iOS and Android in Expo Go
+        const isExpoGo = isExpoGoEnvironment();
+        isExpoGoFallbackRef.current = isExpoGo;
+
+        function extractNotificationPayload(source = {}) {
+            const content = source?.notification?.request?.content || source?.request?.content || source?.content || {};
+            const data = content?.data && typeof content.data === "object" ? content.data : {};
+
+            return {
+                title: String(content?.title || data?.title || data?.type || "Notification"),
+                body: String(content?.body || data?.body || data?.message || "You have a new notification."),
+                data,
+                notificationId: String(source?.notification?.request?.identifier || source?.request?.identifier || content?.data?.id || ""),
+            };
+        }
 
         function getNotificationsModule() {
             if (!notificationsRef.current) {
@@ -60,7 +82,7 @@ export function usePushNotifications() {
 
         async function setupPush() {
             // Skip remote push in Expo Go - will use polling instead
-            if (isExpoGoAndroidRef.current) return;
+            if (isExpoGoFallbackRef.current) return;
             if (hasRegisteredRef.current) return;
 
             try {
@@ -146,22 +168,73 @@ export function usePushNotifications() {
             });
         }
 
+        const SEEN_KEY = 'seen_notifications_v1';
+
+        function notificationKey(item, title, body, data) {
+            // Prefer stable server id fields; fall back to content-based key
+            const id = normalizeNotificationId(item);
+            if (id) return `id:${id}`;
+            try {
+                const payload = JSON.stringify({ title, body, data });
+                return `hash:${payload}`;
+            } catch (e) {
+                return `hash:${title}::${body}`;
+            }
+        }
+
+        async function loadSeenKeysFromStorage() {
+            try {
+                const raw = await AsyncStorage.getItem(SEEN_KEY);
+                if (!raw) return;
+                const arr = JSON.parse(raw);
+                if (Array.isArray(arr)) {
+                    seenNotificationKeysRef.current = new Set(arr);
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        async function saveSeenKeysToStorage() {
+            try {
+                const arr = Array.from(seenNotificationKeysRef.current || []);
+                await AsyncStorage.setItem(SEEN_KEY, JSON.stringify(arr));
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        async function addSeenKeyAndSave(key) {
+            try {
+                if (!key) return;
+                seenNotificationKeysRef.current.add(key);
+                await saveSeenKeysToStorage();
+            } catch (e) {
+                // ignore
+            }
+        }
+
         async function seedSeenNotifications() {
             try {
-                const items = await fetchNotifications(20);
+                const items = await fetchNotifications(50);
                 (items || []).forEach((item) => {
-                    const id = normalizeNotificationId(item);
-                    if (id) seenNotificationIdsRef.current.add(id);
+                    const title = String((item.payload && item.payload.title) || item.title || item.type || '');
+                    const body = String((item.payload && item.payload.body) || item.body || '');
+                    const data = (item.payload && typeof item.payload === 'object') ? item.payload : {};
+                    const key = notificationKey(item, title, body, data);
+                    if (key) seenNotificationKeysRef.current.add(key);
                 });
-            } catch {
+                await saveSeenKeysToStorage();
+            } catch (err) {
                 // Ignore seed errors; polling can retry.
             }
         }
 
         async function startExpoGoFallback() {
-            if (!isExpoGoAndroidRef.current || pollIntervalRef.current) return;
+            if (!isExpoGoFallbackRef.current || pollIntervalRef.current) return;
 
             const Notifications = getNotificationsModule();
+            if (!Notifications) return;
             try {
                 await ensureAndroidNotificationChannel(Notifications);
             } catch (err) {
@@ -174,6 +247,7 @@ export function usePushNotifications() {
                 return;
             }
 
+            await loadSeenKeysFromStorage();
             await seedSeenNotifications();
 
             const pollOnce = async () => {
@@ -185,15 +259,11 @@ export function usePushNotifications() {
                     if (!items || items.length === 0) return;
 
                     for (const item of items) {
-                        const id = normalizeNotificationId(item);
-                        if (!id || seenNotificationIdsRef.current.has(id)) continue;
-
-                        seenNotificationIdsRef.current.add(id);
-
                         // Backend stores notification content inside item.payload
                         const rawPayload = item.payload && typeof item.payload === "object"
                             ? item.payload
                             : {};
+
                         const title = String(
                             rawPayload.title || item.title || item.type || "Notification"
                         );
@@ -204,10 +274,50 @@ export function usePushNotifications() {
                         // data for navigation on tap
                         const data = rawPayload;
 
+                        const key = notificationKey(item, title, body, data);
+                        if (!key || seenNotificationKeysRef.current.has(key)) continue;
+
+                        seenNotificationKeysRef.current.add(key);
+
                         try {
-                            if (isExpoGoAndroidRef.current) {
-                                DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", data);
-                                Alert.alert(title, body);
+                            if (isExpoGoFallbackRef.current) {
+                                // In Expo Go fallback we previously showed a blocking Alert for every polled notification.
+                                // That is noisy when opening the app — schedule a local notification instead so the user
+                                // receives a system notification rather than a modal alert. Emit the in-app event only
+                                // after scheduling to avoid duplicates in the UI.
+                                try {
+                                    if (Notifications && typeof Notifications.scheduleNotificationAsync === 'function') {
+                                        await Notifications.scheduleNotificationAsync({
+                                            content: {
+                                                title,
+                                                body,
+                                                data,
+                                                sound: 'default',
+                                                badge: 1,
+                                                interruptionLevel: 'time-sensitive',
+                                                priority: 'max',
+                                                channelId: 'default',
+                                            },
+                                            trigger: null,
+                                        });
+                                        // persist seen key so we don't reshow
+                                        try { await saveSeenKeysToStorage(); } catch (e) {}
+                                        DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", {
+                                            title,
+                                            body,
+                                            data,
+                                        });
+                                    } else {
+                                        // Fallback: emit the event; UI can listen to the event.
+                                        DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", {
+                                            title,
+                                            body,
+                                            data,
+                                        });
+                                    }
+                                } catch (notifErr) {
+                                    console.warn('Failed to schedule local notification fallback:', notifErr?.message || notifErr);
+                                }
                                 continue;
                             }
 
@@ -218,13 +328,29 @@ export function usePushNotifications() {
                                     data,
                                     sound: "default",
                                     badge: 1,
-                                    // Note: vibrate & priority belong in the channel, not content
+                                    interruptionLevel: 'time-sensitive',  // iOS 15+: show as banner immediately
+                                    priority: 'max',  // Android: highest priority
                                     channelId: "default",
                                 },
                                 trigger: null,
                             });
+                            try { await saveSeenKeysToStorage(); } catch (e) {}
+                            // Auto-acknowledge (delete) server notification when we've shown a local notification
+                            try {
+                                const serverId = normalizeNotificationId(item);
+                                if (serverId) {
+                                    // serverId may be a timestamp or id; attempt delete and ignore failures
+                                    deleteNotification(serverId).catch(() => {});
+                                }
+                            } catch (e) {
+                                // ignore
+                            }
 
-                            DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", data);
+                            DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", {
+                                title,
+                                body,
+                                data,
+                            });
                         } catch (scheduleErr) {
                             console.warn("Failed to schedule notification:", scheduleErr?.message || scheduleErr);
                         }
@@ -234,28 +360,101 @@ export function usePushNotifications() {
                 }
             };
 
-            // Poll immediately, then every 2 seconds (reduced for instant feedback)
+            // Poll immediately, then every 5 seconds for snappier Expo Go demos.
+            // NOTE: shorter intervals increase network/battery usage; revert for production.
             await pollOnce();
-            pollIntervalRef.current = setInterval(pollOnce, 2000);
-            console.log("Started notification polling fallback every 2s");
+            pollIntervalRef.current = setInterval(pollOnce, 5000);
         }
 
-        // Set up notification handler first
-        getNotificationsModule();
+        // Supabase Realtime subscription to receive immediate in-app events
+        let realtimeChannel = null;
+        function setupRealtimeSubscription(userId) {
+            try {
+                // Subscribe to inserts where commuter_id or guardian_id equals current user
+                realtimeChannel = supabase.channel(`notification_outbox_user_${userId}`);
+
+                realtimeChannel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notification_outbox', filter: `commuter_id=eq.${userId}` }, (payload) => {
+                    try {
+                        const item = payload?.new || {};
+                        const title = String((item.payload && item.payload.title) || item.payload?.title || item.title || 'Notification');
+                        const body = String((item.payload && item.payload.body) || item.payload?.body || item.body || 'You have a new notification.');
+                        const data = (item.payload && typeof item.payload === 'object') ? item.payload : {};
+                        const key = notificationKey(item, title, body, data);
+                        if (!key || seenNotificationKeysRef.current.has(key)) return; // ignore old/seen
+                        // persist seen key before emitting to avoid duplicates
+                        addSeenKeyAndSave(key).catch(() => {});
+                        DeviceEventEmitter.emit('PUSH_NOTIFICATION_RECEIVED', { title, body, data });
+                    } catch (e) {
+                        // ignore
+                    }
+                });
+
+                realtimeChannel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notification_outbox', filter: `guardian_id=eq.${userId}` }, (payload) => {
+                    try {
+                        const item = payload?.new || {};
+                        const title = String((item.payload && item.payload.title) || item.payload?.title || item.title || 'Notification');
+                        const body = String((item.payload && item.payload.body) || item.payload?.body || item.body || 'You have a new notification.');
+                        const data = (item.payload && typeof item.payload === 'object') ? item.payload : {};
+                        const key = notificationKey(item, title, body, data);
+                        if (!key || seenNotificationKeysRef.current.has(key)) return; // ignore old/seen
+                        addSeenKeyAndSave(key).catch(() => {});
+                        DeviceEventEmitter.emit('PUSH_NOTIFICATION_RECEIVED', { title, body, data });
+                    } catch (e) {}
+                });
+
+                // Activate subscription
+                realtimeChannel.subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        if (__DEV__) console.log('Realtime notifications subscribed for', userId);
+                    }
+                });
+            } catch (err) {
+                console.warn('Realtime subscription error:', err?.message || err);
+            }
+        }
+
+        // Set up notification handler first, but only outside Expo Go on Android.
+        const Notifications = getNotificationsModule();
+        if (Notifications && typeof Notifications.setNotificationHandler === "function") {
+            Notifications.setNotificationHandler({
+                handleNotification: async () => ({
+                    shouldShowBanner: true,
+                    shouldShowList: true,
+                    shouldPlaySound: true,
+                    shouldSetBadge: true,
+                }),
+            });
+        }
 
         // Run on mount
         setupPush();
         startExpoGoFallback();
 
-        const Notifications = getNotificationsModule();
+        // Also set up realtime subscription for immediate in-app popups
+        (async () => {
+            try {
+                const { data } = await supabase.auth.getSession();
+                const userId = data?.session?.user?.id;
+                if (userId) setupRealtimeSubscription(userId);
+            } catch (e) {
+                // ignore
+            }
+        })();
+
+        if (Notifications == null) {
+            return () => {
+                isMounted = false;
+                hasRegisteredRef.current = false;
+                try { if (realtimeChannel) realtimeChannel.unsubscribe(); } catch (e) {}
+            };
+        }
+
         const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
-            const data = response?.notification?.request?.content?.data || {};
-            DeviceEventEmitter.emit("PUSH_NOTIFICATION_RESPONSE", data);
+            DeviceEventEmitter.emit("PUSH_NOTIFICATION_RESPONSE", extractNotificationPayload(response));
         });
 
         const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
-            const data = notification?.request?.content?.data || {};
-            DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", data);
+            DeviceEventEmitter.emit("PUSH_NOTIFICATION_RECEIVED", extractNotificationPayload(notification));
         });
 
         // Also re-register when auth state changes (login/logout)
@@ -285,7 +484,8 @@ export function usePushNotifications() {
                 clearInterval(pollIntervalRef.current);
                 pollIntervalRef.current = null;
             }
-            seenNotificationIdsRef.current.clear();
+            if (seenNotificationKeysRef.current) seenNotificationKeysRef.current.clear();
+            try { if (realtimeChannel) realtimeChannel.unsubscribe(); } catch (e) {}
         };
     }, []);
 

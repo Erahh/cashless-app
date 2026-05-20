@@ -14,6 +14,7 @@ import {
 } from "react-native";
 
 import { supabase } from "../../api/supabase";
+import logger from '../../utils/logger';
 
 function normalizePHPhone(input) {
   const raw = (input || "").trim().replace(/\s+/g, "");
@@ -72,7 +73,7 @@ export default function LoginScreen({ navigation }) {
       // Go to your OTPScreen UI (better UX than inline step)
       navigation.navigate("OTPScreen", { phone });
     } catch (e) {
-      console.error("Send OTP error:", e);
+      logger.error("Send OTP error:", e);
       Alert.alert("Error", e?.message || "Failed to send OTP");
     } finally {
       setLoading(false);

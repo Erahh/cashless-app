@@ -9,6 +9,7 @@ import { View,
 
 import { supabase } from "../../api/supabase";
 import { API_BASE_URL } from "../../config/api";
+import logger from '../../utils/logger';
 
 export default function RegisterRFIDScreen({ navigation }) {
     const insets = useSafeAreaInsets();
@@ -36,7 +37,7 @@ export default function RegisterRFIDScreen({ navigation }) {
                 setRegisteredCards(json.credentials || []);
             }
         } catch (e) {
-            console.error("Load RFID cards error:", e);
+            logger.error("Load RFID cards error:", e);
         } finally {
             setLoading(false);
         }

@@ -2,7 +2,8 @@
   "extends": "expo/tsconfig.base.json",
   "compilerOptions": {
     "allowJs": true,
-    "noEmit": true
+    "noEmit": true,
+    "skipLibCheck": true
   },
   "include": ["src/**/*", "index.js"],
   "exclude": ["node_modules", "babel.config.js", "android", "ios"]

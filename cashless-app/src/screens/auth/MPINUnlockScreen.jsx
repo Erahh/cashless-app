@@ -190,7 +190,7 @@ export default function MPINUnlockScreen({ navigation }) {
 
             <View style={styles.textWrapper}>
               <Text style={styles.title}>Enter Your PIN</Text>
-              <Text style={styles.subtitle}>
+              <Text selectable={true} style={styles.subtitle}>
                 {phone ? `Logged in as ${phone}` : "Enter your 6-digit PIN to unlock."}
               </Text>
             </View>

@@ -67,7 +67,7 @@ export const ThemeProvider = ({ children }) => {
                     setIsDarkMode(true);
                 }
             } catch (error) {
-                console.error('Failed to load theme preference:', error);
+                    logger.error('Failed to load theme preference:', error);
             } finally {
                 setIsLoaded(true);
             }
@@ -82,7 +82,7 @@ export const ThemeProvider = ({ children }) => {
         try {
             await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme ? 'dark' : 'light');
         } catch (error) {
-            console.error('Failed to save theme preference:', error);
+                logger.error('Failed to save theme preference:', error);
         }
     };
 

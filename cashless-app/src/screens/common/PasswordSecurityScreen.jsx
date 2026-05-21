@@ -35,6 +35,8 @@ function isWeakPin(pin) {
 }
 
 function PinField({ label, value, onChangeText, theme, styles, isDarkMode, inputRef }) {
+  const [show, setShow] = React.useState(false);
+
   const dots = [0, 1, 2, 3, 4, 5].map((i) => (
     <View
       key={i}
@@ -45,15 +47,26 @@ function PinField({ label, value, onChangeText, theme, styles, isDarkMode, input
     />
   ));
 
+  const digits = [0,1,2,3,4,5].map((i) => (
+    <Text key={i} style={styles.digitText}>{value[i] || ''}</Text>
+  ));
+
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TouchableOpacity
         activeOpacity={1}
         onPress={() => inputRef?.current?.focus()}
-        style={styles.dotsContainer}
+        style={[styles.dotsContainer, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
       >
-        <View style={styles.dotsRow}>{dots}</View>
+        <View style={styles.dotsRow}>{show ? digits : dots}</View>
+        <TouchableOpacity
+          onPress={() => setShow(!show)}
+          activeOpacity={0.8}
+          style={styles.eyeBtn}
+        >
+          <HugeiconsIcon icon={show ? ViewOffIcon : ViewIcon} size={18} color={theme.textMuted} />
+        </TouchableOpacity>
       </TouchableOpacity>
       <TextInput
         ref={inputRef}
@@ -61,11 +74,11 @@ function PinField({ label, value, onChangeText, theme, styles, isDarkMode, input
         onChangeText={(t) => onChangeText((t || "").replace(/[^\d]/g, "").slice(0, 6))}
         keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
         inputMode="numeric"
-        secureTextEntry
+        secureTextEntry={!show}
         maxLength={6}
         autoCorrect={false}
         autoComplete="off"
-        caretHidden
+        caretHidden={!show}
         style={styles.hiddenInput}
       />
     </View>
@@ -329,6 +342,20 @@ const createStyles = (theme, isDarkMode) =>
       height: 44,
       justifyContent: "center",
       paddingVertical: 12,
+    },
+    digitText: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: '800',
+      width: 18,
+      textAlign: 'center',
+    },
+    eyeBtn: {
+      marginLeft: 12,
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     dotsRow: {
       flexDirection: "row",

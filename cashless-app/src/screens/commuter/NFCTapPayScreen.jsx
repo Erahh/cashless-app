@@ -1,26 +1,65 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Alert } from "react-native";
 import { Screen, Card, PrimaryButton } from "../../components/ui";
 import { useTheme } from "../../context/ThemeContext";
+import NfcManager, { NfcTech, Ndef } from 'react-native-nfc-manager';
+import { payOperator } from "../../api/payApi";
+import FareSuccessModal from "../../components/FareSuccessModal";
 
 export default function NFCTapPayScreen({ navigation }) {
     const [busy, setBusy] = useState(false);
     const { theme } = useTheme();
     const styles = React.useMemo(() => createStyles(theme), [theme]);
+    
+    const [successVisible, setSuccessVisible] = useState(false);
+    const [paymentResult, setPaymentResult] = useState(null);
 
-    const simulateTap = async () => {
+    useEffect(() => {
+        NfcManager.start().catch(() => {});
+        return () => {
+            NfcManager.cancelTechnologyRequest().catch(() => {});
+        };
+    }, []);
+
+    const readNfc = async () => {
         try {
             setBusy(true);
-            await new Promise((r) => setTimeout(r, 900));
+            await NfcManager.requestTechnology(NfcTech.Ndef);
+            const tag = await NfcManager.getTag();
+            
+            let operator_qr = "";
+            if (tag.ndefMessage && tag.ndefMessage.length > 0) {
+                const ndefRecord = tag.ndefMessage[0];
+                operator_qr = Ndef.text.decodePayload(ndefRecord.payload);
+            }
 
-            Alert.alert(
-                "NFC Tap Detected (Demo)",
-                "Card/phone detected successfully.\n\nNext: this will send the UID/token to backend for fare deduction.",
-                [
-                    { text: "OK", onPress: () => navigation.goBack() },
-                ]
-            );
+            if (!operator_qr) {
+                Alert.alert("NFC Error", "Tag is empty or not formatted with an operator token.");
+                setBusy(false);
+                return;
+            }
+
+            // Extract if JSON
+            const raw = String(operator_qr).trim();
+            if (raw.startsWith("{") && raw.endsWith("}")) {
+                try {
+                    const obj = JSON.parse(raw);
+                    if (obj?.operator_qr) operator_qr = String(obj.operator_qr).trim();
+                } catch { }
+            }
+
+            // We have the operator token, now pay!
+            const res = await payOperator({ operator_qr });
+            setPaymentResult(res);
+            setSuccessVisible(true);
+        } catch (ex) {
+            console.warn('NFC Error:', ex);
+            // Ignore cancel exceptions
+            if (ex !== 'cancelled') {
+                Alert.alert("NFC Error", ex.message || "Failed to read tag or process payment.");
+            }
         } finally {
+            NfcManager.cancelTechnologyRequest().catch(() => {});
             setBusy(false);
         }
     };
@@ -28,7 +67,7 @@ export default function NFCTapPayScreen({ navigation }) {
     return (
         <Screen
             title="Tap to Pay"
-            subtitle="Hold your NFC card/phone near the device to pay fare."
+            subtitle="Hold your phone near the operator's NFC tag to pay fare."
             onBack={() => navigation.goBack()}
             theme={theme}
         >
@@ -39,20 +78,29 @@ export default function NFCTapPayScreen({ navigation }) {
                     </View>
 
                     <Text style={styles.hint}>
-                        Demo Mode: Tap the button below to simulate NFC.
+                        Tap the button below and hold your phone against the Operator's NFC Tag.
                     </Text>
 
                     <View style={{ marginTop: 24 }}>
                         <PrimaryButton
-                            label={busy ? "Reading..." : "Simulate NFC Tap"}
-                            onPress={simulateTap}
+                            label={busy ? "Ready to Scan..." : "Start NFC Scan"}
+                            onPress={readNfc}
                             disabled={busy}
                             theme={theme}
                         />
                     </View>
                 </Card>
-
             </View>
+
+            <FareSuccessModal
+                visible={successVisible}
+                result={paymentResult}
+                onDone={() => {
+                    setSuccessVisible(false);
+                    setPaymentResult(null);
+                    navigation.navigate("Home", { refresh: true });
+                }}
+            />
         </Screen>
     );
 }

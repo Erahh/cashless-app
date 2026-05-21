@@ -39,6 +39,10 @@ export default function MPINSetupScreen({ navigation, route }) {
   const [agree, setAgree] = useState(false);
   const [showMpin, setShowMpin] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showMpinToast, setShowMpinToast] = useState(false);
+  const [showConfirmToast, setShowConfirmToast] = useState(false);
+  const mpinTimerRef = React.useRef(null);
+  const confirmTimerRef = React.useRef(null);
 
   function weakPin(pin) {
     const bad = new Set(["000000", "111111", "123456", "654321"]);
@@ -179,7 +183,17 @@ export default function MPINSetupScreen({ navigation, route }) {
                 />
                 <TouchableOpacity
                   style={styles.eyeBtn}
-                  onPress={() => setShowMpin(!showMpin)}
+                  onPress={() => {
+                    // show for 3 seconds then auto-hide
+                    if (mpinTimerRef.current) clearTimeout(mpinTimerRef.current);
+                    setShowMpin(true);
+                    setShowMpinToast(true);
+                    mpinTimerRef.current = setTimeout(() => {
+                      setShowMpin(false);
+                      setShowMpinToast(false);
+                      mpinTimerRef.current = null;
+                    }, 3000);
+                  }}
                   activeOpacity={0.7}
                 >
                   <HugeiconsIcon
@@ -190,9 +204,12 @@ export default function MPINSetupScreen({ navigation, route }) {
                 </TouchableOpacity>
               </View>
             {pinStrength && (
-              <Text style={[styles.strengthText, { color: pinStrength.color }]}>
+              <Text style={[styles.strengthText, { color: pinStrength.color }]}> 
                 {pinStrength.label}
               </Text>
+            )}
+            {showMpinToast && (
+              <Text style={[styles.strengthText, { color: theme.success, marginTop: 6 }]}>Visible</Text>
             )}
           </View>
 
@@ -213,23 +230,42 @@ export default function MPINSetupScreen({ navigation, route }) {
                 autoComplete="off"
                 maxLength={6}
               />
-              <TouchableOpacity
-                style={styles.eyeBtn}
-                onPress={() => setShowConfirm(!showConfirm)}
-                activeOpacity={0.7}
-              >
-                <HugeiconsIcon
-                  icon={showConfirm ? ViewOffIcon : ViewIcon}
-                  size={20}
-                  color={theme.textMuted}
-                />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.eyeBtn}
+                  onPress={() => {
+                    if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+                    setShowConfirm(true);
+                    setShowConfirmToast(true);
+                    confirmTimerRef.current = setTimeout(() => {
+                      setShowConfirm(false);
+                      setShowConfirmToast(false);
+                      confirmTimerRef.current = null;
+                    }, 3000);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <HugeiconsIcon
+                    icon={showConfirm ? ViewOffIcon : ViewIcon}
+                    size={20}
+                    color={theme.textMuted}
+                  />
+                </TouchableOpacity>
             </View>
             {confirm.length === 6 && mpin.length === 6 && confirm !== mpin && (
               <Text style={[styles.strengthText, { color: theme.danger }]}>
                 PINs do not match
               </Text>
             )}
+            {showConfirmToast && (
+              <Text style={[styles.strengthText, { color: theme.success, marginTop: 6 }]}>Visible</Text>
+            )}
+
+  React.useEffect(() => {
+    return () => {
+      if (mpinTimerRef.current) clearTimeout(mpinTimerRef.current);
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    };
+  }, []);
           </View>
 
           {/* Terms and Conditions */}

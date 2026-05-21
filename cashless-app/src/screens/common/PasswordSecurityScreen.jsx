@@ -36,6 +36,8 @@ function isWeakPin(pin) {
 
 function PinField({ label, value, onChangeText, theme, styles, isDarkMode, inputRef }) {
   const [show, setShow] = React.useState(false);
+  const [toastVisible, setToastVisible] = React.useState(false);
+  const timerRef = React.useRef(null);
 
   const dots = [0, 1, 2, 3, 4, 5].map((i) => (
     <View
@@ -51,6 +53,12 @@ function PinField({ label, value, onChangeText, theme, styles, isDarkMode, input
     <Text key={i} style={styles.digitText}>{value[i] || ''}</Text>
   ));
 
+  React.useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -61,13 +69,24 @@ function PinField({ label, value, onChangeText, theme, styles, isDarkMode, input
       >
         <View style={styles.dotsRow}>{show ? digits : dots}</View>
         <TouchableOpacity
-          onPress={() => setShow(!show)}
+          onPress={() => {
+            // show for 3 seconds then auto-hide
+            if (timerRef.current) clearTimeout(timerRef.current);
+            setShow(true);
+            setToastVisible(true);
+            timerRef.current = setTimeout(() => {
+              setShow(false);
+              setToastVisible(false);
+              timerRef.current = null;
+            }, 3000);
+          }}
           activeOpacity={0.8}
           style={styles.eyeBtn}
         >
           <HugeiconsIcon icon={show ? ViewOffIcon : ViewIcon} size={18} color={theme.textMuted} />
         </TouchableOpacity>
       </TouchableOpacity>
+      {toastVisible && <Text style={[styles.strengthText, { color: theme.success, textAlign: 'center' }]}>Visible</Text>}
       <TextInput
         ref={inputRef}
         value={value}

@@ -152,6 +152,8 @@ export default function UploadBackIDScreen({ navigation, route }) {
 
             if (!token) throw new Error("No auth token");
 
+            const submitType = passenger_type === "pwd" ? "student" : passenger_type;
+
             const response = await fetch(`${API_BASE_URL}/verification/submit`, {
                 method: "POST",
                 headers: {
@@ -159,7 +161,7 @@ export default function UploadBackIDScreen({ navigation, route }) {
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    passenger_type,
+                    passenger_type: submitType,
                     id_front_path: frontPath,
                     id_back_path: backPath,
                 }),

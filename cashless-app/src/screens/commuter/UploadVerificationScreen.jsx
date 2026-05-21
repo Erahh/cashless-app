@@ -188,6 +188,7 @@ export default function UploadVerificationScreen({ navigation, route }) {
       if (!token) throw new Error("No access token. Please login again.");
 
       // Submit verification request to backend
+      const submitType = passengerType === "pwd" ? "student" : passengerType;
       const apiRes = await fetch(`${API_BASE_URL}/verification/submit`, {
         method: "POST",
         headers: {
@@ -195,7 +196,7 @@ export default function UploadVerificationScreen({ navigation, route }) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          passenger_type: passengerType,
+          passenger_type: submitType,
           id_front_path,
           id_back_path,
         }),

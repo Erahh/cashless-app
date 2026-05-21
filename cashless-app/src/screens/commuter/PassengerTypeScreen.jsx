@@ -331,7 +331,7 @@ function PassengerCard({ value, label, description, selected, onPress, theme, is
       <View style={styles.cardLeft}>
         {value === "pwd" ? (
           <LinearGradient
-            colors={[theme.primary, theme.accent]}
+            colors={[theme.success, theme.success]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[styles.iconCirclePwd, selected && styles.iconCircleSelected]}
@@ -361,7 +361,7 @@ function PassengerCard({ value, label, description, selected, onPress, theme, is
       </View>
 
       {value === "pwd" && (
-        <View style={styles.pwdBadge}>
+        <View style={[styles.pwdBadge, { backgroundColor: theme.success }] }>
           <Text style={styles.pwdBadgeText}>PWD</Text>
         </View>
       )}

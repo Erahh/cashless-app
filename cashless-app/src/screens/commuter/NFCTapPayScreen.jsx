@@ -29,7 +29,6 @@ export default function NFCTapPayScreen({ navigation }) {
             // EXPO GO FALLBACK (Simulate)
             try {
                 setBusy(true);
-                await new Promise((r) => setTimeout(r, 900));
                 
                 Alert.prompt(
                     "Simulator Mode (Expo Go)",

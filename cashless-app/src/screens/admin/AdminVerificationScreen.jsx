@@ -9,6 +9,8 @@ import { View,
   Alert } from "react-native";
 
 import { fetchPendingVerifications } from "../../api/adminApi";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { WheelchairIcon } from "@hugeicons/core-free-icons";
 
 export default function AdminVerificationScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -82,10 +84,17 @@ export default function AdminVerificationScreen({ navigation }) {
                   </Text>
                 </View>
 
-                <View style={styles.statusPill}>
-                  <Text style={styles.statusPillText}>
-                    {it.requested_type === "business" ? "BUSINESS" : "REGULAR"}
-                  </Text>
+                <View style={[styles.statusPill, it.requested_type === "pwd" && styles.pwdPill]}>
+                  {it.requested_type === "pwd" ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <HugeiconsIcon icon={WheelchairIcon} size={14} color="#FFFFFF" />
+                      <Text style={[styles.statusPillText, { color: "#FFFFFF" }]}>PWD</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.statusPillText}>
+                      {it.requested_type === "business" ? "BUSINESS" : "REGULAR"}
+                    </Text>
+                  )}
                 </View>
               </TouchableOpacity>
             ))}
@@ -150,4 +159,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 211, 106, 0.95)",
   },
   statusPillText: { color: "#0B0E14", fontWeight: "900", fontSize: 12 },
+  pwdPill: {
+    backgroundColor: "#6C9CFF",
+    borderColor: "rgba(255,255,255,0.10)",
+  },
 });

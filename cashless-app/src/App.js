@@ -12,6 +12,7 @@ import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { UserProvider } from "./context/UserContext";
 import { supabase } from "./api/supabase";
 import { hasMpin } from "./api/mpinLocal";
+import { resetMpinLocal } from "./api/mpinLocal";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import { resolveNotificationDestination } from "./utils/notificationRouting";
 // Preserve originals and only silence logs when explicitly disabled.
@@ -193,7 +194,22 @@ function AppWithLock() {
       const session = data?.session;
       if (!session?.user?.id) return;
 
-      const isPinSet = await hasMpin();
+      const userId = session.user.id;
+      const [{ data: account }, { data: profile }] = await Promise.all([
+        supabase
+          .from("commuter_accounts")
+          .select("account_active, pin_set")
+          .eq("commuter_id", userId)
+          .maybeSingle(),
+        supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", userId)
+          .maybeSingle(),
+      ]);
+
+      const accountReady = !!profile?.id && !!account?.account_active && !!account?.pin_set;
+      const isPinSet = accountReady ? await hasMpin() : false;
       if (isPinSet) {
         setLocked(true);
       }
@@ -233,6 +249,7 @@ function AppWithLock() {
         [{
           text: "OK",
           onPress: async () => {
+            await resetMpinLocal().catch(() => {});
             await supabase.auth.signOut();
             setLocked(false);
           }

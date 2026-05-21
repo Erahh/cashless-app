@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   StatusBar,
-  Animated,
   Platform,
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
@@ -32,21 +31,12 @@ export default function ReviewInfoScreen({ route, navigation }) {
   const userInitial = p?.first_name ? p.first_name.charAt(0).toUpperCase() : "U";
 
   return (
-    <AuthBackground>
+    <AuthBackground
+      showLogo={false}
+      title="SECURE REVIEW"
+      onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.reset({ index: 0, routes: [{ name: "PersonalInfo", params: { profile: p } }] }))}
+    >
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>SECURE REVIEW</Text>
-        <View style={{ width: 44 }} />
-      </View>
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -168,30 +158,8 @@ const rowStyles = StyleSheet.create({
 
 const createStyles = (theme, isDarkMode) =>
   StyleSheet.create({
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingTop: 12,
-      paddingBottom: 20,
-    },
-    backBtn: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    headerTitle: {
-      color: theme.text,
-      fontSize: 14,
-      fontWeight: "900",
-      letterSpacing: 4,
-    },
     content: {
+      paddingTop: 88,
       paddingBottom: 20,
     },
     // Futuristic ID Card

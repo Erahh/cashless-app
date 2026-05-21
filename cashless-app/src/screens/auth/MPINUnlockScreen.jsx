@@ -9,6 +9,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { supabase } from "../../api/supabase";
 import * as Crypto from "expo-crypto";
 import { verifyMpin } from "../../api/mpinLocal";
+import { resetMpinLocal } from "../../api/mpinLocal";
 import AuthBackground from "../../components/AuthBackground";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LockIcon } from "@hugeicons/core-free-icons";
@@ -75,6 +76,7 @@ export default function MPINUnlockScreen({ navigation }) {
 
   const handleSwitchNumber = async () => {
     try {
+      await resetMpinLocal();
       await supabase.auth.signOut();
       setLocked(false);
       navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
@@ -131,6 +133,7 @@ export default function MPINUnlockScreen({ navigation }) {
             {
               text: "OK",
               onPress: async () => {
+                await resetMpinLocal().catch(() => {});
                 await supabase.auth.signOut();
                 navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
               },

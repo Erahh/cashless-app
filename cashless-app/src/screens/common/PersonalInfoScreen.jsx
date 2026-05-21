@@ -11,6 +11,7 @@ import { View,
   TextInput,
   StatusBar,
   ActivityIndicator } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
@@ -41,6 +42,28 @@ function formatNiceDate(dateObj) {
 
 function getPhoneFromUserOrSession(user, sessionUser) {
   return user?.phone || sessionUser?.phone || "";
+}
+
+const REGISTRATION_DRAFT_KEY = "registration_draft_v1";
+
+function normalizeLocationName(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\bcity of\b/g, "")
+    .replace(/\bcity\b/g, "")
+    .replace(/\bmunicipality\b/g, "")
+    .replace(/\bmunicipal\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function findCanonicalOptionValue(options, value) {
+  if (!Array.isArray(options) || !value) return "";
+  const direct = options.find((opt) => opt?.value === value);
+  if (direct) return direct.value;
+
+  const normalizedTarget = normalizeLocationName(value);
+  const fuzzy = options.find((opt) => normalizeLocationName(opt?.value) === normalizedTarget);
+  return fuzzy?.value || "";
 }
 
 // ------- Themed Picker Modal -------
@@ -215,11 +238,22 @@ export default function PersonalInfoScreen({ navigation, route }) {
   const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingBarangays, setLoadingBarangays] = useState(false);
+  const [draftReady, setDraftReady] = useState(editMode);
 
 
   const fullName = useMemo(() => {
     return [firstName, middleName, lastName].map((s) => (s || "").trim()).filter(Boolean).join(" ");
   }, [firstName, middleName, lastName]);
+
+  const canonicalProvince = useMemo(
+    () => findCanonicalOptionValue(provinceOptions, province) || province,
+    [provinceOptions, province]
+  );
+
+  const canonicalCity = useMemo(
+    () => findCanonicalOptionValue(cityOptions, city) || city,
+    [cityOptions, city]
+  );
 
   useEffect(() => {
     let active = true;
@@ -239,6 +273,67 @@ export default function PersonalInfoScreen({ navigation, route }) {
     loadProvinces();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadDraft = async () => {
+      if (editMode) {
+        if (active) setDraftReady(true);
+        return;
+      }
+
+      try {
+        const raw = await AsyncStorage.getItem(REGISTRATION_DRAFT_KEY);
+        if (!active || !raw) {
+          if (active) setDraftReady(true);
+          return;
+        }
+
+        const draft = JSON.parse(raw);
+
+        if (typeof draft.firstName === "string") setFirstName(draft.firstName);
+        if (typeof draft.middleName === "string") setMiddleName(draft.middleName);
+        if (typeof draft.lastName === "string") setLastName(draft.lastName);
+        if (typeof draft.email === "string") setEmail(draft.email);
+        if (typeof draft.province === "string") setProvince(draft.province);
+        if (typeof draft.city === "string") setCity(draft.city);
+        if (typeof draft.barangay === "string") setBarangay(draft.barangay);
+        if (typeof draft.zipCode === "string") setZipCode(draft.zipCode);
+        if (typeof draft.addressLine === "string") setAddressLine(draft.addressLine);
+        if (draft.birthdate) {
+          const parsed = new Date(`${draft.birthdate}T00:00:00`);
+          if (!Number.isNaN(parsed.getTime())) setBirthdateObj(parsed);
+        }
+      } catch {
+        // Ignore draft restore errors and show empty inputs.
+      } finally {
+        if (active) setDraftReady(true);
+      }
+    };
+
+    loadDraft();
+    return () => { active = false; };
+  }, [editMode]);
+
+  useEffect(() => {
+    if (editMode || !draftReady) return;
+
+    const draft = {
+      firstName,
+      middleName,
+      lastName,
+      email,
+      birthdate: birthdateObj ? toISODateOnly(birthdateObj) : "",
+      province,
+      city,
+      barangay,
+      zipCode,
+      addressLine,
+    };
+
+    AsyncStorage.setItem(REGISTRATION_DRAFT_KEY, JSON.stringify(draft)).catch(() => {});
+  }, [editMode, draftReady, firstName, middleName, lastName, email, birthdateObj, province, city, barangay, zipCode, addressLine]);
 
   useEffect(() => {
     let active = true;
@@ -265,16 +360,34 @@ export default function PersonalInfoScreen({ navigation, route }) {
   }, [province]);
 
   useEffect(() => {
+    if (!province || !provinceOptions.length) return;
+    const canonicalProvince = findCanonicalOptionValue(provinceOptions, province);
+    if (canonicalProvince && canonicalProvince !== province) {
+      setProvince(canonicalProvince);
+    }
+  }, [province, provinceOptions]);
+
+  useEffect(() => {
+    if (!city || !cityOptions.length) return;
+    const canonicalCity = findCanonicalOptionValue(cityOptions, city);
+    if (canonicalCity && canonicalCity !== city) {
+      setCity(canonicalCity);
+    }
+  }, [city, cityOptions]);
+
+  useEffect(() => {
     let active = true;
     const loadBarangays = async () => {
       if (!province || !city) {
         setBarangayOptions([]);
         return;
       }
+
+      const cityForLookup = findCanonicalOptionValue(cityOptions, city) || city;
       setLoadingBarangays(true);
       setBarangayOptions([]);
       try {
-        const res = await renderApiRequest(`/locations/barangays?province=${encodeURIComponent(province)}&city=${encodeURIComponent(city)}`);
+        const res = await renderApiRequest(`/locations/barangays?province=${encodeURIComponent(province)}&city=${encodeURIComponent(cityForLookup)}`);
         const items = (res?.barangays || []).map((b) => ({ label: b.name, value: b.name }));
         if (active) setBarangayOptions(items);
       } catch (e) {
@@ -286,15 +399,15 @@ export default function PersonalInfoScreen({ navigation, route }) {
 
     loadBarangays();
     return () => { active = false; };
-  }, [province, city]);
+  }, [province, city, cityOptions]);
 
   function validate() {
     if (!firstName.trim()) return "First name is required";
     if (!lastName.trim()) return "Last name is required";
     if (!birthdateObj) return "Birthdate is required";
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Please enter a valid email address";
-    if (!province.trim()) return "Province is required";
-    if (!city.trim()) return "City/Municipality is required";
+    if (!canonicalProvince.trim()) return "Province is required";
+    if (!canonicalCity.trim()) return "City/Municipality is required";
     if (!barangay.trim()) return "Barangay is required";
     if (!addressLine.trim()) return "Address line is required";
 
@@ -322,8 +435,8 @@ export default function PersonalInfoScreen({ navigation, route }) {
           full_name: fullName || null,
           email: email.trim().toLowerCase() || null,
           birthdate: toISODateOnly(birthdateObj),
-          province: province.trim(),
-          city: city.trim(),
+          province: canonicalProvince.trim(),
+          city: canonicalCity.trim(),
           barangay: barangay.trim(),
           zip_code: zipCode.trim() || null,
           address_line: addressLine.trim(),
@@ -352,8 +465,8 @@ export default function PersonalInfoScreen({ navigation, route }) {
       full_name: fullName || null,
       email: email.trim().toLowerCase() || null,
       birthdate: toISODateOnly(birthdateObj),
-      province: province.trim(),
-      city: city.trim(),
+      province: canonicalProvince.trim(),
+      city: canonicalCity.trim(),
       barangay: barangay.trim(),
       zip_code: zipCode.trim() || null,
       address_line: addressLine.trim(),
@@ -367,19 +480,24 @@ export default function PersonalInfoScreen({ navigation, route }) {
   const onPickProvince = (v) => { setProvince(v); setCity(""); setBarangay(""); };
   const onPickCity = (v) => { setCity(v); setBarangay(""); };
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
 
       {/* Header */}
       <View style={styles.header}>
-        {navigation.canGoBack() ? (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 44 }} />
-        )}
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={theme.text} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {editMode ? "Edit Profile" : "Personal Info"}
         </Text>
@@ -656,7 +774,7 @@ const createStyles = (theme, isDarkMode) =>
       padding: 20,
     },
     modalCard: {
-      backgroundColor: theme.card,
+      backgroundColor: isDarkMode ? "#141A24" : theme.card,
       borderRadius: 22,
       borderWidth: 1,
       borderColor: theme.border,
@@ -737,7 +855,7 @@ const pickerModalStyles = (theme) =>
       padding: 20,
     },
     card: {
-      backgroundColor: theme.card,
+      backgroundColor: theme.isDark ? "#141A24" : theme.card,
       borderRadius: 22,
       borderWidth: 1,
       borderColor: theme.border,

@@ -17,6 +17,7 @@ import { View,
 import { LinearGradient } from "expo-linear-gradient";
 
 import { supabase } from "../../api/supabase";
+import { resetMpinLocal } from "../../api/mpinLocal";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {
   ArrowLeft01Icon, Camera01Icon, Shield01Icon, ArrowRight01Icon,
@@ -291,6 +292,7 @@ export default function ProfileScreen({ navigation }) {
 
   const signOutToPhone = async () => {
     try {
+      await resetMpinLocal();
       await supabase.auth.signOut();
       setLocked(false);
       navigation.reset({ index: 0, routes: [{ name: "RoleSelection" }] });

@@ -26,6 +26,8 @@ import { LockIcon, ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import AuthBackground from "../../components/AuthBackground";
 import logger from '../../utils/logger';
 
+const REGISTRATION_DRAFT_KEY = "registration_draft_v1";
+
 export default function MPINSetupScreen({ navigation, route }) {
   const { setLocked } = useContext(AppLockContext);
   const { theme, isDarkMode } = useTheme();
@@ -102,6 +104,7 @@ export default function MPINSetupScreen({ navigation, route }) {
         // Complete the process
         await setMpinOnRender(mpin, confirm);
         await setMpinLocal(mpin);
+        await AsyncStorage.removeItem(REGISTRATION_DRAFT_KEY).catch(() => {});
         setLocked(false);
         navigation.reset({ index: 0, routes: [{ name: "AuthGate" }] });
       } catch (err) {
@@ -135,7 +138,7 @@ export default function MPINSetupScreen({ navigation, route }) {
   }
 
   return (
-    <AuthBackground onBack={() => navigation.goBack()}>
+    <AuthBackground onBack={() => navigation.goBack()} showLogo={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
@@ -269,12 +272,13 @@ const createStyles = (theme, isDarkMode) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.background },
     scrollContent: {
-      padding: 24,
-      paddingTop: 120,
+      paddingHorizontal: 24,
+      paddingBottom: 28,
+      paddingTop: 72,
     },
     iconWrapper: {
       alignItems: "center",
-      marginBottom: 24,
+      marginBottom: 16,
     },
     iconCircle: {
       width: 72,
@@ -294,7 +298,7 @@ const createStyles = (theme, isDarkMode) =>
       color: theme.text,
       fontSize: 28,
       fontWeight: "900",
-      marginBottom: 10,
+      marginBottom: 8,
       textAlign: "center",
       letterSpacing: -0.5,
     },
@@ -303,8 +307,8 @@ const createStyles = (theme, isDarkMode) =>
       fontSize: 14,
       lineHeight: 21,
       textAlign: "center",
-      marginBottom: 36,
-      paddingHorizontal: 16,
+      marginBottom: 28,
+      paddingHorizontal: 12,
     },
     inputGroup: {
       marginBottom: 20,

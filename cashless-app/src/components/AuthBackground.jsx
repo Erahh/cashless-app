@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, StatusBar, Platform, TouchableOpacity, Dimensions } from "react-native";
+import { StyleSheet, View, StatusBar, Platform, TouchableOpacity, Dimensions, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -9,7 +9,7 @@ import CEraLogo from "./CEraLogo";
 const { width, height } = Dimensions.get("window");
 const GRID_SIZE = 30;
 
-export default function AuthBackground({ children, onBack, showLogo = true }) {
+export default function AuthBackground({ children, onBack, showLogo = true, title = null }) {
     const { theme, isDarkMode, toggleTheme } = useTheme();
 
     const bgColor = isDarkMode ? theme.background : "#F9F6EE";
@@ -63,7 +63,13 @@ export default function AuthBackground({ children, onBack, showLogo = true }) {
                 ) : <View style={styles.navBtnPlaceholder} />}
 
                 <View style={styles.navLogo}>
-                    {showLogo ? <CEraLogo size="small" /> : null}
+                    {title ? (
+                        <Text style={styles.navTitle} numberOfLines={1}>
+                            {title}
+                        </Text>
+                    ) : showLogo ? (
+                        <CEraLogo size="small" />
+                    ) : null}
                 </View>
 
                 <TouchableOpacity 
@@ -133,5 +139,11 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
+    },
+    navTitle: {
+        color: "#121417",
+        fontSize: 14,
+        fontWeight: "900",
+        letterSpacing: 4,
     },
 });

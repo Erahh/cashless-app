@@ -22,8 +22,24 @@ export function AppLockProvider({ children }) {
           return;
         }
 
-        // ✅ Lock based on SecureStore local check - instantaneous and works offline
-        const isPinSet = await hasMpin();
+        const userId = session.user.id;
+        const [{ data: account }, { data: profile }] = await Promise.all([
+          supabase
+            .from("commuter_accounts")
+            .select("account_active, pin_set")
+            .eq("commuter_id", userId)
+            .maybeSingle(),
+          supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", userId)
+            .maybeSingle(),
+        ]);
+
+        const accountReady = !!profile?.id && !!account?.account_active && !!account?.pin_set;
+
+        // ✅ Only lock completed accounts; unfinished registrations must not hit MPINUnlock
+        const isPinSet = accountReady ? await hasMpin() : false;
 
         if (alive) setLocked(isPinSet);
       } catch (e) {

@@ -168,8 +168,8 @@ export default function UploadVerificationScreen({ navigation, route }) {
   const handleSubmit = async () => {
     try {
       // Guard: Validate passenger type before proceeding
-      if (!passengerType || !["student", "senior"].includes(passengerType)) {
-        return Alert.alert("Missing passenger type", "Go back and select Student or Senior.");
+      if (!passengerType || !["student", "senior", "pwd"].includes(passengerType)) {
+        return Alert.alert("Missing passenger type", "Go back and select Student, Senior, or PWD.");
       }
 
       if (!front || !back) {

@@ -16,18 +16,20 @@ export default function DiscountInfoScreen({ navigation, route }) {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = getStyles(theme);
-  const passenger_type = route?.params?.passenger_type; // "student" | "senior"
+  const passenger_type = route?.params?.passenger_type; // "student" | "senior" | "pwd"
 
   const label =
     passenger_type === "student"
       ? "Student"
       : passenger_type === "senior"
         ? "Senior Citizen"
-        : null;
+        : passenger_type === "pwd"
+          ? "PWD"
+          : null;
 
   const goUpload = () => {
-    if (!passenger_type || !["student", "senior"].includes(passenger_type)) {
-      return Alert.alert("Missing passenger type", "Please select Student or Senior first.");
+    if (!passenger_type || !["student", "senior", "pwd"].includes(passenger_type)) {
+      return Alert.alert("Missing passenger type", "Please select Student, Senior, or PWD first.");
     }
 
     navigation.navigate("UploadFrontID", { passenger_type });

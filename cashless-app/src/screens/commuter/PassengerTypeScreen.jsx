@@ -140,6 +140,18 @@ export default function PassengerTypeScreen({ navigation }) {
               isDarkMode={isDarkMode}
               styles={styles}
             />
+
+            <PassengerCard
+              icon="wheelchair"
+              value="pwd"
+              label="PWD"
+              description="Person With Disability - discounted fare"
+              selected={type === "pwd"}
+              onPress={() => selectType("pwd")}
+              theme={theme}
+              isDarkMode={isDarkMode}
+              styles={styles}
+            />
           </View>
 
           {/* School Attributes Segment (only for students) */}
@@ -300,6 +312,10 @@ export default function PassengerTypeScreen({ navigation }) {
 }
 
 function PassengerCard({ value, label, description, selected, onPress, theme, isDarkMode, styles }) {
+  let Icon = GraduateMaleIcon;
+  if (value === "pwd") Icon = WheelchairIcon;
+  else if (value === "senior") Icon = GraduateMaleIcon; // fallback when no dedicated senior icon
+
   return (
     <TouchableOpacity
       style={[
@@ -315,7 +331,7 @@ function PassengerCard({ value, label, description, selected, onPress, theme, is
           selected && styles.iconCircleSelected
         ]}>
           <HugeiconsIcon
-            icon={value === "student" ? GraduateMaleIcon : WheelchairIcon}
+            icon={Icon}
             size={24}
             color={selected ? (isDarkMode ? "#0B0E14" : "#FFFFFF") : theme.success}
           />

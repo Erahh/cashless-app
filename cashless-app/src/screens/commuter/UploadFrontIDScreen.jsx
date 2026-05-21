@@ -94,8 +94,8 @@ export default function UploadFrontIDScreen({ navigation, route }) {
         });
     };
 
-    const emoji = passenger_type === "student" ? "🎓" : "👴";
-    const typeLabel = passenger_type === "student" ? "Student" : "Senior Citizen";
+    const emoji = passenger_type === "student" ? "🎓" : (passenger_type === "senior" ? "👴" : (passenger_type === "pwd" ? "♿" : ""));
+    const typeLabel = passenger_type === "student" ? "Student" : (passenger_type === "senior" ? "Senior Citizen" : (passenger_type === "pwd" ? "PWD" : ""));
 
     return (
         <View style={[styles.safe, { paddingTop: insets.top }]}>

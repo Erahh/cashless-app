@@ -57,6 +57,13 @@ export default function MPINSetupScreen({ navigation, route }) {
     return { label: "Strong PIN ✓", color: theme.success };
   }, [mpin, theme]);
 
+  React.useEffect(() => {
+    return () => {
+      if (mpinTimerRef.current) clearTimeout(mpinTimerRef.current);
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    };
+  }, []);
+
   const registrationData = route.params?.registrationData;
 
   async function onConfirm() {
@@ -259,13 +266,6 @@ export default function MPINSetupScreen({ navigation, route }) {
             {showConfirmToast && (
               <Text style={[styles.strengthText, { color: theme.success, marginTop: 6 }]}>Visible</Text>
             )}
-
-  React.useEffect(() => {
-    return () => {
-      if (mpinTimerRef.current) clearTimeout(mpinTimerRef.current);
-      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
-    };
-  }, []);
           </View>
 
           {/* Terms and Conditions */}

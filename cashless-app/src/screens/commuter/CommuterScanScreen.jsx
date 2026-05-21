@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from "react";
-import { View, Text, TextInput, Alert, TouchableOpacity } from "react-native";
-import { Screen, Card, PrimaryButton, GhostButton, Pill } from "../../components/ui";
+import React, { useState } from "react";
+import { View, Text, Alert, TouchableOpacity } from "react-native";
+import { Screen, Card, PrimaryButton, Pill } from "../../components/ui";
 import QRScanView from "../../components/QRScanView";
 import { payOperator } from "../../api/payApi";
 import { useTheme } from "../../context/ThemeContext";
+import FareSuccessModal from "../../components/FareSuccessModal";
 
 /**
  * What QR should contain:
@@ -29,11 +30,10 @@ function extractOperatorQr(scanned) {
 export default function CommuterScanScreen({ navigation }) {
     const { theme, isDarkMode } = useTheme();
     const [operatorQr, setOperatorQr] = useState("");
-    const [amount, setAmount] = useState("");
     const [step, setStep] = useState("scan"); // scan | pay
     const [loading, setLoading] = useState(false);
-
-    const amountNum = useMemo(() => Number(amount || 0), [amount]);
+    const [successVisible, setSuccessVisible] = useState(false);
+    const [paymentResult, setPaymentResult] = useState(null);
 
     const onScanned = ({ data }) => {
         const op = extractOperatorQr(data);
@@ -46,12 +46,10 @@ export default function CommuterScanScreen({ navigation }) {
     const confirmPay = async () => {
         try {
             if (!operatorQr) return Alert.alert("Pay", "Missing operator QR.");
-            if (!amountNum || amountNum <= 0) return Alert.alert("Pay", "Enter a valid amount.");
-            if (amountNum < 5) return Alert.alert("Pay", "Minimum fare is ₱5 (for demo).");
 
             Alert.alert(
                 "Confirm Payment",
-                `Pay ₱${amountNum.toFixed(2)} to operator?`,
+                "Pay your fare using your discounted account fare?",
                 [
                     { text: "Cancel", style: "cancel" },
                     {
@@ -60,18 +58,9 @@ export default function CommuterScanScreen({ navigation }) {
                         onPress: async () => {
                             setLoading(true);
                             try {
-                                const res = await payOperator({ operator_qr: operatorQr, amount: amountNum });
-
-                                Alert.alert(
-                                    "Paid ✅",
-                                    `Transaction: ${res?.tx_id || "OK"}\nNew balance: ₱${Number(res?.commuter_balance ?? 0).toFixed(2)}`,
-                                    [
-                                        {
-                                            text: "Back to Home",
-                                            onPress: () => navigation.navigate("Home", { refresh: true }),
-                                        },
-                                    ]
-                                );
+                                const res = await payOperator({ operator_qr: operatorQr });
+                                setPaymentResult(res);
+                                setSuccessVisible(true);
                             } catch (e) {
                                 Alert.alert("Payment Failed", e.message || "Unable to pay");
                             } finally {
@@ -108,41 +97,30 @@ export default function CommuterScanScreen({ navigation }) {
                     </Card>
                 ) : (
                     <Card theme={theme}>
-                        <Pill text="Step 2 • Enter Fare" theme={theme} />
+                        <Pill text="Step 2 • Fare Detected" theme={theme} />
 
-                        <Text style={{ marginTop: 16, color: theme.textSecondary, fontWeight: "800" }}>
+                        <Text style={{ marginTop: 16, color: theme.textSecondary, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.7, fontSize: 12 }}>
                             Operator QR
                         </Text>
-                        <Text style={{ marginTop: 6, color: theme.text, fontWeight: "900" }} numberOfLines={1}>
+                        <Text style={{ marginTop: 6, color: theme.text, fontWeight: "900", fontSize: 16 }} numberOfLines={1}>
                             {operatorQr}
                         </Text>
 
-                        <Text style={{ marginTop: 18, color: theme.textSecondary }}>Fare Amount (PHP)</Text>
-                        <TextInput
-                            value={amount}
-                            onChangeText={(t) => setAmount(t.replace(/[^\d.]/g, ""))}
-                            keyboardType="decimal-pad"
-                            placeholder="e.g. 15"
-                            placeholderTextColor={theme.textMuted}
-                            style={{
-                                marginTop: 10,
-                                borderRadius: 14,
-                                padding: 14,
-                                borderWidth: 1,
-                                borderColor: theme.border,
-                                backgroundColor: isDarkMode ? "rgba(0,0,0,0.18)" : theme.background,
-                                color: theme.text,
-                                fontWeight: "900",
-                                fontSize: 18,
-                            }}
-                        />
+                        <View style={{ marginTop: 18, padding: 16, borderRadius: 18, backgroundColor: isDarkMode ? "rgba(255,255,255,0.03)" : theme.background, borderWidth: 1, borderColor: theme.border }}>
+                            <Text style={{ color: theme.textSecondary, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.7, fontSize: 12 }}>Fare</Text>
+                            <Text style={{ marginTop: 6, color: theme.text, fontWeight: "900", fontSize: 19, letterSpacing: -0.2 }}>
+                                Automatic discounted fare
+                            </Text>
+                            <Text style={{ marginTop: 8, color: theme.textMuted, lineHeight: 18 }}>
+                                Your commuter account and verification status determine whether this is a Student Fare, Senior Fare, or Regular Fare.
+                            </Text>
+                        </View>
 
                         <View style={{ marginTop: 16, gap: 10 }}>
                             <PrimaryButton label={loading ? "Processing..." : "Pay Now"} onPress={confirmPay} disabled={loading} theme={theme} />
                             <TouchableOpacity
                                 onPress={() => {
                                     setStep("scan");
-                                    setAmount("");
                                     setOperatorQr("");
                                 }}
                                 style={{ paddingVertical: 12 }}
@@ -156,6 +134,18 @@ export default function CommuterScanScreen({ navigation }) {
                     </Card>
                 )}
             </View>
+
+            <FareSuccessModal
+                visible={successVisible}
+                result={paymentResult}
+                onDone={() => {
+                    setSuccessVisible(false);
+                    setPaymentResult(null);
+                    setStep("scan");
+                    setOperatorQr("");
+                    navigation.navigate("Home", { refresh: true });
+                }}
+            />
         </Screen>
     );
 }

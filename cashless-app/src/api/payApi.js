@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "../config/api";
 import { supabase } from "./supabase";
 
-export async function payOperator({ operator_qr, amount }) {
+export async function payOperator({ operator_qr, amount = null, route = null, vehicle_id = null }) {
     const { data: s } = await supabase.auth.getSession();
     const token = s?.session?.access_token;
     if (!token) throw new Error("No session");
@@ -12,7 +12,7 @@ export async function payOperator({ operator_qr, amount }) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ operator_qr, amount }),
+        body: JSON.stringify({ operator_qr, amount, route, vehicle_id }),
     });
 
     const text = await res.text();

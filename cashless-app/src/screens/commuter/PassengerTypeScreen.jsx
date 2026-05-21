@@ -322,25 +322,49 @@ function PassengerCard({ value, label, description, selected, onPress, theme, is
         styles.card,
         selected && styles.cardSelected
       ]}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} passenger type`}
+      accessibilityHint={`Select ${label} to apply for discounted fares`}
       onPress={onPress}
       activeOpacity={0.8}
     >
       <View style={styles.cardLeft}>
-        <View style={[
-          styles.iconCircle,
-          selected && styles.iconCircleSelected
-        ]}>
-          <HugeiconsIcon
-            icon={Icon}
-            size={24}
-            color={selected ? (isDarkMode ? "#0B0E14" : "#FFFFFF") : theme.success}
-          />
-        </View>
+        {value === "pwd" ? (
+          <LinearGradient
+            colors={[theme.primary, theme.accent]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.iconCirclePwd, selected && styles.iconCircleSelected]}
+          >
+            <HugeiconsIcon
+              icon={Icon}
+              size={26}
+              color="#FFFFFF"
+            />
+          </LinearGradient>
+        ) : (
+          <View style={[
+            styles.iconCircle,
+            selected && styles.iconCircleSelected
+          ]}>
+            <HugeiconsIcon
+              icon={Icon}
+              size={24}
+              color={selected ? (isDarkMode ? "#0B0E14" : "#FFFFFF") : theme.success}
+            />
+          </View>
+        )}
         <View style={styles.cardContent}>
           <Text style={styles.cardLabel}>{label}</Text>
           <Text style={styles.cardDescription}>{description}</Text>
         </View>
       </View>
+
+      {value === "pwd" && (
+        <View style={styles.pwdBadge}>
+          <Text style={styles.pwdBadgeText}>PWD</Text>
+        </View>
+      )}
 
       {selected && (
         <View style={styles.checkmark}>
@@ -649,5 +673,33 @@ const getStyles = (theme) => StyleSheet.create({
   schoolOptionTextSelected: {
     color: theme.success,
     fontWeight: "800",
+  },
+  // PWD special styles
+  iconCirclePwd: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  pwdBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 12,
+    backgroundColor: theme.success,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  pwdBadgeText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 12,
   },
 });

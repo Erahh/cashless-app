@@ -55,7 +55,12 @@ export default function OperatorEarningsScreen({ navigation }) {
       // ✅ This is the ONLY endpoint assumption.
       // If your backend uses a different route, just change it here.
       const res = await fetchWithTimeout(`${API_BASE_URL}/operator/earnings`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
       });
 
       const text = await res.text();
@@ -104,7 +109,16 @@ export default function OperatorEarningsScreen({ navigation }) {
   useEffect(() => {
     const unsub = navigation?.addListener?.("focus", () => load({ silent: true }));
     load({ silent: false });
-    return unsub;
+
+    // Auto-refresh earnings every 5 seconds silently
+    const intervalId = setInterval(() => {
+      load({ silent: true, canRetry: false });
+    }, 5000);
+
+    return () => {
+      if (unsub) unsub();
+      clearInterval(intervalId);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

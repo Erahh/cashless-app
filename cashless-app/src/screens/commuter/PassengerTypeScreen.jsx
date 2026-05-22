@@ -31,22 +31,23 @@ const { height } = Dimensions.get("window");
 
 const VALENCIA_SCHOOLS = {
   high_school: [
-    "Valencia National High School",
-    "Mountain View College Academy",
-    "San Agustin Institute of Technology (HS)",
     "First Fruits Christian Academy",
     "Lilingayon National High School",
     "Lurugan National High School",
     "Mailag National High School",
-    "Tongantongan National High School"
+    "Mountain View College Academy",
+    "San Agustin Institute of Technology (HS)",
+    "Tongantongan National High School",
+    "Valencia National High School"
   ],
   college: [
-    "San Agustin Institute of Technology",
-    "Mountain View College",
-    "STI College Valencia",
-    "Philippine College Foundation",
+    "ACLC College of Bukidnon",
     "Bukidnon State University - Valencia",
-    "Central Mindanao University (Nearby)"
+    "Central Mindanao University (Nearby)",
+    "Mountain View College",
+    "Philippine College Foundation",
+    "San Agustin Institute of Technology",
+    "STI College Valencia"
   ]
 };
 

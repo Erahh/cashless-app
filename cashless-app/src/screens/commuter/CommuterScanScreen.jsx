@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Alert, TouchableOpacity } from "react-native";
+import { View, Text, Alert, TouchableOpacity, ScrollView } from "react-native";
 import { Screen, Card, PrimaryButton, Pill } from "../../components/ui";
 import QRScanView from "../../components/QRScanView";
 import { payOperator } from "../../api/payApi";
@@ -34,6 +34,7 @@ export default function CommuterScanScreen({ navigation }) {
     const [loading, setLoading] = useState(false);
     const [successVisible, setSuccessVisible] = useState(false);
     const [paymentResult, setPaymentResult] = useState(null);
+    const [extraFare, setExtraFare] = useState(0);
 
     const onScanned = ({ data }) => {
         const op = extractOperatorQr(data);
@@ -58,7 +59,7 @@ export default function CommuterScanScreen({ navigation }) {
                         onPress: async () => {
                             setLoading(true);
                             try {
-                                const res = await payOperator({ operator_qr: operatorQr });
+                                const res = await payOperator({ operator_qr: operatorQr, extra_fare: extraFare });
                                 setPaymentResult(res);
                                 setSuccessVisible(true);
                             } catch (e) {
@@ -82,7 +83,12 @@ export default function CommuterScanScreen({ navigation }) {
             onBack={() => navigation.goBack()}
             theme={theme}
         >
-            <View style={{ flex: 1, paddingBottom: 120 }}>
+            <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ flexGrow: 1, paddingBottom: 180 }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
                 {step === "scan" ? (
                     <Card theme={theme}>
                         <Pill text="Step 1 • Scan Operator QR" theme={theme} />
@@ -116,7 +122,43 @@ export default function CommuterScanScreen({ navigation }) {
                             </Text>
                         </View>
 
-                        <View style={{ marginTop: 16, gap: 10 }}>
+                        <View style={{ marginTop: 20 }}>
+                            <Text style={{ color: theme.textSecondary, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.7, fontSize: 12 }}>
+                                Exceeded Commute Area?
+                            </Text>
+                            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                                {[0, 5, 10, 15, 20].map((amt) => {
+                                    const isSelected = extraFare === amt;
+                                    return (
+                                        <TouchableOpacity
+                                            key={amt}
+                                            activeOpacity={0.8}
+                                            onPress={() => setExtraFare(amt)}
+                                            style={{
+                                                paddingVertical: 10,
+                                                paddingHorizontal: 16,
+                                                borderRadius: 12,
+                                                borderWidth: 2,
+                                                borderColor: isSelected ? theme.primary : (isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"),
+                                                backgroundColor: isSelected ? theme.primary : "transparent",
+                                            }}
+                                        >
+                                            <Text style={{
+                                                fontWeight: "800",
+                                                color: isSelected ? "#fff" : theme.text,
+                                            }}>
+                                                {amt === 0 ? "No Thanks" : `+ ₱${amt}`}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                            <Text style={{ marginTop: 8, color: theme.textMuted, fontSize: 13, lineHeight: 18 }}>
+                                Only select an extra fare if you are traveling beyond the standard commute zone.
+                            </Text>
+                        </View>
+
+                        <View style={{ marginTop: 24, gap: 10 }}>
                             <PrimaryButton label={loading ? "Processing..." : "Pay Now"} onPress={confirmPay} disabled={loading} theme={theme} />
                             <TouchableOpacity
                                 onPress={() => {
@@ -133,7 +175,7 @@ export default function CommuterScanScreen({ navigation }) {
                         </View>
                     </Card>
                 )}
-            </View>
+            </ScrollView>
 
             <FareSuccessModal
                 visible={successVisible}
@@ -143,6 +185,7 @@ export default function CommuterScanScreen({ navigation }) {
                     setPaymentResult(null);
                     setStep("scan");
                     setOperatorQr("");
+                    setExtraFare(0);
                     navigation.navigate("Home", { refresh: true });
                 }}
             />

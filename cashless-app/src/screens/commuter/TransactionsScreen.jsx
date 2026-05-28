@@ -142,7 +142,13 @@ export default function TransactionsScreen({ navigation }) {
                   key={it.id}
                   style={styles.txRow}
                   activeOpacity={0.7}
-                  onPress={() => navigation.navigate("TransactionDetails", { item: it })}
+                  onPress={() => {
+                    if (it.kind === "fare_debit" || it.kind === "fare_credit") {
+                      navigation.navigate("RideDetails", { tx_id: it.ref_tx_id || it.ref_id });
+                    } else {
+                      navigation.navigate("TransactionDetails", { item: it });
+                    }
+                  }}
                 >
                   <View style={styles.itemRow}>
                     <TxIcon title={tString} type={it.kind} source={it.source} />

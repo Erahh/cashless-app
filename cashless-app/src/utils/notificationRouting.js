@@ -47,6 +47,8 @@ export function normalizeNotificationPayload(payload) {
     action: String(p.action || p.event || ""),
     target: String(p.target || p.screen || p.route || ""),
     friendId: p.friend_id || p.sender_id || p.user_id || null,
+    data: p.data && typeof p.data === "object" ? p.data : p,
+    tx_id: p.tx_id || p.transaction_id || p.transactionId || p.ref_tx_id || null,
   };
 }
 
@@ -59,6 +61,16 @@ export function resolveNotificationDestination(payload = {}, availableRoutes = [
   const compactTarget = compactText(p.target);
   const compactAction = compactText(p.action);
   const fallbackRouteName = options.fallbackRouteName || "Transactions";
+
+  const routeNames = Array.isArray(availableRoutes) ? availableRoutes : [];
+  
+  const txId = p.data?.tx_id || p.data?.transaction_id || p.data?.transactionId || p.tx_id;
+
+  if ((p.type === "payment_success" || p.type === "payment" || p.type === "ride_payment") && txId) {
+    if (routeNames.includes("RideDetails")) {
+      return { routeName: "RideDetails", params: { tx_id: txId } };
+    }
+  }
 
   const hasRoute = (routeName) => !availableRoutes.length || availableRoutes.includes(routeName);
   const choose = (routeName, params = undefined) => (hasRoute(routeName) ? { routeName, params } : null);

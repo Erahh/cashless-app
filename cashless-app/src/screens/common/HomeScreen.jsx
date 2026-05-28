@@ -562,7 +562,13 @@ export default function HomeScreen({ navigation, route }) {
                 key={tx.id}
                 style={styles.txRow}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate("TransactionDetails", { item: tx })}
+                onPress={() => {
+                  if (tx.kind === "fare_debit" || tx.kind === "fare_credit") {
+                    navigation.navigate("RideDetails", { tx_id: tx.ref_tx_id || tx.ref_id });
+                  } else {
+                    navigation.navigate("TransactionDetails", { item: tx });
+                  }
+                }}
               >
                 <View style={styles.txLeft}>
                   <View style={{ marginRight: 12 }}>

@@ -34,6 +34,7 @@ import AddFriendScreen from "../screens/commuter/AddFriendScreen";
 import PersonalInfoScreen from "../screens/common/PersonalInfoScreen";
 import SendLoadScreen from "../screens/commuter/SendLoadScreen";
 import NotificationsScreen from "../screens/common/NotificationsScreen";
+import RideDetailsScreen from "../screens/common/RideDetailsScreen";
 import CardApplicationScreen from "../screens/common/CardApplicationScreen";
 import PasswordSecurityScreen from "../screens/common/PasswordSecurityScreen";
 import BusinessVerificationScreen from "../screens/commuter/BusinessVerificationScreen";
@@ -81,6 +82,7 @@ const CapturedFriendsMapScreen = withNavCapture(FriendsMapScreen);
 const CapturedAddFriendScreen = withNavCapture(AddFriendScreen);
 const CapturedPersonalInfoScreen = withNavCapture(PersonalInfoScreen);
 const CapturedNotificationsScreen = withNavCapture(NotificationsScreen);
+const CapturedRideDetailsScreen = withNavCapture(RideDetailsScreen);
 const CapturedCardApplicationScreen = withNavCapture(CardApplicationScreen);
 const CapturedPasswordSecurityScreen = withNavCapture(PasswordSecurityScreen);
 const CapturedBusinessVerificationScreen = withNavCapture(BusinessVerificationScreen);
@@ -184,6 +186,7 @@ function CommuterContent() {
                 {/* Profile */}
                 <Stack.Screen name="PersonalInfo" component={CapturedPersonalInfoScreen} />
                 <Stack.Screen name="Notifications" component={CapturedNotificationsScreen} />
+                <Stack.Screen name="RideDetails" component={CapturedRideDetailsScreen} />
                 <Stack.Screen name="CardApplication" component={CapturedCardApplicationScreen} />
                 <Stack.Screen name="PasswordSecurity" component={CapturedPasswordSecurityScreen} />
                 <Stack.Screen name="BusinessVerification" component={CapturedBusinessVerificationScreen} />

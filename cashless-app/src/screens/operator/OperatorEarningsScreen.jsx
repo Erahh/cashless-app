@@ -135,7 +135,25 @@ export default function OperatorEarningsScreen({ navigation }) {
     const today = Number(s.today_total ?? 0);
     const week = Number(s.week_total ?? 0);
     const unpaid = Number(s.unpaid_total ?? 0);
-    const paid = Number(s.paid_total ?? 0);
+    const now = new Date();
+
+    let monthCollected = 0;
+    let overallCollected = 0;
+    for (const settlement of settlements) {
+      const amount = Number(settlement?.amount ?? 0);
+      overallCollected += amount;
+
+      const sourceDate = settlement?.created_at || settlement?.paid_at;
+      const entryDate = sourceDate ? new Date(sourceDate) : null;
+      if (
+        entryDate &&
+        !Number.isNaN(entryDate.getTime()) &&
+        entryDate.getFullYear() === now.getFullYear() &&
+        entryDate.getMonth() === now.getMonth()
+      ) {
+        monthCollected += amount;
+      }
+    }
 
     const money = (n) =>
       Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -150,7 +168,8 @@ export default function OperatorEarningsScreen({ navigation }) {
       todayText: money(today),
       weekText: money(week),
       unpaidText: money(unpaid),
-      paidText: money(paid),
+      monthCollectedText: money(monthCollected),
+      overallCollectedText: money(overallCollected),
       badge,
       settlements,
     };
@@ -244,12 +263,12 @@ export default function OperatorEarningsScreen({ navigation }) {
               <Text style={styles.statsGridValue}>₱{computed.weekText}</Text>
             </View>
             <View style={[styles.statsGridItem, styles.statsGridTop]}>
-              <Text style={styles.statsGridLabel}>PAID OUT</Text>
-              <Text style={[styles.statsGridValue, { color: theme.success }]}>₱{computed.paidText}</Text>
+              <Text style={styles.statsGridLabel}>THIS MONTH COLLECTED</Text>
+              <Text style={[styles.statsGridValue, { color: theme.success }]}>₱{computed.monthCollectedText}</Text>
             </View>
             <View style={[styles.statsGridItem, styles.statsGridTop, styles.statsGridRight]}>
-              <Text style={styles.statsGridLabel}>QUEUED</Text>
-              <Text style={[styles.statsGridValue, { color: theme.warning }]}>₱{computed.unpaidText}</Text>
+              <Text style={styles.statsGridLabel}>MY BALANCE</Text>
+              <Text style={[styles.statsGridValue, { color: theme.accent }]}>₱{computed.overallCollectedText}</Text>
             </View>
           </View>
         </View>
@@ -276,6 +295,8 @@ export default function OperatorEarningsScreen({ navigation }) {
 
             return (
               <View key={x.id} style={styles.txCard}>
+                <View style={[styles.txAccentRail, isPaid ? styles.txAccentRailPaid : styles.txAccentRailPending]} />
+                <View style={[styles.txBackdropOrb, isPaid ? styles.txBackdropOrbPaid : styles.txBackdropOrbPending]} />
                 <View style={styles.txLeft}>
                   <View style={{ marginRight: 12 }}>
                     <TxIcon title={isPaid ? "Paid" : "Collection"} type={isPaid ? "topup_credit" : "fare_debit"} source="ledger" />
@@ -298,7 +319,12 @@ export default function OperatorEarningsScreen({ navigation }) {
                   <Text style={[styles.txAmountStr, isPaid ? styles.txPos : styles.txWarn]}>
                     +₱{amount.toFixed(2)}
                   </Text>
-                  {!isPaid && <Text style={styles.txSubHint}>Queued</Text>}
+                  <View style={[styles.txStatusPill, isPaid ? styles.txStatusPillPaid : styles.txStatusPillPending]}>
+                    <View style={[styles.txStatusDot, isPaid ? styles.txStatusDotPaid : styles.txStatusDotPending]} />
+                    <Text style={[styles.txStatusText, isPaid ? styles.txStatusTextPaid : styles.txStatusTextPending]}>
+                      {isPaid ? "Settled" : "Pending Settlement"}
+                    </Text>
+                  </View>
                 </View>
               </View>
             );
@@ -561,11 +587,37 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 24,
     backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: theme.isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: theme.isDark ? 0.35 : 0.12,
+    shadowRadius: 14,
+    elevation: 6,
   },
+  txAccentRail: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+  },
+  txAccentRailPaid: { backgroundColor: theme.success },
+  txAccentRailPending: { backgroundColor: theme.warning },
+  txBackdropOrb: {
+    position: "absolute",
+    right: -28,
+    top: -30,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    opacity: 0.14,
+  },
+  txBackdropOrbPaid: { backgroundColor: theme.success },
+  txBackdropOrbPending: { backgroundColor: theme.warning },
   txLeft: {
     flexDirection: "row",
     alignItems: "center",
@@ -576,28 +628,64 @@ const createStyles = (theme) => StyleSheet.create({
     paddingRight: 8,
   },
   txType: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "900",
     color: theme.text,
+    letterSpacing: 0.2,
   },
   txName: {
     fontSize: 13,
     color: theme.textSecondary,
-    marginTop: 2,
+    marginTop: 3,
     fontWeight: "500",
   },
   txTimeText: {
-    fontSize: 11,
+    fontSize: 10,
     color: theme.textMuted,
-    marginTop: 4,
-    fontWeight: "700",
+    marginTop: 6,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
   txRight: { alignItems: "flex-end" },
   txAmountStr: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "900",
+    letterSpacing: 0.2,
   },
   txPos: { color: theme.success },
   txWarn: { color: theme.warning },
-  txSubHint: { color: theme.warning, fontSize: 10, marginTop: 2, fontWeight: "700", textTransform: "uppercase" },
+  txStatusPill: {
+    marginTop: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  txStatusPillPaid: {
+    backgroundColor: theme.successBg,
+    borderColor: theme.success,
+  },
+  txStatusPillPending: {
+    backgroundColor: theme.warningBg,
+    borderColor: theme.warning,
+  },
+  txStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 5,
+  },
+  txStatusDotPaid: { backgroundColor: theme.success },
+  txStatusDotPending: { backgroundColor: theme.warning },
+  txStatusText: {
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  txStatusTextPaid: { color: theme.success },
+  txStatusTextPending: { color: theme.warning },
 });
